@@ -56,7 +56,7 @@ class TestCLIMain:
         assert "0.1.0" in result.output
         assert "upbit-quant" in result.output
 
-    @patch("src.cli.main.cli")
+    @patch("src.cli.main.cli", create=True)
     def test_main_function(self, mock_cli: MagicMock) -> None:
         """Test main() function calls cli() (line 40)."""
         main()
