@@ -1,0 +1,107 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+.conda/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+coverage.json
+*.cover
+.hypothesis/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Type checking
+.pytype/
+
+# Ruff
+.ruff_cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Project specific
+data/raw/*.parquet
+data/processed/*.parquet
+data/processed/_cache_metadata.json
+reports/*.html
+reports/*.png
+reports/*.csv
+reports/*.json
+logs/
+*.log
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Configuration (sensitive)
+config/settings.yaml
+!config/settings.yaml.example
+!.env.example
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Optional: Jupyter notebook experiment results
+notebooks/experiments/*.json
+notebooks/experiments/*.png
+notebooks/experiments/*.csv
