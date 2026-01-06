@@ -123,14 +123,24 @@ def calculate_metrics(
     total_return_pct = (final_equity / initial_capital - 1) * 100
 
     # CAGR (matching legacy calculation)
-    if total_days <= 0:
-        cagr_pct = 0.0
-    elif initial_capital <= 0:
+    if total_days <= 0 or initial_capital <= 0:
         cagr_pct = 0.0
     elif final_equity <= 0:
         cagr_pct = -100.0
     else:
-        cagr_pct = ((final_equity / initial_capital) ** (365.0 / total_days) - 1) * 100
+        ratio = final_equity / initial_capital
+        # Ensure ratio is positive for log. If it's not, it's already caught by final_equity <= 0.
+        # However, to be extra safe and avoid log(0) or log(negative number)
+        if ratio <= 0: # This case should theoretically be covered by final_equity <= 0, but added for robustness
+            cagr_pct = -100.0
+        else:
+            with np.errstate(over='ignore'): # Ignore overflow for this calculation
+                cagr_pct_raw = (np.exp((365.0 / total_days) * np.log(ratio)) - 1) * 100
+            
+            if np.isinf(cagr_pct_raw):
+                cagr_pct = 1e18 # Cap at a very large number to avoid overflow in display/storage
+            else:
+                cagr_pct = cagr_pct_raw
 
     # Daily returns
     daily_returns = np.diff(equity_curve) / equity_curve[:-1]
