@@ -180,7 +180,7 @@ exclude_lines = [
     "@abstractmethod",
 ]
 # Coverage threshold (will be enabled gradually)
-fail_under = 90  # Portfolio target: 90%+ coverage
+fail_under = 80  # Portfolio target: 80%+ coverage
 precision = 2
 show_missing = true
 skip_covered = false

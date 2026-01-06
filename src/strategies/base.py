@@ -251,8 +251,10 @@ class Strategy(ABC):
         # Exit: close < sma
         exit_signal = df["close"] < df["sma"]
 
-        df["entry_signal"] = entry_signal
-        df["exit_signal"] = exit_signal
+        if "entry_signal" not in df.columns:
+            df["entry_signal"] = entry_signal
+        if "exit_signal" not in df.columns:
+            df["exit_signal"] = exit_signal
 
         return df
 

@@ -527,8 +527,8 @@ class VectorizedBacktestEngine:
                 targets[t_idx, idx] = df.loc[valid_mask.values, "close"].values
             if "sma" in df.columns:
                 smas[t_idx, idx] = df.loc[valid_mask.values, "sma"].values
-            entry_signals[t_idx, idx] = df.loc[valid_mask.values, "entry_signal"].values
-            exit_signals[t_idx, idx] = df.loc[valid_mask.values, "exit_signal"].values
+            entry_signals[t_idx, idx] = df.loc[valid_mask.values, "entry_signal"].astype(bool).values
+            exit_signals[t_idx, idx] = df.loc[valid_mask.values, "exit_signal"].astype(bool).values
             whipsaws[t_idx, idx] = df.loc[valid_mask.values, "is_whipsaw"].values
             entry_prices[t_idx, idx] = df.loc[valid_mask.values, "entry_price"].values
             exit_prices[t_idx, idx] = df.loc[valid_mask.values, "exit_price"].values
@@ -879,20 +879,6 @@ class VectorizedBacktestEngine:
                         position_entry_dates[t_idx] = d_idx
                         cash -= invest_amount
 
-                        trades_list.append(
-                            {
-                                "ticker": tickers[t_idx],
-                                "entry_date": current_date,
-                                "entry_price": buy_price,
-                                "exit_date": None,
-                                "exit_price": None,
-                                "amount": amount,
-                                "pnl": 0.0,
-                                "pnl_pct": 0.0,
-                                "is_whipsaw": False,
-                            }
-                        )
-                        # Note: available_slots is recalculated each iteration, no need to decrement
 
             # ---- CALCULATE DAILY EQUITY ----
             # Calculate position values, using previous close if current is NaN
@@ -916,6 +902,23 @@ class VectorizedBacktestEngine:
             # Forward fill if equity is NaN or negative (shouldn't happen, but safety check)
             if (np.isnan(equity_curve[d_idx]) or equity_curve[d_idx] < 0) and d_idx > 0:
                 equity_curve[d_idx] = equity_curve[d_idx - 1]
+
+        # Add open positions to trades_list at the end of simulation
+        for t_idx in range(n_tickers):
+            if position_amounts[t_idx] > 0:
+                trades_list.append(
+                    {
+                        "ticker": tickers[t_idx],
+                        "entry_date": sorted_dates[position_entry_dates[t_idx]],
+                        "entry_price": position_entry_prices[t_idx],
+                        "exit_date": None,
+                        "exit_price": None,
+                        "amount": position_amounts[t_idx],
+                        "pnl": 0.0,
+                        "pnl_pct": 0.0,
+                        "is_whipsaw": False,
+                    }
+                )
 
         # Convert trades to DataFrame for vectorized metrics and optimize dtypes
         trades_df = pd.DataFrame(trades_list) if trades_list else pd.DataFrame()
