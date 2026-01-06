@@ -13,12 +13,6 @@ from src.backtester.monte_carlo import (
     MonteCarloSimulator,
     run_monte_carlo,
 )
-from src.backtester.walk_forward import (
-    WalkForwardAnalyzer,
-    WalkForwardPeriod,
-    WalkForwardResult,
-    run_walk_forward_analysis,
-)
 from src.backtester.optimization import (
     OptimizationResult,
     ParameterOptimizer,
@@ -34,6 +28,12 @@ from src.backtester.report import (
     BacktestReport,
     PerformanceMetrics,
     generate_report,
+)
+from src.backtester.walk_forward import (
+    WalkForwardAnalyzer,
+    WalkForwardPeriod,
+    WalkForwardResult,
+    run_walk_forward_analysis,
 )
 
 __all__ = [

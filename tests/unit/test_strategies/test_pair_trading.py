@@ -3,7 +3,6 @@ Unit tests for PairTradingStrategy.
 """
 import numpy as np
 import pandas as pd
-import pytest
 
 from src.strategies.pair_trading import PairTradingStrategy
 from src.strategies.pair_trading.conditions import (

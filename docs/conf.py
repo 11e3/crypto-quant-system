@@ -79,7 +79,6 @@ html_theme_options = {
 }
 
 # 정적 파일 경로 (디렉토리가 없으면 빈 리스트)
-import os
 static_path = "_static"
 if os.path.exists(static_path):
     html_static_path = [static_path]
@@ -112,8 +111,6 @@ source_suffix = {
 
 # 마크다운 파서 (myst-parser가 설치되어 있다면)
 try:
-    import myst_parser
-
     extensions.append("myst_parser")
     source_suffix[".md"] = "markdown"
 except ImportError:

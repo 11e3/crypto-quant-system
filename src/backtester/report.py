@@ -132,18 +132,15 @@ def calculate_metrics(
         # Ensure ratio is positive. If not, already caught by final_equity <= 0 check.
         # Handling small positive ratio prevents log(negative) issues.
         if ratio <= 0:
-            cagr_pct = -100.0 
+            cagr_pct = -100.0
         else:
             # Use np.exp/log to calculate power, creating a safe context for overflows
-            with np.errstate(over='ignore'): 
+            with np.errstate(over='ignore'):
                 # Formula: (ratio ^ (365/days)) - 1
                 cagr_pct_raw = (np.exp((365.0 / total_days) * np.log(ratio)) - 1) * 100
-            
+
             # Cap infinite values caused by extreme extrapolations
-            if np.isinf(cagr_pct_raw):
-                cagr_pct = 1e18 # Cap at a very large number
-            else:
-                cagr_pct = cagr_pct_raw
+            cagr_pct = 1e+18 if np.isinf(cagr_pct_raw) else cagr_pct_raw
 
     # Daily returns
     daily_returns = np.diff(equity_curve) / equity_curve[:-1]
@@ -178,7 +175,7 @@ def calculate_metrics(
             closed_trades = trades_df[trades_df["exit_date"].notna()]
         else:
             # Fallback if column missing (though it should be there from backtester)
-            closed_trades = pd.DataFrame() 
+            closed_trades = pd.DataFrame()
 
         total_trades = len(closed_trades)
 
@@ -414,7 +411,7 @@ class BacktestReport:
             f"   Avg Loss:       {m.avg_loss_pct:.2f}%",
             f"   Avg Trade:      {m.avg_trade_pct:.2f}%",
         ]
-        
+
         # Add risk metrics if available
         if self.risk_metrics:
             output_lines.extend([
@@ -438,7 +435,7 @@ class BacktestReport:
                 ])
             if self.risk_metrics.portfolio_beta is not None:
                 output_lines.append(f"   Portfolio Beta:  {self.risk_metrics.portfolio_beta:.2f}")
-        
+
         output_lines.append(f"\n{'=' * 60}\n")
 
         # Use logger.info for structured logging (outputs to console via logging handler)
@@ -670,7 +667,7 @@ class BacktestReport:
             ["Avg Profit", f"{m.avg_profit_pct:.2f}%"],
             ["Avg Loss", f"{m.avg_loss_pct:.2f}%"],
         ]
-        
+
         # Add risk metrics if available
         if self.risk_metrics:
             data.extend([
@@ -783,7 +780,7 @@ def generate_report(
         strategy_name=strategy_name or result.strategy_name,
         initial_capital=result.config.initial_capital if result.config else 1.0,
     )
-    
+
     # Add risk metrics to report if available
     if hasattr(result, 'risk_metrics') and result.risk_metrics:
         report.risk_metrics = result.risk_metrics
@@ -792,7 +789,7 @@ def generate_report(
 
     if save_path:
         save_path = Path(save_path) if isinstance(save_path, str) else save_path
-        
+
         # Determine format from file extension if not specified
         if format == "png" and save_path.suffix.lower() == ".html":
             format = "html"
@@ -802,7 +799,7 @@ def generate_report(
             format = "html"
         elif save_path.suffix.lower() == ".png":
             format = "png"
-        
+
         if format == "html":
             from src.backtester.html_report import generate_html_report
             generate_html_report(report, save_path, strategy_obj=strategy_obj, config=config, tickers=tickers)

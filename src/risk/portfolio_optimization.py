@@ -135,7 +135,7 @@ class PortfolioOptimizer:
             sharpe = (portfolio_return - risk_free_rate) / portfolio_vol if portfolio_vol > 0 else 0.0
 
             # Convert to dictionary
-            weights_dict = {ticker: float(w) for ticker, w in zip(tickers, weights)}
+            weights_dict = {ticker: float(w) for ticker, w in zip(tickers, weights, strict=False)}
 
             return PortfolioWeights(
                 weights=weights_dict,
@@ -148,7 +148,7 @@ class PortfolioOptimizer:
         except Exception as e:
             logger.error(f"Error in MPT optimization: {e}", exc_info=True)
             # Fallback to equal weights
-            weights_dict = {ticker: 1.0 / n_assets for ticker in tickers}
+            weights_dict = dict.fromkeys(tickers, 1.0 / n_assets)
             return PortfolioWeights(weights=weights_dict, method="mpt")
 
     def optimize_risk_parity(
@@ -236,7 +236,7 @@ class PortfolioOptimizer:
             portfolio_vol = np.sqrt(np.dot(weights, np.dot(cov_matrix, weights)))
             sharpe = portfolio_return / portfolio_vol if portfolio_vol > 0 else 0.0
 
-            weights_dict = {ticker: float(w) for ticker, w in zip(tickers, weights)}
+            weights_dict = {ticker: float(w) for ticker, w in zip(tickers, weights, strict=False)}
 
             return PortfolioWeights(
                 weights=weights_dict,
@@ -252,7 +252,7 @@ class PortfolioOptimizer:
             vols = np.sqrt(np.diag(cov_matrix))
             inv_vols = 1.0 / (vols + 1e-8)
             weights = inv_vols / np.sum(inv_vols)
-            weights_dict = {ticker: float(w) for ticker, w in zip(tickers, weights)}
+            weights_dict = {ticker: float(w) for ticker, w in zip(tickers, weights, strict=False)}
             return PortfolioWeights(weights=weights_dict, method="risk_parity")
 
     def calculate_kelly_criterion(

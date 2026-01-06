@@ -233,7 +233,7 @@ def run_portfolio_simulation(file_paths):
                     if coin in market_data.get(prev_dt, {}):
                         price = market_data[prev_dt][coin]["close"]
                         break
-                
+
                 # 그래도 가격을 못찾으면 (예: 매수 직후 다음날부터 데이터 없는 경우), 매수 가격으로 대체
                 if price is None:
                     price = pos["entry_price"]

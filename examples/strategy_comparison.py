@@ -5,8 +5,6 @@ This example demonstrates how to compare multiple strategies side-by-side.
 It shows how to evaluate different strategy configurations and choose the best one.
 """
 
-from pathlib import Path
-from typing import Dict, List
 
 from src.backtester import BacktestConfig, BacktestResult, run_backtest
 from src.strategies.volatility_breakout import MinimalVBO, StrictVBO, VanillaVBO
@@ -18,7 +16,7 @@ logger = get_logger(__name__)
 
 
 def compare_strategies(
-    results: Dict[str, BacktestResult],
+    results: dict[str, BacktestResult],
 ) -> None:
     """Compare multiple strategy results."""
     print("\n" + "=" * 80)
@@ -39,15 +37,7 @@ def compare_strategies(
 
     for name, result in results.items():
         m = result.metrics
-        print("{:<20} {:>11.2f}% {:>9.2f}% {:>9.2f} {:>9.2f}% {:>9.2f}% {:>10}".format(
-            name,
-            m.total_return * 100,
-            m.cagr * 100,
-            m.sharpe_ratio,
-            m.max_drawdown * 100,
-            m.win_rate * 100,
-            m.total_trades,
-        ))
+        print(f"{name:<20} {m.total_return * 100:>11.2f}% {m.cagr * 100:>9.2f}% {m.sharpe_ratio:>9.2f} {m.max_drawdown * 100:>9.2f}% {m.win_rate * 100:>9.2f}% {m.total_trades:>10}")
 
     # Find best strategy by different metrics
     print("\n" + "=" * 80)
@@ -92,7 +82,7 @@ def main() -> None:
     )
 
     tickers = ["KRW-BTC", "KRW-ETH", "KRW-XRP"]
-    results: Dict[str, BacktestResult] = {}
+    results: dict[str, BacktestResult] = {}
 
     # Strategy 1: Minimal VBO (baseline)
     print("Running Minimal VBO strategy...")

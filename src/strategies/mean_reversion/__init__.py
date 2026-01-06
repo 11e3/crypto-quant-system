@@ -3,10 +3,10 @@
 from src.strategies.mean_reversion.conditions import (
     BollingerLowerBandCondition,
     BollingerUpperBandCondition,
-    PriceBelowSMACondition,
     PriceAboveSMACondition,
-    RSIOversoldCondition,
+    PriceBelowSMACondition,
     RSIOverboughtCondition,
+    RSIOversoldCondition,
 )
 from src.strategies.mean_reversion.mean_reversion import (
     MeanReversionStrategy,

@@ -110,10 +110,7 @@ def calculate_cvar(
     threshold = -var
     tail_losses = returns[returns <= threshold]
 
-    if len(tail_losses) > 0:
-        cvar = -np.mean(tail_losses)
-    else:
-        cvar = var
+    cvar = -np.mean(tail_losses) if len(tail_losses) > 0 else var
 
     return cvar
 
@@ -259,13 +256,12 @@ def calculate_portfolio_risk_metrics(
 
     # Beta (portfolio sensitivity to benchmark)
     portfolio_beta = None
-    if benchmark_returns is not None and len(benchmark_returns) > 0:
-        if len(daily_returns) == len(benchmark_returns):
-            # Calculate beta: Cov(portfolio, benchmark) / Var(benchmark)
-            covariance = np.cov(daily_returns, benchmark_returns)[0, 1]
-            benchmark_variance = np.var(benchmark_returns)
-            if benchmark_variance > 0:
-                portfolio_beta = covariance / benchmark_variance
+    if benchmark_returns is not None and len(benchmark_returns) > 0 and len(daily_returns) == len(benchmark_returns):
+        # Calculate beta: Cov(portfolio, benchmark) / Var(benchmark)
+        covariance = np.cov(daily_returns, benchmark_returns)[0, 1]
+        benchmark_variance = np.var(benchmark_returns)
+        if benchmark_variance > 0:
+            portfolio_beta = covariance / benchmark_variance
 
     return PortfolioRiskMetrics(
         var_95=var_95,

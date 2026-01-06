@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from src.config.loader import get_config
-from src.data.collector import Interval, UpbitDataCollector
+from src.data.collector import UpbitDataCollector
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

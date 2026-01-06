@@ -2,8 +2,9 @@
 CLI command for Monte Carlo simulation of backtest results.
 """
 
-import click
 from pathlib import Path
+
+import click
 
 from src.backtester import BacktestConfig, run_backtest
 from src.backtester.monte_carlo import run_monte_carlo
@@ -179,7 +180,7 @@ def monte_carlo(
 
     # Print results
     logger.info("\n=== Monte Carlo Simulation Results ===\n")
-    logger.info(f"Original Backtest:")
+    logger.info("Original Backtest:")
     logger.info(f"  CAGR: {result.cagr:.2f}%")
     logger.info(f"  MDD: {result.mdd:.2f}%")
     logger.info(f"  Sharpe Ratio: {result.sharpe_ratio:.2f}")
@@ -189,7 +190,7 @@ def monte_carlo(
     logger.info(f"  Mean MDD: {mc_result.mean_mdd:.2f}% (std: {mc_result.std_mdd:.2f}%)")
     logger.info(f"  Mean Sharpe: {mc_result.mean_sharpe:.2f} (std: {mc_result.std_sharpe:.2f})")
 
-    logger.info(f"\n95% Confidence Intervals:")
+    logger.info("\n95% Confidence Intervals:")
     logger.info(
         f"  CAGR: [{mc_result.cagr_ci_lower:.2f}%, {mc_result.cagr_ci_upper:.2f}%]"
     )
@@ -200,11 +201,11 @@ def monte_carlo(
         f"  Sharpe: [{mc_result.sharpe_ci_lower:.2f}, {mc_result.sharpe_ci_upper:.2f}]"
     )
 
-    logger.info(f"\nPercentiles:")
-    logger.info(f"  CAGR:")
+    logger.info("\nPercentiles:")
+    logger.info("  CAGR:")
     for p, val in mc_result.cagr_percentiles.items():
         logger.info(f"    {p}th: {val:.2f}%")
-    logger.info(f"  MDD:")
+    logger.info("  MDD:")
     for p, val in mc_result.mdd_percentiles.items():
         logger.info(f"    {p}th: {val:.2f}%")
 
@@ -216,15 +217,16 @@ def monte_carlo(
     var_95 = simulator.value_at_risk(mc_result, confidence=0.95)
     cvar_95 = simulator.conditional_value_at_risk(mc_result, confidence=0.95)
 
-    logger.info(f"\nRisk Metrics:")
+    logger.info("\nRisk Metrics:")
     logger.info(f"  Probability of Loss: {prob_loss*100:.1f}%")
     logger.info(f"  VaR (95%): {var_95:.2f}%")
     logger.info(f"  CVaR (95%): {cvar_95:.2f}%")
 
     # Generate report if output specified
     if output:
-        from src.backtester.report import generate_report
         from datetime import datetime
+
+        from src.backtester.report import generate_report
 
         output_path = Path(output)
         if output_path.is_dir() or not output_path.suffix:

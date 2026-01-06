@@ -5,7 +5,6 @@ This example demonstrates how to analyze and compare strategy performance.
 It shows various performance metrics and how to interpret them.
 """
 
-from pathlib import Path
 
 from src.backtester import BacktestConfig, run_backtest
 from src.backtester.report import PerformanceMetrics
@@ -163,7 +162,7 @@ def main() -> None:
         winning_trades = [t for t in result.trades if t.profit > 0]
         losing_trades = [t for t in result.trades if t.profit <= 0]
 
-        print(f"\nTrade Distribution:")
+        print("\nTrade Distribution:")
         print(f"  Winning trades: {len(winning_trades)}")
         print(f"  Losing trades:  {len(losing_trades)}")
 

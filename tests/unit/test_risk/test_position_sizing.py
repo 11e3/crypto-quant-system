@@ -367,14 +367,14 @@ class TestCalculateMultiAssetPositionSizes:
         available_cash = 10000
         tickers = ["BTC", "ETH", "XRP"]
         current_prices = {"BTC": 1000, "ETH": 500, "XRP": 0}  # XRP has zero price
-        
+
         # ETH has insufficient data
         mixed_historical_data = {
             "BTC": multi_asset_historical_data["BTC"],
             "ETH": pd.DataFrame({"close": [50, 51, 52]}, index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"])),
             "XRP": multi_asset_historical_data["ETH"], # Use ETH data for XRP for vol calculation
         }
-        
+
         sizes = calculate_multi_asset_position_sizes(
             method="fixed-risk",
             available_cash=available_cash,
@@ -390,20 +390,20 @@ class TestCalculateMultiAssetPositionSizes:
         assert sizes["BTC"] > 0
         assert sizes["ETH"] > 0
         assert sum(sizes.values()) <= available_cash + 0.01 # Due to normalization and XRP being 0
-    
+
     def test_multi_asset_zero_volatility_fixed_risk(self, multi_asset_historical_data: dict[str, pd.DataFrame]) -> None:
         """Test fixed-risk sizing with zero volatility for one asset."""
         available_cash = 10000
         tickers = ["BTC", "ETH"]
         current_prices = {"BTC": 1000, "ETH": 500}
-        
+
         zero_vol_data = pd.DataFrame({"close": [100] * 100}, index=multi_asset_historical_data["BTC"].index)
-        
+
         mixed_historical_data = {
             "BTC": multi_asset_historical_data["BTC"],
             "ETH": zero_vol_data,
         }
-        
+
         sizes = calculate_multi_asset_position_sizes(
             method="fixed-risk",
             available_cash=available_cash,

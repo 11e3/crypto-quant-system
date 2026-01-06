@@ -220,7 +220,7 @@ def calculate_multi_asset_position_sizes(
     """
     if method == "equal":
         size_per_ticker = available_cash / len(tickers)
-        return {ticker: size_per_ticker for ticker in tickers}
+        return dict.fromkeys(tickers, size_per_ticker)
 
     if method == "volatility" or method == "inverse-volatility":
         # Calculate weights based on inverse volatility
@@ -290,4 +290,4 @@ def calculate_multi_asset_position_sizes(
     else:
         # Fallback to equal
         size_per_ticker = available_cash / len(tickers)
-        return {ticker: size_per_ticker for ticker in tickers}
+        return dict.fromkeys(tickers, size_per_ticker)

@@ -6,8 +6,6 @@ It measures execution time, memory usage, and scalability.
 """
 
 import time
-from pathlib import Path
-from typing import List
 
 from src.backtester import BacktestConfig, run_backtest
 from src.strategies.volatility_breakout import VanillaVBO
@@ -19,7 +17,7 @@ logger = get_logger(__name__)
 
 
 def benchmark_backtest(
-    tickers: List[str],
+    tickers: list[str],
     interval: str = "day",
     runs: int = 3,
 ) -> None:
@@ -44,13 +42,13 @@ def benchmark_backtest(
         use_cache=True,
     )
 
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Tickers: {', '.join(tickers)}")
     print(f"  Interval: {interval}")
     print(f"  Runs: {runs}")
     print()
 
-    execution_times: List[float] = []
+    execution_times: list[float] = []
 
     for i in range(runs):
         print(f"Run {i + 1}/{runs}...", end=" ", flush=True)
@@ -103,7 +101,7 @@ def benchmark_backtest(
     print()
 
     ticker_counts = [1, 2, 4, 8]
-    scalability_results: List[tuple[int, float]] = []
+    scalability_results: list[tuple[int, float]] = []
 
     for count in ticker_counts:
         test_tickers = tickers[:count]

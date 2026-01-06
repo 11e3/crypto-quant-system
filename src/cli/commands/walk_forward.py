@@ -2,8 +2,10 @@
 CLI command for walk-forward analysis.
 """
 
-import click
 from pathlib import Path
+from typing import Any  # <-- 추가 필요
+
+import click
 
 from src.backtester import BacktestConfig, run_walk_forward_analysis
 from src.strategies.volatility_breakout import create_vbo_strategy
@@ -207,14 +209,14 @@ def walk_forward(
     logger.info(f"Total Periods: {result.total_periods}")
     logger.info(f"Positive Periods: {result.positive_periods}")
     logger.info(f"Consistency Rate: {result.consistency_rate:.1f}%")
-    logger.info(f"\nAverage Test Metrics:")
+    logger.info("\nAverage Test Metrics:")
     logger.info(f"  CAGR: {result.avg_test_cagr:.2f}%")
     logger.info(f"  Sharpe Ratio: {result.avg_test_sharpe:.2f}")
     logger.info(f"  MDD: {result.avg_test_mdd:.2f}%")
     logger.info(f"\nAverage Optimization CAGR: {result.avg_optimization_cagr:.2f}%")
 
     # Print period details
-    logger.info(f"\n=== Period Details ===")
+    logger.info("\n=== Period Details ===")
     for period in result.periods:
         if period.test_result:
             logger.info(

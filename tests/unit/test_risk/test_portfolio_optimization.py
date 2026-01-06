@@ -117,7 +117,7 @@ class TestPortfolioOptimizer:
         mock_result = OptimizeResult(
             x=mock_weights, success=True, message="Ok", fun=0, nit=0, jac=np.array([]), hess_inv=None
         )
-        
+
         # 중요: minimize 패치 경로는 소스 코드의 import 방식에 따라 다릅니다.
         # Case A: 소스 코드가 `from scipy.optimize import minimize`를 쓰는 경우 -> 아래 유지
         # Case B: 소스 코드가 `import scipy.optimize`를 쓰는 경우 -> "scipy.optimize.minimize"로 변경
@@ -179,11 +179,11 @@ class TestPortfolioOptimizer:
         """Test optimize_portfolio wrapper calls the correct class method."""
         # 문자열 경로 대신 객체를 직접 패치 (더 안전함)
         mock_method = mocker.patch.object(
-            PortfolioOptimizer, 
-            "optimize_mpt", 
+            PortfolioOptimizer,
+            "optimize_mpt",
             return_value=PortfolioWeights(weights={}, method="mpt")
         )
-        
+
         result = optimize_portfolio(sample_returns_df, method="mpt")
         assert result.method == "mpt"
         mock_method.assert_called_once()
@@ -192,11 +192,11 @@ class TestPortfolioOptimizer:
         self, sample_returns_df: pd.DataFrame, mocker
     ) -> None:
         mock_method = mocker.patch.object(
-            PortfolioOptimizer, 
+            PortfolioOptimizer,
             "optimize_risk_parity",
             return_value=PortfolioWeights(weights={}, method="risk_parity")
         )
-        
+
         result = optimize_portfolio(sample_returns_df, method="risk_parity")
         assert result.method == "risk_parity"
         mock_method.assert_called_once()
@@ -209,7 +209,7 @@ class TestPortfolioOptimizer:
             "optimize_kelly_portfolio",
             return_value={"ASSET1": 5000.0, "ASSET2": 3000.0}
         )
-        
+
         result = optimize_portfolio(
             sample_returns_df, method="kelly", trades=sample_trades_df, available_cash=10000
         )

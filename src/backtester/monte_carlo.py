@@ -9,10 +9,8 @@ Provides Monte Carlo analysis to:
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
-import pandas as pd
 
 from src.backtester.engine import BacktestResult
 from src.utils.logger import get_logger

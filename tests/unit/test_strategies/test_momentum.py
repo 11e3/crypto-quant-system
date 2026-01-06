@@ -6,7 +6,6 @@ import pandas as pd
 
 from src.strategies.momentum import MomentumStrategy, SimpleMomentumStrategy
 from src.strategies.momentum.conditions import (
-    MACDBearishCondition,
     MACDBullishCondition,
     PriceAboveSMACondition,
     PriceBelowSMACondition,

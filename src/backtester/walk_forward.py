@@ -8,15 +8,15 @@ Walk-forward analysis splits data into multiple periods:
 This helps prevent overfitting and validates strategy robustness.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
-import pandas as pd
 
 from src.backtester.engine import BacktestConfig, BacktestResult, run_backtest
-from src.backtester.optimization import OptimizationResult, optimize_strategy_parameters
+from src.backtester.optimization import OptimizationResult
 from src.strategies.base import Strategy
 from src.utils.logger import get_logger
 
@@ -267,7 +267,7 @@ class WalkForwardAnalyzer:
             from src.backtester.optimization import ParameterOptimizer
 
             # Create optimizer with date filtering
-            optimizer = ParameterOptimizer(
+            ParameterOptimizer(
                 strategy_factory=filtered_backtest_factory,
                 tickers=self.tickers,
                 interval=self.interval,
@@ -278,8 +278,9 @@ class WalkForwardAnalyzer:
             # Create a wrapper to add date filtering to optimization
             # We need to modify the optimization to use date-filtered backtests
             # For now, we'll create a custom optimization that uses date ranges
-            from src.backtester.parallel import ParallelBacktestRunner, ParallelBacktestTask
             from itertools import product
+
+            from src.backtester.parallel import ParallelBacktestRunner, ParallelBacktestTask
 
             param_names = list(param_grid.keys())
             param_values = list(param_grid.values())
@@ -287,7 +288,7 @@ class WalkForwardAnalyzer:
 
             tasks = []
             for combo in combinations:
-                params = dict(zip(param_names, combo))
+                params = dict(zip(param_names, combo, strict=False))
                 strategy = filtered_backtest_factory(params)
                 task_name = f"{strategy.name}_{'_'.join(str(v) for v in combo)}"
                 tasks.append(

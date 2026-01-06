@@ -3,12 +3,9 @@ Unit tests for Monte Carlo simulation module.
 """
 
 import datetime
-from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from src.backtester.engine import BacktestConfig, BacktestResult
@@ -105,7 +102,7 @@ class TestMonteCarloResult:
             cagr_percentiles={5: 9.5, 50: 10.0, 95: 10.5},
             mdd_percentiles={5: 4.5, 50: 5.0, 95: 5.5},
         )
-        assert "MonteCarloResult(n_simulations=10, mean_cagr=10.00%)" == repr(mc_result)
+        assert repr(mc_result) == "MonteCarloResult(n_simulations=10, mean_cagr=10.00%)"
 
 
 class TestMonteCarloSimulator:
@@ -195,13 +192,13 @@ class TestMonteCarloSimulator:
                 [0.02, -0.02, 0.01],  # Mixed
             ]
         )
-        
+
         mc_result = simulator._process_simulations(simulated_returns, n_simulations)
-        
+
         assert mc_result.simulated_cagrs.shape == (n_simulations,)
         assert mc_result.simulated_mdds.shape == (n_simulations,)
         assert mc_result.simulated_sharpes.shape == (n_simulations,)
-        
+
         assert mc_result.mean_cagr == pytest.approx(np.mean(mc_result.simulated_cagrs))
         assert mc_result.std_cagr == pytest.approx(np.std(mc_result.simulated_cagrs))
         assert mc_result.cagr_ci_lower < mc_result.cagr_ci_upper
@@ -284,11 +281,11 @@ class TestRunMonteCarlo:
 
     @patch("src.backtester.monte_carlo.MonteCarloSimulator")
     def test_run_monte_carlo(
-        self, MockMonteCarloSimulator: MagicMock, mock_backtest_result_for_mc: BacktestResult
+        self, mock_monte_carlo_simulator: MagicMock, mock_backtest_result_for_mc: BacktestResult
     ) -> None:
         """Test run_monte_carlo convenience function."""
         # Mock simulator instance and its simulate method
-        mock_simulator_instance = MockMonteCarloSimulator.return_value
+        mock_simulator_instance = mock_monte_carlo_simulator.return_value
         mock_mc_result = MagicMock(spec=MonteCarloResult)
         mock_simulator_instance.simulate.return_value = mock_mc_result
 
@@ -299,7 +296,7 @@ class TestRunMonteCarlo:
             random_seed=123,
         )
 
-        MockMonteCarloSimulator.assert_called_once_with(
+        mock_monte_carlo_simulator.assert_called_once_with(
             mock_backtest_result_for_mc
         )
         mock_simulator_instance.simulate.assert_called_once_with(

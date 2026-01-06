@@ -4,6 +4,7 @@ Exchange factory for creating exchange instances.
 Supports multiple exchanges (Upbit, Binance, etc.) with factory pattern.
 """
 
+import contextlib
 from typing import Literal
 
 from src.config.loader import get_config
@@ -63,10 +64,8 @@ class ExchangeFactory:
 
         # Try Pydantic Settings
         if not access_key or not secret_key:
-            try:
+            with contextlib.suppress(ValueError):
                 access_key, secret_key = config.get_upbit_keys()
-            except ValueError:
-                pass
 
         if not access_key or not secret_key:
             raise ValueError(

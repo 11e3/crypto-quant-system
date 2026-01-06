@@ -16,11 +16,10 @@ import pyupbit
 
 from src.config.loader import get_config
 from src.exchange import Exchange, ExchangeFactory
+from src.execution.advanced_orders import AdvancedOrderManager
 from src.execution.event_bus import get_event_bus
 from src.execution.handlers.notification_handler import NotificationHandler
 from src.execution.handlers.trade_handler import TradeHandler
-from src.execution.advanced_orders import AdvancedOrderManager
-from src.execution.advanced_orders import AdvancedOrderManager
 from src.execution.order_manager import OrderManager
 from src.execution.position_manager import PositionManager
 from src.execution.signal_handler import SignalHandler
@@ -136,7 +135,7 @@ class TradingBotFacade:
             )
         else:
             self.signal_handler = signal_handler
-        
+
         # Initialize advanced order manager
         self.advanced_order_manager = AdvancedOrderManager()
 
@@ -366,12 +365,12 @@ class TradingBotFacade:
                     entry_price=current_price,
                     amount=estimated_amount,
                 )
-                
+
                 # Create advanced orders if configured
                 stop_loss_pct = self.trading_config.get("stop_loss_pct")
                 take_profit_pct = self.trading_config.get("take_profit_pct")
                 trailing_stop_pct = self.trading_config.get("trailing_stop_pct")
-                
+
                 if stop_loss_pct is not None:
                     self.advanced_order_manager.create_stop_loss(
                         ticker=ticker,
@@ -380,7 +379,7 @@ class TradingBotFacade:
                         amount=estimated_amount,
                         stop_loss_pct=stop_loss_pct,
                     )
-                
+
                 if take_profit_pct is not None:
                     self.advanced_order_manager.create_take_profit(
                         ticker=ticker,
@@ -389,7 +388,7 @@ class TradingBotFacade:
                         amount=estimated_amount,
                         take_profit_pct=take_profit_pct,
                     )
-                
+
                 if trailing_stop_pct is not None:
                     self.advanced_order_manager.create_trailing_stop(
                         ticker=ticker,
@@ -436,7 +435,7 @@ class TradingBotFacade:
                     latest = ohlcv_data.iloc[-1]
                     low_price = latest.get("low", current_price)
                     high_price = latest.get("high", current_price)
-                    
+
                     # Check advanced orders
                     triggered = self.advanced_order_manager.check_orders(
                         ticker=ticker,
@@ -445,7 +444,7 @@ class TradingBotFacade:
                         low_price=low_price,
                         high_price=high_price,
                     )
-                    
+
                     # If any order triggered, execute sell
                     if triggered:
                         logger.info(
@@ -468,10 +467,10 @@ class TradingBotFacade:
                                 self.advanced_order_manager.cancel_all_orders(ticker=ticker)
                                 logger.info(f"Sold {ticker} due to advanced order trigger")
                         return
-            
+
             except Exception as e:
                 logger.warning(f"Error checking advanced orders for {ticker}: {e}")
-        
+
         # Skip if already holding (after advanced order check)
         if self.position_manager.has_position(ticker):
             return

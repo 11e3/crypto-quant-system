@@ -11,9 +11,7 @@ from src.strategies.mean_reversion import (
 from src.strategies.mean_reversion.conditions import (
     BollingerLowerBandCondition,
     BollingerUpperBandCondition,
-    PriceAboveSMACondition,
     PriceBelowSMACondition,
-    RSIOverboughtCondition,
     RSIOversoldCondition,
 )
 

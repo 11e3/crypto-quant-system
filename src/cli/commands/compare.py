@@ -2,19 +2,17 @@
 CLI command for comparing multiple strategies using parallel backtesting.
 """
 
-import click
 from pathlib import Path
 
+import click
+
 from src.backtester import BacktestConfig, compare_strategies
-from src.strategies.momentum import MomentumStrategy, SimpleMomentumStrategy
 from src.strategies.mean_reversion import (
     MeanReversionStrategy,
     SimpleMeanReversionStrategy,
 )
-from src.strategies.pair_trading import PairTradingStrategy
+from src.strategies.momentum import MomentumStrategy, SimpleMomentumStrategy
 from src.strategies.volatility_breakout import (
-    MinimalVBO,
-    VanillaVBO,
     create_vbo_strategy,
 )
 from src.utils.logger import get_logger, setup_logging

@@ -14,7 +14,7 @@ from src.strategies.momentum.conditions import (
     PriceBelowSMACondition,
     RSIOverboughtCondition,
 )
-from src.utils.indicators import ema, macd, rsi, sma
+from src.utils.indicators import macd, rsi, sma
 
 
 class MomentumStrategy(Strategy):

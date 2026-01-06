@@ -8,9 +8,10 @@ Enables concurrent execution of multiple backtests for:
 """
 
 import multiprocessing as mp
+from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Callable
+from datetime import date  # <-- 추가 필요
+from typing import Any
 
 from src.backtester.engine import BacktestConfig, BacktestResult, run_backtest
 from src.strategies.base import Strategy
@@ -265,7 +266,7 @@ def optimize_parameters(
 
     tasks: list[ParallelBacktestTask] = []
     for combo in combinations:
-        params = dict(zip(param_names, combo))
+        params = dict(zip(param_names, combo, strict=False))
         strategy = strategy_factory(params)
         task_name = f"{strategy.name}_{'_'.join(str(v) for v in combo)}"
         tasks.append(

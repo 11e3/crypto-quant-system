@@ -7,10 +7,9 @@ Provides optimization methods:
 - Bayesian optimization (future)
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
-
-import numpy as np
+from typing import Any
 
 from src.backtester.engine import BacktestConfig, BacktestResult
 from src.backtester.parallel import ParallelBacktestRunner, ParallelBacktestTask
@@ -111,7 +110,7 @@ class ParameterOptimizer:
 
         tasks = []
         for combo in combinations:
-            params = dict(zip(param_names, combo))
+            params = dict(zip(param_names, combo, strict=False))
             strategy = self.strategy_factory(params)
             task_name = f"{strategy.name}_{'_'.join(str(v) for v in combo)}"
             tasks.append(
@@ -166,7 +165,7 @@ class ParameterOptimizer:
         """Perform random search over parameter space."""
         import random
 
-        param_names = list(param_grid.keys())
+        list(param_grid.keys())
         tasks = []
 
         logger.info(f"Random search: {n_iter} iterations")

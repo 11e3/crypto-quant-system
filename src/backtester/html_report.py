@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.backtester.report import BacktestReport, calculate_metrics, calculate_monthly_returns
+from src.backtester.report import BacktestReport
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -44,7 +44,7 @@ def generate_html_report(
 
     # Extract strategy parameters
     strategy_params_html = _extract_strategy_params(strategy_obj, tickers=tickers)
-    
+
     # Extract backtest configuration
     config_html = _extract_config_params(config, result=report, tickers=tickers)
 
@@ -60,7 +60,7 @@ def generate_html_report(
     drawdown_values = (-drawdown_curve_clean).tolist()
     # Ensure all values are finite numbers
     drawdown_values = [v if np.isfinite(v) else 0.0 for v in drawdown_values]
-    
+
     # Find MDD index (where maximum drawdown occurs)
     mdd_idx = int(np.argmax(drawdown_curve_clean))
     mdd_date = dates_list[mdd_idx] if mdd_idx < len(dates_list) else dates_list[-1]
@@ -445,7 +445,7 @@ def generate_html_report(
         var filteredDrawdown = {drawdown_values}.filter(x => !isNaN(x) && isFinite(x));
         var maxDrawdown2 = filteredDrawdown.length > 0 ? Math.max(...filteredDrawdown) : 0;
         var mddValue = {report.metrics.mdd_pct:.2f};
-        
+
         var drawdownLayout = {{
             title: 'Drawdown Over Time (MDD: ' + mddValue.toFixed(2) + '%)',
             xaxis: {{title: 'Date'}},
@@ -488,13 +488,13 @@ def generate_html_report(
         var heatmapX = {json.dumps(monthly_returns['months'])};
         var heatmapY = {json.dumps(monthly_returns['years'])};
         var heatmapText = {json.dumps(monthly_returns['text'])};
-        
+
         // Find min and max values for symmetric color scale
         var allValues = heatmapZ.flat().filter(x => !isNaN(x));
         var minVal = Math.min(...allValues);
         var maxVal = Math.max(...allValues);
         var absMax = Math.max(Math.abs(minVal), Math.abs(maxVal));
-        
+
         var heatmapData = {{
             z: heatmapZ,
             x: heatmapX,
@@ -531,17 +531,17 @@ def generate_html_report(
         }};
 
         Plotly.newPlot('heatmap-chart', [heatmapData], heatmapLayout, {{responsive: true}});
-        
+
         // Add yearly returns bar chart
         var yearlyReturns = {json.dumps(monthly_returns.get('yearly_returns', []))};
         var yearlyLabels = {json.dumps(monthly_returns.get('yearly_labels', []))};
-        
+
         if (yearlyReturns && yearlyReturns.length > 0 && yearlyLabels && yearlyLabels.length > 0) {{
             // Extract years and values for bar chart
             var years = [];
             var values = [];
             var colors = [];
-            
+
             for (var i = 0; i < yearlyLabels.length; i++) {{
                 if (yearlyLabels[i] && !isNaN(yearlyReturns[i])) {{
                     var parts = yearlyLabels[i].split(': ');
@@ -552,7 +552,7 @@ def generate_html_report(
                     }}
                 }}
             }}
-            
+
             if (years.length > 0) {{
                 var yearlyBarData = {{
                     x: years,
@@ -563,7 +563,7 @@ def generate_html_report(
                     textposition: 'outside',
                     textfont: {{size: 11, color: '#000'}}
                 }};
-                
+
                 var yearlyBarLayout = {{
                     title: 'Yearly Returns (%)',
                     xaxis: {{title: 'Year'}},
@@ -571,7 +571,7 @@ def generate_html_report(
                     height: 400,
                     showlegend: false
                 }};
-                
+
                 // Create a new div for yearly returns chart
                 var heatmapContainer = document.getElementById('heatmap-chart');
                 if (heatmapContainer && heatmapContainer.parentElement) {{
@@ -596,13 +596,13 @@ def _extract_strategy_params(strategy_obj, tickers: list[str] | None = None) -> 
     """Extract strategy parameters from strategy instance."""
     if not strategy_obj:
         return ""
-    
+
     params = []
-    
+
     # Add tickers if provided
     if tickers:
         params.append(("Tickers", ", ".join(tickers)))
-    
+
     # Common VBO parameters
     if hasattr(strategy_obj, "sma_period"):
         params.append(("SMA Period", str(strategy_obj.sma_period)))
@@ -614,19 +614,19 @@ def _extract_strategy_params(strategy_obj, tickers: list[str] | None = None) -> 
         params.append(("Long Noise Period", str(strategy_obj.long_noise_period)))
     if hasattr(strategy_obj, "exclude_current"):
         params.append(("Exclude Current", str(strategy_obj.exclude_current)))
-    
+
     # Momentum strategy parameters
     if hasattr(strategy_obj, "lookback_period"):
         params.append(("Lookback Period", str(strategy_obj.lookback_period)))
     if hasattr(strategy_obj, "momentum_threshold"):
         params.append(("Momentum Threshold", f"{strategy_obj.momentum_threshold:.2f}"))
-    
+
     # Mean reversion parameters
     if hasattr(strategy_obj, "zscore_threshold"):
         params.append(("Z-Score Threshold", f"{strategy_obj.zscore_threshold:.2f}"))
     if hasattr(strategy_obj, "lookback_window"):
         params.append(("Lookback Window", str(strategy_obj.lookback_window)))
-    
+
     # Pair trading parameters
     if hasattr(strategy_obj, "spread_lookback"):
         params.append(("Spread Lookback", str(strategy_obj.spread_lookback)))
@@ -634,7 +634,7 @@ def _extract_strategy_params(strategy_obj, tickers: list[str] | None = None) -> 
         params.append(("Entry Z-Score", f"{strategy_obj.entry_zscore:.2f}"))
     if hasattr(strategy_obj, "exit_zscore"):
         params.append(("Exit Z-Score", f"{strategy_obj.exit_zscore:.2f}"))
-    
+
     # Entry/Exit conditions
     if hasattr(strategy_obj, "entry_conditions"):
         entry_names = [c.name for c in strategy_obj.entry_conditions.conditions]
@@ -642,14 +642,14 @@ def _extract_strategy_params(strategy_obj, tickers: list[str] | None = None) -> 
     if hasattr(strategy_obj, "exit_conditions"):
         exit_names = [c.name for c in strategy_obj.exit_conditions.conditions]
         params.append(("Exit Conditions", ", ".join(exit_names) if exit_names else "None"))
-    
+
     if not params:
         return "<div class='config-section'><p>No strategy parameters available.</p></div>"
-    
+
     params_html = """
                 <div class="config-grid">
     """
-    
+
     for label, value in params:
         params_html += f"""
                     <div class="config-item">
@@ -657,11 +657,11 @@ def _extract_strategy_params(strategy_obj, tickers: list[str] | None = None) -> 
                         <div class="config-value">{value}</div>
                     </div>
         """
-    
+
     params_html += """
                 </div>
     """
-    
+
     return params_html
 
 
@@ -673,13 +673,13 @@ def _extract_config_params(config, result=None, tickers: list[str] | None = None
             config = result.config
         else:
             return ""
-    
+
     params = []
-    
+
     # Add tickers if provided (in config section as well for visibility)
     if tickers:
         params.append(("Tickers", ", ".join(tickers)))
-    
+
     if hasattr(config, "initial_capital"):
         params.append(("Initial Capital", f"{config.initial_capital:,.0f}"))
     if hasattr(config, "fee_rate"):
@@ -692,21 +692,21 @@ def _extract_config_params(config, result=None, tickers: list[str] | None = None
         params.append(("Position Sizing", str(config.position_sizing)))
     if hasattr(config, "use_cache"):
         params.append(("Use Cache", str(config.use_cache)))
-    
+
     # Add interval from result if available
     if result and hasattr(result, "interval"):
         params.append(("Data Interval", str(result.interval)))
-    
+
     if not params:
         return ""
-    
+
     if not params:
         return "<div class='config-section'><p>No configuration parameters available.</p></div>"
-    
+
     config_html = """
                 <div class="config-grid">
     """
-    
+
     for label, value in params:
         config_html += f"""
                     <div class="config-item">
@@ -714,11 +714,11 @@ def _extract_config_params(config, result=None, tickers: list[str] | None = None
                         <div class="config-value">{value}</div>
                     </div>
         """
-    
+
     config_html += """
                 </div>
     """
-    
+
     return config_html
 
 
@@ -727,7 +727,7 @@ def _generate_risk_metrics_html(risk_metrics) -> str:
     if not risk_metrics:
         return ""
 
-    html = """
+    html = f"""
         <div class="section">
             <h2 class="section-title">Risk Metrics</h2>
             <div class="risk-section">
@@ -735,85 +735,72 @@ def _generate_risk_metrics_html(risk_metrics) -> str:
                     <div class="metric-card">
                         <div class="metric-label">VaR (95%)</div>
                         <div class="metric-value negative">
-                            {:.2f}%
+                            {risk_metrics.var_95 * 100:.2f}%
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">CVaR (95%)</div>
                         <div class="metric-value negative">
-                            {:.2f}%
+                            {risk_metrics.cvar_95 * 100:.2f}%
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">VaR (99%)</div>
                         <div class="metric-value negative">
-                            {:.2f}%
+                            {risk_metrics.var_99 * 100:.2f}%
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">CVaR (99%)</div>
                         <div class="metric-value negative">
-                            {:.2f}%
+                            {risk_metrics.cvar_99 * 100:.2f}%
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">Portfolio Volatility</div>
                         <div class="metric-value">
-                            {:.2f}%
+                            {risk_metrics.portfolio_volatility * 100:.2f}%
                         </div>
                     </div>
-    """.format(
-        risk_metrics.var_95 * 100,
-        risk_metrics.cvar_95 * 100,
-        risk_metrics.var_99 * 100,
-        risk_metrics.cvar_99 * 100,
-        risk_metrics.portfolio_volatility * 100,
-    )
+    """
 
     if risk_metrics.avg_correlation is not None and not np.isnan(risk_metrics.avg_correlation):
-        html += """
+        html += f"""
                     <div class="metric-card">
                         <div class="metric-label">Avg Correlation</div>
                         <div class="metric-value">
-                            {:.3f}
+                            {risk_metrics.avg_correlation:.3f}
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">Max Correlation</div>
                         <div class="metric-value">
-                            {:.3f}
+                            {risk_metrics.max_correlation:.3f}
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">Min Correlation</div>
                         <div class="metric-value">
-                            {:.3f}
+                            {risk_metrics.min_correlation:.3f}
                         </div>
                     </div>
-        """.format(
-            risk_metrics.avg_correlation,
-            risk_metrics.max_correlation,
-            risk_metrics.min_correlation,
-        )
+        """
 
     if risk_metrics.max_position_pct is not None and risk_metrics.max_position_pct > 0:
-        html += """
+        html += f"""
                     <div class="metric-card">
                         <div class="metric-label">Max Position %</div>
                         <div class="metric-value">
-                            {:.2f}%
+                            {risk_metrics.max_position_pct * 100:.2f}%
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label">Position HHI</div>
                         <div class="metric-value">
-                            {:.3f}
+                            {risk_metrics.position_concentration:.3f}
                         </div>
                     </div>
-        """.format(
-            risk_metrics.max_position_pct * 100,
-            risk_metrics.position_concentration,
-        )
+        """
 
     html += """
                 </div>
@@ -875,7 +862,7 @@ def calculate_monthly_returns_for_html(
     # Prepare yearly data
     yearly_data = []
     yearly_labels = []
-    for year_idx, year in enumerate(pivot.index):
+    for _year_idx, year in enumerate(pivot.index):
         year_return = yearly_returns[yearly_returns.index.year == year]
         if len(year_return) > 0 and not np.isnan(year_return.iloc[0]):
             yearly_data.append(year_return.iloc[0])

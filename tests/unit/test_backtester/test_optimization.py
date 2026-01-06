@@ -2,13 +2,9 @@
 Unit tests for parameter optimization module.
 """
 
-import datetime
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import numpy as np
-import pandas as pd
 import pytest
 
 from src.backtester.engine import BacktestConfig, BacktestResult
@@ -17,7 +13,6 @@ from src.backtester.optimization import (
     ParameterOptimizer,
     optimize_strategy_parameters,
 )
-from src.backtester.parallel import ParallelBacktestTask
 from src.strategies.base import Strategy
 
 
@@ -79,7 +74,7 @@ class TestOptimizationResult:
             all_results=[],
             optimization_metric="sharpe_ratio",
         )
-        assert "OptimizationResult(metric=sharpe_ratio, best_score=1.50)" == repr(result)
+        assert repr(result) == "OptimizationResult(metric=sharpe_ratio, best_score=1.50)"
 
 
 class TestParameterOptimizer:
@@ -132,7 +127,7 @@ class TestParameterOptimizer:
         param_names_complex = ["sma", "trend"]
         parsed_params_complex = optimizer._parse_params_from_name(name_complex, param_names_complex)
         assert parsed_params_complex == {"sma": 5, "trend": 10}
-    
+
     def test_parse_params_from_name_no_params(self, optimizer: ParameterOptimizer) -> None:
         name = "MockStrategy_justname"
         param_names = ["p1"]
@@ -142,12 +137,12 @@ class TestParameterOptimizer:
     @patch("src.backtester.optimization.ParallelBacktestRunner")
     def test_grid_search(
         self,
-        MockParallelBacktestRunner: MagicMock,
+        mock_parallel_backtest_runner: MagicMock,
         optimizer: ParameterOptimizer,
         mock_backtest_result: BacktestResult,
         param_grid_simple: dict[str, list[Any]],
     ) -> None:
-        mock_runner_instance = MockParallelBacktestRunner.return_value
+        mock_runner_instance = mock_parallel_backtest_runner.return_value
         # Simulate runner returning results for each task
         mock_runner_instance.run.return_value = {
             "MockStrategy_1_A": mock_backtest_result,
@@ -158,13 +153,13 @@ class TestParameterOptimizer:
 
         # Configure the mock strategy factory to always return a strategy with "MockStrategy" name
         optimizer.strategy_factory.return_value.name = "MockStrategy"
-        
+
         result = optimizer._grid_search(param_grid_simple, "sharpe_ratio", maximize=True)
 
         assert isinstance(result, OptimizationResult)
         assert result.best_score == 1.5 # All mock results have sharpe_ratio 1.5
         assert len(result.all_results) == 4
-        MockParallelBacktestRunner.assert_called_once()
+        mock_parallel_backtest_runner.assert_called_once()
         mock_runner_instance.run.assert_called_once()
 
     @patch("src.backtester.optimization.ParallelBacktestRunner")
@@ -172,7 +167,7 @@ class TestParameterOptimizer:
     def test_random_search(
         self,
         mock_random_choice: MagicMock,
-        MockParallelBacktestRunner: MagicMock,
+        mock_parallel_backtest_runner: MagicMock,
         optimizer: ParameterOptimizer,
         mock_backtest_result: BacktestResult,
         param_grid_simple: dict[str, list[Any]],
@@ -180,7 +175,7 @@ class TestParameterOptimizer:
         # Simulate random choice returning specific values for determinism
         mock_random_choice.side_effect = [1, "A"] * 5 # Simulate 5 iterations
 
-        mock_runner_instance = MockParallelBacktestRunner.return_value
+        mock_runner_instance = mock_parallel_backtest_runner.return_value
         # Simulate runner returning results for each task
         mock_runner_instance.run.return_value = {
             f"MockStrategy_iter{i}": mock_backtest_result for i in range(5)
@@ -191,12 +186,12 @@ class TestParameterOptimizer:
 
 
         result = optimizer._random_search(param_grid_simple, "sharpe_ratio", maximize=True, n_iter=5)
-        
+
         assert isinstance(result, OptimizationResult)
         assert result.best_score == 1.5
         assert len(result.all_results) == 5
         assert mock_random_choice.call_count == 5 * len(param_grid_simple) # 5 iter * 2 params
-        MockParallelBacktestRunner.assert_called_once()
+        mock_parallel_backtest_runner.assert_called_once()
 
 
     def test_optimize_method_dispatch(
@@ -222,13 +217,13 @@ class TestOptimizeStrategyParameters:
     @patch("src.backtester.optimization.ParameterOptimizer")
     def test_optimize_strategy_parameters(
         self,
-        MockParameterOptimizer: MagicMock,
+        mock_parameter_optimizer: MagicMock,
         mock_strategy_factory: MagicMock,
         mock_backtest_config: BacktestConfig,
         param_grid_simple: dict[str, list[Any]],
     ) -> None:
         # Mock optimizer instance and its optimize method
-        mock_optimizer_instance = MockParameterOptimizer.return_value
+        mock_optimizer_instance = mock_parameter_optimizer.return_value
         mock_optimization_result = MagicMock(spec=OptimizationResult)
         mock_optimizer_instance.optimize.return_value = mock_optimization_result
 
@@ -248,7 +243,7 @@ class TestOptimizeStrategyParameters:
             n_workers=2,
         )
 
-        MockParameterOptimizer.assert_called_once_with(
+        mock_parameter_optimizer.assert_called_once_with(
             strategy_factory=mock_strategy_factory,
             tickers=tickers,
             interval=interval,

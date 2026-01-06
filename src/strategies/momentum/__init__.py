@@ -3,8 +3,8 @@
 from src.strategies.momentum.conditions import (
     MACDBullishCondition,
     PriceAboveSMACondition,
-    RSIOversoldCondition,
     RSIOverboughtCondition,
+    RSIOversoldCondition,
 )
 from src.strategies.momentum.momentum import MomentumStrategy, SimpleMomentumStrategy
 

@@ -2,8 +2,10 @@
 CLI command for optimizing strategy parameters.
 """
 
-import click
 from pathlib import Path
+from typing import Any  # <-- 추가 필요
+
+import click
 
 from src.backtester import BacktestConfig, optimize_strategy_parameters
 from src.strategies.volatility_breakout import create_vbo_strategy
@@ -218,7 +220,7 @@ def optimize(
     logger.info("\n=== Optimization Results ===\n")
     logger.info(f"Best Parameters: {result.best_params}")
     logger.info(f"Best {metric}: {result.best_score:.4f}")
-    logger.info(f"\nBest Result Metrics:")
+    logger.info("\nBest Result Metrics:")
     logger.info(f"  CAGR: {result.best_result.cagr:.2f}%")
     logger.info(f"  Total Return: {result.best_result.total_return:.2f}%")
     logger.info(f"  Sharpe Ratio: {result.best_result.sharpe_ratio:.2f}")
@@ -227,7 +229,7 @@ def optimize(
     logger.info(f"  Total Trades: {result.best_result.total_trades}")
 
     # Print top 5 results
-    logger.info(f"\n=== Top 5 Results ===")
+    logger.info("\n=== Top 5 Results ===")
     logger.info(f"{'Rank':<6} {'Params':<30} {metric.capitalize():>15}")
     logger.info("-" * 60)
     for i, (params, _, score) in enumerate(result.all_results[:5], 1):
@@ -236,8 +238,9 @@ def optimize(
 
     # Generate report if output specified
     if output:
-        from src.backtester.report import generate_report
         from datetime import datetime
+
+        from src.backtester.report import generate_report
 
         output_path = Path(output)
         if output_path.is_dir() or not output_path.suffix:

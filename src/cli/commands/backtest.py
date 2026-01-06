@@ -228,7 +228,7 @@ def backtest(
         vbo_kwargs["long_noise_period"] = long_noise_period
     if exclude_current is not None:
         vbo_kwargs["exclude_current"] = exclude_current
-    
+
     if strategy == "vanilla":
         # Default vanilla parameters matching legacy
         vanilla_params = {
@@ -350,25 +350,25 @@ def backtest(
             "minute240": "4-hour",
             "week": "weekly",
         }.get(interval_str, interval_str)
-        
+
         logger.info("\n--- Risk Metrics ---")
         logger.info(f"VaR (95%, {period_label}): {result.risk_metrics.var_95*100:.2f}%")
         logger.info(f"CVaR (95%, {period_label}): {result.risk_metrics.cvar_95*100:.2f}%")
         logger.info(f"VaR (99%, {period_label}): {result.risk_metrics.var_99*100:.2f}%")
         logger.info(f"CVaR (99%, {period_label}): {result.risk_metrics.cvar_99*100:.2f}%")
         logger.info(f"Portfolio Volatility (annualized): {result.risk_metrics.portfolio_volatility*100:.2f}%")
-        
+
         # Correlation metrics (check if calculated, not just != 0.0)
         if result.risk_metrics.avg_correlation is not None and not np.isnan(result.risk_metrics.avg_correlation):
             logger.info(f"Avg Correlation: {result.risk_metrics.avg_correlation:.3f}")
             logger.info(f"Max Correlation: {result.risk_metrics.max_correlation:.3f}")
             logger.info(f"Min Correlation: {result.risk_metrics.min_correlation:.3f}")
-        
+
         # Position concentration (check if calculated)
         if result.risk_metrics.max_position_pct is not None and result.risk_metrics.max_position_pct > 0:
             logger.info(f"Max Position %: {result.risk_metrics.max_position_pct*100:.2f}%")
             logger.info(f"Position Concentration (HHI): {result.risk_metrics.position_concentration:.3f}")
-        
+
         if result.risk_metrics.portfolio_beta is not None:
             logger.info(f"Portfolio Beta: {result.risk_metrics.portfolio_beta:.2f}")
 
@@ -386,10 +386,10 @@ def backtest(
             save_path = Path(f"reports/{timestamp}_{strategy_name_safe}.html")
         else:
             save_path = Path(output) if isinstance(output, str) else output
-        
+
         # Ensure reports directory exists
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Determine format from extension (default to HTML if no extension)
         if save_path.suffix.lower() in [".html", ".htm"]:
             format_type = "html"
@@ -400,7 +400,7 @@ def backtest(
             format_type = "html"
             if not save_path.suffix:
                 save_path = save_path.with_suffix(".html")
-        
+
         # Generate report with strategy and config info
         generate_report(
             result,

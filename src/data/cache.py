@@ -231,7 +231,7 @@ class IndicatorCache:
             "rows": len(df),
             "created_at": current_time,
         }
-        
+
         # Update access time
         self._access_times[cache_key] = current_time
 
@@ -303,7 +303,7 @@ class IndicatorCache:
     def _enforce_cache_limits(self) -> None:
         """
         Enforce cache size and entry limits using LRU eviction.
-        
+
         Note: In parallel environments, file deletion may fail due to locks.
         This is handled gracefully by catching exceptions in _evict_entry.
         """

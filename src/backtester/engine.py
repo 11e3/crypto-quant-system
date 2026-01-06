@@ -48,7 +48,6 @@ except ImportError:
 
 from src.execution.advanced_orders import AdvancedOrderManager
 
-
 logger = get_logger(__name__)
 
 
@@ -316,14 +315,12 @@ class VectorizedBacktestEngine:
 
                 # Normalize position values to portfolio value if total exceeds equity
                 final_equity = equity_curve[-1] if len(equity_curve) > 0 else 0.0
-                if total_position_value > 0 and final_equity > 0:
-                    # Scale down if total position value exceeds equity
-                    if total_position_value > final_equity:
-                        scale_factor = final_equity / total_position_value
-                        position_values_dict = {
-                            ticker: value * scale_factor
-                            for ticker, value in position_values_dict.items()
-                        }
+                if total_position_value > 0 and final_equity > 0 and total_position_value > final_equity:
+                    scale_factor = final_equity / total_position_value
+                    position_values_dict = {
+                        ticker: value * scale_factor
+                        for ticker, value in position_values_dict.items()
+                    }
 
         try:
             result.risk_metrics = calculate_portfolio_risk_metrics(
@@ -501,7 +498,7 @@ class VectorizedBacktestEngine:
         short_noises = np.full((n_tickers, n_dates), np.nan, dtype=float_dtype)
 
         # Check if any ticker has 'target' column (VBO strategy)
-        has_target = any("target" in df.columns for df in ticker_data.values())
+        any("target" in df.columns for df in ticker_data.values())
 
         # Date to index mapping (using dictionary for O(1) lookup)
         date_to_idx = {d: i for i, d in enumerate(sorted_dates)}
@@ -1215,7 +1212,7 @@ class VectorizedBacktestEngine:
             # and both should not be in position
             not_in_position = position_amounts == 0.0
             has_entry_signal = entry_signals[:, d_idx].astype(bool)
-            can_enter = has_entry_signal & not_in_position
+            has_entry_signal & not_in_position
 
             # For pair trading, enter both positions simultaneously when both have signals
             # Simplified: just check if both have entry signals and not in position
@@ -1226,7 +1223,6 @@ class VectorizedBacktestEngine:
 
                 if available_slots >= 2:  # Need at least 2 slots for pair trading
                     # Enter both positions
-                    entered_any = False
                     for t_idx in range(n_tickers):
                         buy_price = entry_prices[t_idx, d_idx]
                         if np.isnan(buy_price):

@@ -1,8 +1,8 @@
 """Pair trading strategies."""
 
 from src.strategies.pair_trading.conditions import (
-    SpreadZScoreCondition,
     SpreadMeanReversionCondition,
+    SpreadZScoreCondition,
 )
 from src.strategies.pair_trading.pair_trading import PairTradingStrategy
 

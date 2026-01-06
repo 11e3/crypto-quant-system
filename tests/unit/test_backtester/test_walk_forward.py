@@ -3,15 +3,13 @@ Unit tests for walk-forward analysis module.
 """
 
 import datetime
-from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.backtester.engine import BacktestConfig, BacktestResult, Trade
+from src.backtester.engine import BacktestConfig, BacktestResult
 from src.backtester.optimization import OptimizationResult
 from src.backtester.walk_forward import (
     WalkForwardAnalyzer,
@@ -86,7 +84,7 @@ class TestWalkForwardPeriod:
             test_start=datetime.date(2024, 1, 1),
             test_end=datetime.date(2024, 3, 31),
         )
-        assert "WalkForwardPeriod(1, opt=2023-01-01 to 2023-12-31, test=2024-01-01 to 2024-03-31)" == repr(period)
+        assert repr(period) == "WalkForwardPeriod(1, opt=2023-01-01 to 2023-12-31, test=2024-01-01 to 2024-03-31)"
 
 
 class TestWalkForwardResult:
@@ -106,7 +104,7 @@ class TestWalkForwardResult:
             test_end=datetime.date(2024, 3, 31),
         )
         result = WalkForwardResult(periods=[period], avg_test_cagr=15.0, total_periods=1)
-        assert "WalkForwardResult(1 periods, avg_test_cagr=15.00%)" == repr(result)
+        assert repr(result) == "WalkForwardResult(1 periods, avg_test_cagr=15.00%)"
 
 
 class TestWalkForwardAnalyzer:
@@ -167,20 +165,20 @@ class TestWalkForwardAnalyzer:
     @patch("src.backtester.walk_forward.OptimizationResult")
     def test_optimize_period(
         self,
-        MockOptimizationResult: MagicMock,
-        MockParallelBacktestRunner: MagicMock,
+        mock_optimization_result: MagicMock,
+        mock_parallel_backtest_runner: MagicMock,
         analyzer: WalkForwardAnalyzer,
         mock_backtest_result: BacktestResult,
     ) -> None:
         # Mock ParallelBacktestRunner.run to return a result
-        mock_runner_instance = MockParallelBacktestRunner.return_value
+        mock_runner_instance = mock_parallel_backtest_runner.return_value
         mock_runner_instance.run.return_value = {
             "MockStrategy_1": mock_backtest_result,
             "MockStrategy_2": mock_backtest_result,
         }
 
         # Mock OptimizationResult to be returned by _optimize_period
-        mock_opt_result_instance = MockOptimizationResult.return_value
+        mock_opt_result_instance = mock_optimization_result.return_value
         mock_opt_result_instance.best_params = {"param": 1}
         mock_opt_result_instance.best_score = 1.5
         mock_opt_result_instance.best_result = mock_backtest_result
@@ -198,7 +196,7 @@ class TestWalkForwardAnalyzer:
         opt_result = analyzer._optimize_period(period, param_grid, metric, n_workers=1)
         assert opt_result is not None
         assert opt_result.best_params == {"param": 1} # Depends on sorting, this may need to be dynamic
-        MockParallelBacktestRunner.assert_called_once()
+        mock_parallel_backtest_runner.assert_called_once()
         mock_runner_instance.run.assert_called_once()
 
     @patch("src.backtester.walk_forward.run_backtest")
@@ -259,13 +257,13 @@ class TestWalkForwardAnalyzer:
             optimization_result=mock_optimization_result,
             # No test result for this period to test robustness
         )
-        
+
         # Make one of the test results negative for CAGR
         negative_result = MagicMock(spec=BacktestResult)
         negative_result.cagr = -5.0
         negative_result.sharpe_ratio = -0.5
         negative_result.mdd = 0.1
-        
+
         period4 = WalkForwardPeriod(
             period_num=4,
             optimization_start=datetime.date(2023, 10, 1),
@@ -294,7 +292,7 @@ class TestWalkForwardAnalyzer:
     @patch("src.data.upbit_source.UpbitDataSource")
     def test_analyze(
         self,
-        MockUpbitDataSource: MagicMock,
+        mock_upbit_data_source: MagicMock,
         mock_generate_periods: MagicMock,
         mock_optimize_period: MagicMock,
         mock_test_period: MagicMock,
@@ -304,7 +302,7 @@ class TestWalkForwardAnalyzer:
         mock_optimization_result: OptimizationResult,
     ) -> None:
         # Mock data source to return some data
-        mock_data_source_instance = MockUpbitDataSource.return_value
+        mock_data_source_instance = mock_upbit_data_source.return_value
         mock_data_source_instance.load_ohlcv.return_value = pd.DataFrame(
             index=pd.to_datetime(pd.date_range("2023-01-01", periods=1000, freq="D"))
         )
@@ -330,7 +328,7 @@ class TestWalkForwardAnalyzer:
         param_grid = {"sma": [10]}
         result = analyzer.analyze(param_grid)
 
-        MockUpbitDataSource.assert_called_once()
+        mock_upbit_data_source.assert_called_once()
         mock_data_source_instance.load_ohlcv.assert_called_once()
         mock_generate_periods.assert_called_once()
         mock_optimize_period.assert_called_once_with(
@@ -345,8 +343,8 @@ class TestWalkForwardAnalyzer:
         assert period.test_result == mock_backtest_result
 
     @patch("src.data.upbit_source.UpbitDataSource")
-    def test_analyze_no_data(self, MockUpbitDataSource: MagicMock, analyzer: WalkForwardAnalyzer) -> None:
-        mock_data_source_instance = MockUpbitDataSource.return_value
+    def test_analyze_no_data(self, mock_upbit_data_source: MagicMock, analyzer: WalkForwardAnalyzer) -> None:
+        mock_data_source_instance = mock_upbit_data_source.return_value
         mock_data_source_instance.load_ohlcv.return_value = pd.DataFrame() # Empty DataFrame
 
         param_grid = {"sma": [10]}
@@ -355,11 +353,11 @@ class TestWalkForwardAnalyzer:
 
     @patch("src.backtester.walk_forward.WalkForwardAnalyzer")
     def test_run_walk_forward_analysis(
-        self, MockWalkForwardAnalyzer: MagicMock, mock_strategy_factory: MagicMock, mock_backtest_config: BacktestConfig
+        self, mock_walk_forward_analyzer: MagicMock, mock_strategy_factory: MagicMock, mock_backtest_config: BacktestConfig
     ) -> None:
         """Test run_walk_forward_analysis convenience function."""
         # Mock analyzer instance and its analyze method
-        mock_analyzer_instance = MockWalkForwardAnalyzer.return_value
+        mock_analyzer_instance = mock_walk_forward_analyzer.return_value
         mock_result = WalkForwardResult(periods=[], avg_test_cagr=20.0)
         mock_analyzer_instance.analyze.return_value = mock_result
 
@@ -375,7 +373,7 @@ class TestWalkForwardAnalyzer:
             config=mock_backtest_config,
         )
 
-        MockWalkForwardAnalyzer.assert_called_once_with(
+        mock_walk_forward_analyzer.assert_called_once_with(
             strategy_factory=mock_strategy_factory,
             tickers=tickers,
             interval=interval,

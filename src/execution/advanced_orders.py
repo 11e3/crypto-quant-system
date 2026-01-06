@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from src.utils.logger import get_logger
 
 if TYPE_CHECKING:
-    from src.execution.position_manager import Position
+    pass
 
 logger = get_logger(__name__)
 
@@ -269,19 +269,18 @@ class AdvancedOrderManager:
                 continue
 
             # Update trailing stop highest price
-            if order.order_type == OrderType.TRAILING_STOP:
-                if order.highest_price is None or check_high > order.highest_price:
-                    order.highest_price = check_high
-                    # Update stop loss price to trail from new high
-                    if order.trailing_stop_pct is not None:
-                        order.stop_loss_price = order.highest_price * (
-                            1 - order.trailing_stop_pct
-                        )
-                        logger.debug(
-                            f"Updated trailing stop for {ticker}: "
-                            f"high={order.highest_price:.0f}, "
-                            f"stop={order.stop_loss_price:.0f}"
-                        )
+            if order.order_type == OrderType.TRAILING_STOP and (order.highest_price is None or check_high > order.highest_price):
+                order.highest_price = check_high
+                # Update stop loss price to trail from new high
+                if order.trailing_stop_pct is not None:
+                    order.stop_loss_price = order.highest_price * (
+                        1 - order.trailing_stop_pct
+                    )
+                    logger.debug(
+                        f"Updated trailing stop for {ticker}: "
+                        f"high={order.highest_price:.0f}, "
+                        f"stop={order.stop_loss_price:.0f}"
+                    )
 
             # Check stop loss (triggered if low price touches stop loss)
             if order.stop_loss_price is not None and check_low <= order.stop_loss_price:
