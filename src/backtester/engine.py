@@ -527,7 +527,9 @@ class VectorizedBacktestEngine:
                 targets[t_idx, idx] = df.loc[valid_mask.values, "close"].values
             if "sma" in df.columns:
                 smas[t_idx, idx] = df.loc[valid_mask.values, "sma"].values
-            entry_signals[t_idx, idx] = df.loc[valid_mask.values, "entry_signal"].astype(bool).values
+            entry_signals[t_idx, idx] = (
+                df.loc[valid_mask.values, "entry_signal"].astype(bool).values
+            )
             exit_signals[t_idx, idx] = df.loc[valid_mask.values, "exit_signal"].astype(bool).values
             whipsaws[t_idx, idx] = df.loc[valid_mask.values, "is_whipsaw"].values
             entry_prices[t_idx, idx] = df.loc[valid_mask.values, "entry_price"].values
@@ -878,7 +880,6 @@ class VectorizedBacktestEngine:
                         position_entry_prices[t_idx] = buy_price
                         position_entry_dates[t_idx] = d_idx
                         cash -= invest_amount
-
 
             # ---- CALCULATE DAILY EQUITY ----
             # Calculate position values, using previous close if current is NaN

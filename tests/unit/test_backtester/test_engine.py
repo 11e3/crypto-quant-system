@@ -17,6 +17,7 @@ from src.strategies.base import Strategy
 # Fixtures
 # -------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_config():
     return BacktestConfig(
@@ -25,12 +26,14 @@ def mock_config():
         slippage_rate=0.001,
         max_slots=2,
         position_sizing="equal",
-        use_cache=False
+        use_cache=False,
     )
+
 
 @pytest.fixture
 def engine(mock_config):
     return VectorizedBacktestEngine(config=mock_config)
+
 
 @pytest.fixture
 def mock_strategy():
@@ -44,6 +47,7 @@ def mock_strategy():
     strategy.required_indicators.return_value = []
     return strategy
 
+
 @pytest.fixture
 def sample_data():
     """Create a sample OHLCV DataFrame with sufficient history."""
@@ -51,26 +55,30 @@ def sample_data():
     dates = pd.date_range(start="2023-01-01", periods=periods, freq="D")
 
     # Initialize with clean data types
-    df = pd.DataFrame({
-        "open": np.full(periods, 100.0, dtype='float64'),
-        "high": np.full(periods, 105.0, dtype='float64'),
-        "low": np.full(periods, 95.0, dtype='float64'),
-        "close": np.full(periods, 100.0, dtype='float64'),
-        "volume": np.full(periods, 1000.0, dtype='float64'),
-        "sma": np.full(periods, 90.0, dtype='float64'),
-        "target": np.full(periods, 100.5, dtype='float64'),
-        "entry_signal": np.zeros(periods, dtype=bool),
-        "exit_signal": np.zeros(periods, dtype=bool),
-    }, index=dates)
+    df = pd.DataFrame(
+        {
+            "open": np.full(periods, 100.0, dtype="float64"),
+            "high": np.full(periods, 105.0, dtype="float64"),
+            "low": np.full(periods, 95.0, dtype="float64"),
+            "close": np.full(periods, 100.0, dtype="float64"),
+            "volume": np.full(periods, 1000.0, dtype="float64"),
+            "sma": np.full(periods, 90.0, dtype="float64"),
+            "target": np.full(periods, 100.5, dtype="float64"),
+            "entry_signal": np.zeros(periods, dtype=bool),
+            "exit_signal": np.zeros(periods, dtype=bool),
+        },
+        index=dates,
+    )
 
     return df
+
 
 # -------------------------------------------------------------------------
 # Tests
 # -------------------------------------------------------------------------
 
-class TestVectorizedBacktestEngine:
 
+class TestVectorizedBacktestEngine:
     def test_load_data_success(self, engine, tmp_path, sample_data):
         file_path = tmp_path / "test_data.parquet"
         sample_data.to_parquet(file_path)
@@ -140,7 +148,7 @@ class TestVectorizedBacktestEngine:
         idx = 30
         sample_data.loc[sample_data.index[idx], "entry_signal"] = True
         sample_data.loc[sample_data.index[idx], "close"] = 100.0
-        sample_data.loc[sample_data.index[idx], "sma"] = 9999.0 # SMA > Close -> Whipsaw
+        sample_data.loc[sample_data.index[idx], "sma"] = 9999.0  # SMA > Close -> Whipsaw
 
         sample_data.to_parquet(fpath)
         data_files = {"KRW-ETH": fpath}
@@ -194,18 +202,21 @@ class TestVectorizedBacktestEngine:
             # Setup Data
             periods = 50
             dates = pd.date_range("2023-01-01", periods=periods)
-            df = pd.DataFrame({
-                "open": np.full(periods, 100.0, dtype='float64'),
-                "high": np.full(periods, 105.0, dtype='float64'),
-                "low": np.full(periods, 95.0, dtype='float64'),
-                "close": np.full(periods, 100.0, dtype='float64'),
-                "volume": np.full(periods, 1000.0, dtype='float64'),
-                "entry_signal": np.zeros(periods, dtype=bool),
-                "exit_signal": np.zeros(periods, dtype=bool),
-                # Note: engine._run_pair_trading expects entry/exit_price or calculates them
-                "entry_price": np.full(periods, 100.0, dtype='float64'),
-                "exit_price": np.full(periods, 100.0, dtype='float64')
-            }, index=dates)
+            df = pd.DataFrame(
+                {
+                    "open": np.full(periods, 100.0, dtype="float64"),
+                    "high": np.full(periods, 105.0, dtype="float64"),
+                    "low": np.full(periods, 95.0, dtype="float64"),
+                    "close": np.full(periods, 100.0, dtype="float64"),
+                    "volume": np.full(periods, 1000.0, dtype="float64"),
+                    "entry_signal": np.zeros(periods, dtype=bool),
+                    "exit_signal": np.zeros(periods, dtype=bool),
+                    # Note: engine._run_pair_trading expects entry/exit_price or calculates them
+                    "entry_price": np.full(periods, 100.0, dtype="float64"),
+                    "exit_price": np.full(periods, 100.0, dtype="float64"),
+                },
+                index=dates,
+            )
 
             fpath1 = tmp_path / "A_day.parquet"
             fpath2 = tmp_path / "B_day.parquet"
@@ -216,10 +227,12 @@ class TestVectorizedBacktestEngine:
             with patch("src.backtester.engine.optimize_dtypes", side_effect=lambda x: x):
                 result = engine.run(strategy_instance, data_files)
 
-            assert len(result.trades) == 2 # 1 trade per ticker
+            assert len(result.trades) == 2  # 1 trade per ticker
 
     @patch("src.backtester.engine.calculate_position_size")
-    def test_position_sizing_integration(self, mock_calc_size, engine, mock_strategy, sample_data, tmp_path):
+    def test_position_sizing_integration(
+        self, mock_calc_size, engine, mock_strategy, sample_data, tmp_path
+    ):
         """Test position sizing integration for single asset."""
         # Set config to use volatility sizing
         engine.config.position_sizing = "volatility"
