@@ -21,13 +21,13 @@ class TestCollectCommand:
         assert result.exit_code == 0
         assert "Usage:" in result.output or "help" in result.output.lower()
 
-    @patch("src.cli.commands.collect.UpbitDataCollector", create=True)
-    def test_collect_command_execution(self, mock_collector_class: MagicMock) -> None:
+    @patch("src.cli.commands.collect.DataCollectorFactory.create")
+    def test_collect_command_execution(self, mock_create: MagicMock) -> None:
         """Test collect command execution."""
         # Mock collector instance
         mock_collector = MagicMock()
         mock_collector.collect_multiple.return_value = {"KRW-BTC_day": 100}
-        mock_collector_class.return_value = mock_collector
+        mock_create.return_value = mock_collector
 
         runner = CliRunner()
         result = runner.invoke(collect, ["--tickers", "KRW-BTC", "--intervals", "day"])
@@ -36,9 +36,11 @@ class TestCollectCommand:
         # (may fail due to API calls, which is expected in unit tests)
         # Exit code can be 0 (success) or non-zero (API error)
         assert isinstance(result.exit_code, int)
+        mock_create.assert_called_once()
+        mock_collector.collect_multiple.assert_called_once()
 
-    @patch("src.cli.commands.collect.UpbitDataCollector", create=True)
-    def test_collect_command_with_failures(self, mock_collector_class: MagicMock) -> None:
+    @patch("src.cli.commands.collect.DataCollectorFactory.create")
+    def test_collect_command_with_failures(self, mock_create: MagicMock) -> None:
         """Test collect command with some failures (count < 0) to cover line 67."""
         # Mock collector instance with mixed results (success and failure)
         mock_collector = MagicMock()
@@ -47,7 +49,7 @@ class TestCollectCommand:
             "KRW-ETH_day": -1,  # Failure (triggers line 67)
             "KRW-XRP_day": 50,  # Success
         }
-        mock_collector_class.return_value = mock_collector
+        mock_create.return_value = mock_collector
 
         # Call collect function directly to ensure it executes
         from src.cli.commands.collect import collect
@@ -61,8 +63,8 @@ class TestCollectCommand:
             full_refresh=False,
         )
 
-        # Verify that UpbitDataCollector was instantiated
-        mock_collector_class.assert_called_once()
+        # Verify that DataCollectorFactory.create was called
+        mock_create.assert_called_once()
 
         # Verify that collect_multiple was called
         mock_collector.collect_multiple.assert_called_once()

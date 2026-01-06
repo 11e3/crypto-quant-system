@@ -53,6 +53,11 @@ class TestBacktestCommand:
             name="VanillaVBO",
             use_trend_filter=True,
             use_noise_filter=True,
+            sma_period=5,
+            trend_sma_period=10,
+            short_noise_period=5,
+            long_noise_period=10,
+            exclude_current=True,
         )
         mock_run_backtest.assert_called_once()
 
@@ -203,7 +208,7 @@ class TestBacktestCommand:
             mock_generate_report.assert_called_once()
             call_args = mock_generate_report.call_args
             assert call_args is not None
-            assert call_args.kwargs.get("save_path") == output_dir
+            assert call_args.kwargs.get("save_path") == output_dir.with_suffix(".html")
             assert call_args.kwargs.get("show") is False
 
     @patch("src.cli.commands.backtest.run_backtest", create=True)
@@ -243,6 +248,20 @@ class TestBacktestCommand:
                 strategy="invalid_strategy",  # Invalid strategy that triggers else clause (line 123)
                 output=None,
                 no_cache=False,
+                sma_period=None,
+                trend_sma_period=None,
+                short_noise_period=None,
+                long_noise_period=None,
+                exclude_current=None,
+                position_sizing="equal",
+                position_sizing_risk=0.02,
+                position_sizing_lookback=20,
+                stop_loss=None,
+                take_profit=None,
+                trailing_stop=None,
+                portfolio_optimization=None,
+                risk_free_rate=0.0,
+                max_kelly=0.25,
             )
 
     @patch("src.cli.commands.backtest.run_backtest", create=True)
@@ -370,7 +389,7 @@ class TestBacktestCommand:
             # Should convert string to Path
             save_path = call_args.kwargs.get("save_path")
             assert save_path is not None
-            assert str(save_path) == output_path
+            assert str(save_path) == output_path + ".html"
 
     @patch("src.cli.commands.backtest.run_backtest", create=True)
     @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)

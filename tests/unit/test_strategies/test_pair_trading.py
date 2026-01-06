@@ -1,7 +1,7 @@
 """
 Unit tests for PairTradingStrategy.
 """
-
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -88,7 +88,7 @@ class TestPairTradingStrategy:
                 "open": 100.0,
                 "high": 105.0,
                 "low": 95.0,
-                "close": 100.0 + pd.Series(range(100)) * 0.1,
+                "close": 100.0 + np.arange(100) * 0.1,
                 "volume": 1000.0,
             },
             index=dates,
@@ -98,7 +98,7 @@ class TestPairTradingStrategy:
                 "open": 50.0,
                 "high": 52.0,
                 "low": 48.0,
-                "close": 50.0 + pd.Series(range(100)) * 0.05,
+                "close": 50.0 + np.arange(100) * 0.05,
                 "volume": 2000.0,
             },
             index=dates,
@@ -129,10 +129,10 @@ class TestPairTradingStrategy:
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
         df1 = pd.DataFrame(
-            {"close": 100.0 + pd.Series(range(100)) * 0.1}, index=dates
+            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
         )
         df2 = pd.DataFrame(
-            {"close": 50.0 + pd.Series(range(100)) * 0.05}, index=dates
+            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
         )
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
@@ -148,10 +148,10 @@ class TestPairTradingStrategy:
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
         df1 = pd.DataFrame(
-            {"close": 100.0 + pd.Series(range(100)) * 0.1}, index=dates
+            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
         )
         df2 = pd.DataFrame(
-            {"close": 50.0 + pd.Series(range(100)) * 0.05}, index=dates
+            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
         )
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
@@ -173,10 +173,10 @@ class TestPairTradingStrategy:
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
         df1 = pd.DataFrame(
-            {"close": 100.0 + pd.Series(range(100)) * 0.1}, index=dates
+            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
         )
         df2 = pd.DataFrame(
-            {"close": 50.0 + pd.Series(range(100)) * 0.05}, index=dates
+            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
         )
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
@@ -197,10 +197,10 @@ class TestPairTradingStrategy:
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
         # Create data with large spread deviation
         df1 = pd.DataFrame(
-            {"close": 100.0 + pd.Series(range(100)) * 2.0}, index=dates
+            {"close": 100.0 + np.arange(100) * 2.0}, index=dates
         )
         df2 = pd.DataFrame(
-            {"close": 50.0 + pd.Series(range(100)) * 0.5}, index=dates
+            {"close": 50.0 + np.arange(100) * 0.5}, index=dates
         )
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
@@ -217,10 +217,10 @@ class TestPairTradingStrategy:
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
         df1 = pd.DataFrame(
-            {"close": 100.0 + pd.Series(range(100)) * 0.1}, index=dates
+            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
         )
         df2 = pd.DataFrame(
-            {"close": 50.0 + pd.Series(range(100)) * 0.05}, index=dates
+            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
         )
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
@@ -247,10 +247,10 @@ class TestPairTradingStrategy:
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
         df1 = pd.DataFrame(
-            {"close": 100.0 + pd.Series(range(100)) * 0.1}, index=dates
+            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
         )
         df2 = pd.DataFrame(
-            {"close": 50.0 + pd.Series(range(100)) * 0.05}, index=dates
+            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
         )
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)

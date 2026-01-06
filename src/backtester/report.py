@@ -326,6 +326,7 @@ class BacktestReport:
         """
         self.strategy_name = strategy_name
         self.initial_capital = initial_capital
+        self.risk_metrics = None
 
         # Convert to numpy arrays if needed
         self.equity_curve = np.array(equity_curve)

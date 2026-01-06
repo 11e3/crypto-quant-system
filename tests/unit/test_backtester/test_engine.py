@@ -616,9 +616,16 @@ class TestVectorizedBacktestEngine:
         # Create trades DataFrame with closed trades
         trades_df = pd.DataFrame(
             {
+                "ticker": ["KRW-BTC", "KRW-BTC", "KRW-ETH"],
                 "exit_date": [date(2024, 1, 2), date(2024, 1, 3), None],  # 2 closed, 1 open
                 "pnl": [1000.0, -500.0, 0.0],  # 1 winning, 1 losing
                 "pnl_pct": [0.1, -0.05, 0.0],
+                "amount": [1.0, 1.0, 1.0],  # Add amount for position value calculation
+                "entry_price": [
+                    100.0,
+                    100.0,
+                    100.0,
+                ],  # Add entry_price for position value calculation
             }
         )
 
@@ -629,7 +636,7 @@ class TestVectorizedBacktestEngine:
         assert result.winning_trades == 1
         assert result.losing_trades == 1
         assert result.win_rate == 50.0
-        assert result.avg_trade_return == 0.025  # (0.1 + -0.05) / 2
+        assert result.avg_trade_return == pytest.approx(0.025)
         assert result.profit_factor > 0
 
     def test_run_converts_trades_to_trade_objects(
@@ -842,8 +849,16 @@ class TestRunBacktest:
 
         assert isinstance(result, BacktestResult)
 
-    def test_run_backtest_file_not_found(self, tmp_path: Path) -> None:
-        """Test run_backtest when data files don't exist."""
+    @patch("src.backtester.engine.DataCollectorFactory")
+    def test_run_backtest_file_not_found(
+        self, mock_collector_factory: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test run_backtest when data files don't exist and collection fails."""
+        # Mock the collector to not create any files
+        mock_collector = MagicMock()
+        mock_collector.collect.return_value = 0
+        mock_collector_factory.create.return_value = mock_collector
+
         strategy = VanillaVBO()
 
         with pytest.raises(FileNotFoundError):
