@@ -120,7 +120,10 @@ logger = get_logger(__name__)
 )
 @click.option(
     "--position-sizing",
-    type=click.Choice(["equal", "volatility", "fixed-risk", "inverse-volatility", "mpt", "risk_parity", "kelly"], case_sensitive=False),
+    type=click.Choice(
+        ["equal", "volatility", "fixed-risk", "inverse-volatility", "mpt", "risk_parity", "kelly"],
+        case_sensitive=False,
+    ),
     default="equal",
     help="Position sizing method: equal (default), volatility, fixed-risk, inverse-volatility, mpt, risk_parity, kelly",
 )
@@ -209,8 +212,6 @@ def backtest(
     logger.info(f"Interval: {interval}")
     logger.info(f"Strategy: {strategy}")
 
-
-
     logger.info(f"Initial capital: {initial_capital}")
     logger.info(f"Fee rate: {fee_rate}")
     logger.info(f"Max slots: {max_slots}")
@@ -281,9 +282,7 @@ def backtest(
                 f"Pair trading strategy requires exactly 2 tickers, "
                 f"got {len(ticker_list)}: {ticker_list}"
             )
-            raise ValueError(
-                f"Pair trading requires exactly 2 tickers, got {len(ticker_list)}"
-            )
+            raise ValueError(f"Pair trading requires exactly 2 tickers, got {len(ticker_list)}")
         strategy_obj = PairTradingStrategy(name="PairTradingStrategy")
     else:
         raise ValueError(f"Unknown strategy: {strategy}")
@@ -352,22 +351,31 @@ def backtest(
         }.get(interval_str, interval_str)
 
         logger.info("\n--- Risk Metrics ---")
-        logger.info(f"VaR (95%, {period_label}): {result.risk_metrics.var_95*100:.2f}%")
-        logger.info(f"CVaR (95%, {period_label}): {result.risk_metrics.cvar_95*100:.2f}%")
-        logger.info(f"VaR (99%, {period_label}): {result.risk_metrics.var_99*100:.2f}%")
-        logger.info(f"CVaR (99%, {period_label}): {result.risk_metrics.cvar_99*100:.2f}%")
-        logger.info(f"Portfolio Volatility (annualized): {result.risk_metrics.portfolio_volatility*100:.2f}%")
+        logger.info(f"VaR (95%, {period_label}): {result.risk_metrics.var_95 * 100:.2f}%")
+        logger.info(f"CVaR (95%, {period_label}): {result.risk_metrics.cvar_95 * 100:.2f}%")
+        logger.info(f"VaR (99%, {period_label}): {result.risk_metrics.var_99 * 100:.2f}%")
+        logger.info(f"CVaR (99%, {period_label}): {result.risk_metrics.cvar_99 * 100:.2f}%")
+        logger.info(
+            f"Portfolio Volatility (annualized): {result.risk_metrics.portfolio_volatility * 100:.2f}%"
+        )
 
         # Correlation metrics (check if calculated, not just != 0.0)
-        if result.risk_metrics.avg_correlation is not None and not np.isnan(result.risk_metrics.avg_correlation):
+        if result.risk_metrics.avg_correlation is not None and not np.isnan(
+            result.risk_metrics.avg_correlation
+        ):
             logger.info(f"Avg Correlation: {result.risk_metrics.avg_correlation:.3f}")
             logger.info(f"Max Correlation: {result.risk_metrics.max_correlation:.3f}")
             logger.info(f"Min Correlation: {result.risk_metrics.min_correlation:.3f}")
 
         # Position concentration (check if calculated)
-        if result.risk_metrics.max_position_pct is not None and result.risk_metrics.max_position_pct > 0:
-            logger.info(f"Max Position %: {result.risk_metrics.max_position_pct*100:.2f}%")
-            logger.info(f"Position Concentration (HHI): {result.risk_metrics.position_concentration:.3f}")
+        if (
+            result.risk_metrics.max_position_pct is not None
+            and result.risk_metrics.max_position_pct > 0
+        ):
+            logger.info(f"Max Position %: {result.risk_metrics.max_position_pct * 100:.2f}%")
+            logger.info(
+                f"Position Concentration (HHI): {result.risk_metrics.position_concentration:.3f}"
+            )
 
         if result.risk_metrics.portfolio_beta is not None:
             logger.info(f"Portfolio Beta: {result.risk_metrics.portfolio_beta:.2f}")

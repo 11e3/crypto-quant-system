@@ -141,10 +141,14 @@ class ParameterOptimizer:
         # Sort by score
         all_results.sort(key=lambda x: x[2], reverse=maximize)
 
-        best_params, best_result, best_score = all_results[0] if all_results else (
-            {},
-            BacktestResult(),
-            0.0,
+        best_params, best_result, best_score = (
+            all_results[0]
+            if all_results
+            else (
+                {},
+                BacktestResult(),
+                0.0,
+            )
         )
 
         return OptimizationResult(
@@ -172,9 +176,7 @@ class ParameterOptimizer:
 
         for i in range(n_iter):
             # Randomly sample parameters
-            params = {
-                name: random.choice(values) for name, values in param_grid.items()
-            }
+            params = {name: random.choice(values) for name, values in param_grid.items()}
             strategy = self.strategy_factory(params)
             task_name = f"{strategy.name}_iter{i}"
             tasks.append(
@@ -202,10 +204,14 @@ class ParameterOptimizer:
         # Sort by score
         all_results.sort(key=lambda x: x[2], reverse=maximize)
 
-        best_params, best_result, best_score = all_results[0] if all_results else (
-            {},
-            BacktestResult(),
-            0.0,
+        best_params, best_result, best_score = (
+            all_results[0]
+            if all_results
+            else (
+                {},
+                BacktestResult(),
+                0.0,
+            )
         )
 
         return OptimizationResult(
@@ -243,9 +249,7 @@ class ParameterOptimizer:
             logger.warning(f"Unknown metric: {metric}, using sharpe_ratio")
             return result.sharpe_ratio if hasattr(result, "sharpe_ratio") else 0.0
 
-    def _parse_params_from_name(
-        self, name: str, param_names: list[str]
-    ) -> dict[str, Any]:
+    def _parse_params_from_name(self, name: str, param_names: list[str]) -> dict[str, Any]:
         """Parse parameters from task name (simplified)."""
         # This is a simplified parser - in practice, store params separately
         parts = name.split("_")

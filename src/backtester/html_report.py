@@ -65,7 +65,11 @@ def generate_html_report(
     mdd_idx = int(np.argmax(drawdown_curve_clean))
     mdd_date = dates_list[mdd_idx] if mdd_idx < len(dates_list) else dates_list[-1]
     # mdd_drawdown_value should be the actual drawdown value at MDD point (positive percentage)
-    mdd_drawdown_value = drawdown_curve_clean[mdd_idx] if mdd_idx < len(drawdown_curve_clean) else report.metrics.mdd_pct
+    mdd_drawdown_value = (
+        drawdown_curve_clean[mdd_idx]
+        if mdd_idx < len(drawdown_curve_clean)
+        else report.metrics.mdd_pct
+    )
 
     # Monthly returns heatmap data
     monthly_returns = calculate_monthly_returns_for_html(report.equity_curve, report.dates)
@@ -254,13 +258,13 @@ def generate_html_report(
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-label">Total Return</div>
-                    <div class="metric-value {'positive' if m.total_return_pct > 0 else 'negative'}">
+                    <div class="metric-value {"positive" if m.total_return_pct > 0 else "negative"}">
                         {m.total_return_pct:,.2f}%
                     </div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">CAGR</div>
-                    <div class="metric-value {'positive' if m.cagr_pct > 0 else 'negative'}">
+                    <div class="metric-value {"positive" if m.cagr_pct > 0 else "negative"}">
                         {m.cagr_pct:.2f}%
                     </div>
                 </div>
@@ -310,7 +314,7 @@ def generate_html_report(
         </div>
 
         <!-- Risk Metrics -->
-        {_generate_risk_metrics_html(report.risk_metrics) if hasattr(report, 'risk_metrics') and report.risk_metrics else ''}
+        {_generate_risk_metrics_html(report.risk_metrics) if hasattr(report, "risk_metrics") and report.risk_metrics else ""}
 
         <!-- Equity Curve Chart -->
         <div class="section">
@@ -484,10 +488,10 @@ def generate_html_report(
         }}
 
         // Monthly Returns Heatmap
-        var heatmapZ = {json.dumps(monthly_returns['values'])};
-        var heatmapX = {json.dumps(monthly_returns['months'])};
-        var heatmapY = {json.dumps(monthly_returns['years'])};
-        var heatmapText = {json.dumps(monthly_returns['text'])};
+        var heatmapZ = {json.dumps(monthly_returns["values"])};
+        var heatmapX = {json.dumps(monthly_returns["months"])};
+        var heatmapY = {json.dumps(monthly_returns["years"])};
+        var heatmapText = {json.dumps(monthly_returns["text"])};
 
         // Find min and max values for symmetric color scale
         var allValues = heatmapZ.flat().filter(x => !isNaN(x));
@@ -533,8 +537,8 @@ def generate_html_report(
         Plotly.newPlot('heatmap-chart', [heatmapData], heatmapLayout, {{responsive: true}});
 
         // Add yearly returns bar chart
-        var yearlyReturns = {json.dumps(monthly_returns.get('yearly_returns', []))};
-        var yearlyLabels = {json.dumps(monthly_returns.get('yearly_labels', []))};
+        var yearlyReturns = {json.dumps(monthly_returns.get("yearly_returns", []))};
+        var yearlyLabels = {json.dumps(monthly_returns.get("yearly_labels", []))};
 
         if (yearlyReturns && yearlyReturns.length > 0 && yearlyLabels && yearlyLabels.length > 0) {{
             // Extract years and values for bar chart
@@ -683,9 +687,9 @@ def _extract_config_params(config, result=None, tickers: list[str] | None = None
     if hasattr(config, "initial_capital"):
         params.append(("Initial Capital", f"{config.initial_capital:,.0f}"))
     if hasattr(config, "fee_rate"):
-        params.append(("Fee Rate", f"{config.fee_rate*100:.4f}%"))
+        params.append(("Fee Rate", f"{config.fee_rate * 100:.4f}%"))
     if hasattr(config, "slippage_rate"):
-        params.append(("Slippage Rate", f"{config.slippage_rate*100:.4f}%"))
+        params.append(("Slippage Rate", f"{config.slippage_rate * 100:.4f}%"))
     if hasattr(config, "max_slots"):
         params.append(("Max Slots", str(config.max_slots)))
     if hasattr(config, "position_sizing"):

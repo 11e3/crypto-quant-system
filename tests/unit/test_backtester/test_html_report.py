@@ -140,9 +140,7 @@ def test_generate_html_report(
     assert '<td class="negative">1</td>' in html_content
 
 
-def test_generate_html_report_no_trades(
-    sample_backtest_config: BacktestConfig, tmp_path: Path
-):
+def test_generate_html_report_no_trades(sample_backtest_config: BacktestConfig, tmp_path: Path):
     """Test generating a report with no trades."""
     dates = pd.to_datetime(pd.date_range("2024-01-01", periods=20, freq="D")).date
     equity_curve = np.linspace(1_000_000, 1_000_000, 20)  # Flat equity
@@ -155,9 +153,7 @@ def test_generate_html_report_no_trades(
     )
 
     save_path = tmp_path / "no_trade_report.html"
-    generate_html_report(
-        report=report, save_path=save_path, config=sample_backtest_config
-    )
+    generate_html_report(report=report, save_path=save_path, config=sample_backtest_config)
 
     assert save_path.exists()
     html_content = save_path.read_text(encoding="utf-8")
@@ -167,4 +163,3 @@ def test_generate_html_report_no_trades(
     assert "<td>0</td>" in html_content
     assert "Win Rate" in html_content
     assert "0.00%" in html_content
-

@@ -35,7 +35,9 @@ class PortfolioRiskMetrics:
     min_correlation: float | None  # Minimum correlation between any two assets
 
     # Position concentration
-    max_position_pct: float | None  # Maximum position size as % of portfolio (None if not calculated)
+    max_position_pct: (
+        float | None
+    )  # Maximum position size as % of portfolio (None if not calculated)
     position_concentration: float | None  # Herfindahl-Hirschman Index (HHI)
 
     # Beta (if benchmark provided)
@@ -191,8 +193,7 @@ def calculate_position_concentration(
 
     # Calculate position percentages
     position_pcts = {
-        ticker: value / total_portfolio_value
-        for ticker, value in position_values.items()
+        ticker: value / total_portfolio_value for ticker, value in position_values.items()
     }
 
     # Maximum position percentage
@@ -236,9 +237,7 @@ def calculate_portfolio_risk_metrics(
     cvar_99 = calculate_cvar(daily_returns, 0.99)
 
     # Portfolio volatility
-    portfolio_volatility = calculate_portfolio_volatility(
-        daily_returns, annualization_factor
-    )
+    portfolio_volatility = calculate_portfolio_volatility(daily_returns, annualization_factor)
 
     # Correlation metrics
     if asset_returns and len(asset_returns) >= 2:
@@ -248,15 +247,17 @@ def calculate_portfolio_risk_metrics(
 
     # Position concentration
     if position_values and total_portfolio_value and len(position_values) > 0:
-        max_pos_pct, hhi = calculate_position_concentration(
-            position_values, total_portfolio_value
-        )
+        max_pos_pct, hhi = calculate_position_concentration(position_values, total_portfolio_value)
     else:
         max_pos_pct = hhi = None
 
     # Beta (portfolio sensitivity to benchmark)
     portfolio_beta = None
-    if benchmark_returns is not None and len(benchmark_returns) > 0 and len(daily_returns) == len(benchmark_returns):
+    if (
+        benchmark_returns is not None
+        and len(benchmark_returns) > 0
+        and len(daily_returns) == len(benchmark_returns)
+    ):
         # Calculate beta: Cov(portfolio, benchmark) / Var(benchmark)
         covariance = np.cov(daily_returns, benchmark_returns)[0, 1]
         benchmark_variance = np.var(benchmark_returns)

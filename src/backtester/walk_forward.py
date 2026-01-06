@@ -166,9 +166,7 @@ class WalkForwardAnalyzer:
         # Process each period
         for period in periods:
             logger.info(f"\nProcessing period {period.period_num}...")
-            logger.info(
-                f"  Optimization: {period.optimization_start} to {period.optimization_end}"
-            )
+            logger.info(f"  Optimization: {period.optimization_start} to {period.optimization_end}")
             logger.info(f"  Test: {period.test_start} to {period.test_end}")
 
             # Optimize on optimization period
@@ -182,8 +180,7 @@ class WalkForwardAnalyzer:
 
             if opt_result:
                 logger.info(
-                    f"  Best params: {opt_result.best_params}, "
-                    f"score: {opt_result.best_score:.4f}"
+                    f"  Best params: {opt_result.best_params}, score: {opt_result.best_score:.4f}"
                 )
 
                 # Test on test period
@@ -313,6 +310,7 @@ class WalkForwardAnalyzer:
                 result = results.get(task.name)
                 if result and task.params:
                     from src.backtester.optimization import OptimizationResult
+
                     score = self._extract_metric(result, metric)
                     all_results.append((task.params, result, score))
 
@@ -325,6 +323,7 @@ class WalkForwardAnalyzer:
             best_params, best_result, best_score = all_results[0]
 
             from src.backtester.optimization import OptimizationResult
+
             return OptimizationResult(
                 best_params=best_params,
                 best_result=best_result,
@@ -378,9 +377,7 @@ class WalkForwardAnalyzer:
             logger.error(f"Error testing period {period.period_num}: {e}", exc_info=True)
             return None
 
-    def _calculate_statistics(
-        self, periods: list[WalkForwardPeriod]
-    ) -> WalkForwardResult:
+    def _calculate_statistics(self, periods: list[WalkForwardPeriod]) -> WalkForwardResult:
         """Calculate aggregate statistics from periods."""
         test_cagrs: list[float] = []
         test_sharpes: list[float] = []

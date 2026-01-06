@@ -5,7 +5,6 @@ This example demonstrates how to compare multiple strategies side-by-side.
 It shows how to evaluate different strategy configurations and choose the best one.
 """
 
-
 from src.backtester import BacktestConfig, BacktestResult, run_backtest
 from src.strategies.volatility_breakout import MinimalVBO, StrictVBO, VanillaVBO
 from src.utils.logger import get_logger, setup_logging
@@ -24,20 +23,24 @@ def compare_strategies(
     print("=" * 80)
 
     # Create comparison table
-    print("\n{:<20} {:>12} {:>10} {:>10} {:>10} {:>10} {:>10}".format(
-        "Strategy",
-        "Total Return",
-        "CAGR",
-        "Sharpe",
-        "Max DD",
-        "Win Rate",
-        "Trades",
-    ))
+    print(
+        "\n{:<20} {:>12} {:>10} {:>10} {:>10} {:>10} {:>10}".format(
+            "Strategy",
+            "Total Return",
+            "CAGR",
+            "Sharpe",
+            "Max DD",
+            "Win Rate",
+            "Trades",
+        )
+    )
     print("-" * 80)
 
     for name, result in results.items():
         m = result.metrics
-        print(f"{name:<20} {m.total_return * 100:>11.2f}% {m.cagr * 100:>9.2f}% {m.sharpe_ratio:>9.2f} {m.max_drawdown * 100:>9.2f}% {m.win_rate * 100:>9.2f}% {m.total_trades:>10}")
+        print(
+            f"{name:<20} {m.total_return * 100:>11.2f}% {m.cagr * 100:>9.2f}% {m.sharpe_ratio:>9.2f} {m.max_drawdown * 100:>9.2f}% {m.win_rate * 100:>9.2f}% {m.total_trades:>10}"
+        )
 
     # Find best strategy by different metrics
     print("\n" + "=" * 80)
@@ -46,7 +49,9 @@ def compare_strategies(
 
     # Best by Total Return
     best_return = max(results.items(), key=lambda x: x[1].metrics.total_return)
-    print(f"Highest Total Return: {best_return[0]} ({best_return[1].metrics.total_return * 100:.2f}%)")
+    print(
+        f"Highest Total Return: {best_return[0]} ({best_return[1].metrics.total_return * 100:.2f}%)"
+    )
 
     # Best by Sharpe Ratio
     best_sharpe = max(results.items(), key=lambda x: x[1].metrics.sharpe_ratio)
@@ -58,7 +63,9 @@ def compare_strategies(
 
     # Best by Win Rate
     best_winrate = max(results.items(), key=lambda x: x[1].metrics.win_rate)
-    print(f"Highest Win Rate:     {best_winrate[0]} ({best_winrate[1].metrics.win_rate * 100:.2f}%)")
+    print(
+        f"Highest Win Rate:     {best_winrate[0]} ({best_winrate[1].metrics.win_rate * 100:.2f}%)"
+    )
 
     # Best by Calmar Ratio
     best_calmar = max(results.items(), key=lambda x: x[1].metrics.calmar_ratio)

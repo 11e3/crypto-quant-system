@@ -1,6 +1,7 @@
 """
 Unit tests for PairTradingStrategy.
 """
+
 import numpy as np
 import pandas as pd
 
@@ -127,12 +128,8 @@ class TestPairTradingStrategy:
         strategy = PairTradingStrategy(lookback_period=20, spread_type="difference")
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
-        df1 = pd.DataFrame(
-            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
-        )
-        df2 = pd.DataFrame(
-            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
-        )
+        df1 = pd.DataFrame({"close": 100.0 + np.arange(100) * 0.1}, index=dates)
+        df2 = pd.DataFrame({"close": 50.0 + np.arange(100) * 0.05}, index=dates)
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
 
@@ -146,12 +143,8 @@ class TestPairTradingStrategy:
         strategy = PairTradingStrategy(lookback_period=20, entry_z_score=1.5)
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
-        df1 = pd.DataFrame(
-            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
-        )
-        df2 = pd.DataFrame(
-            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
-        )
+        df1 = pd.DataFrame({"close": 100.0 + np.arange(100) * 0.1}, index=dates)
+        df2 = pd.DataFrame({"close": 50.0 + np.arange(100) * 0.05}, index=dates)
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
         signals_df = strategy.generate_signals(merged_df)
@@ -171,12 +164,8 @@ class TestPairTradingStrategy:
         strategy = PairTradingStrategy(use_default_conditions=False)
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
-        df1 = pd.DataFrame(
-            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
-        )
-        df2 = pd.DataFrame(
-            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
-        )
+        df1 = pd.DataFrame({"close": 100.0 + np.arange(100) * 0.1}, index=dates)
+        df2 = pd.DataFrame({"close": 50.0 + np.arange(100) * 0.05}, index=dates)
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
         signals_df = strategy.generate_signals(merged_df)
@@ -195,12 +184,8 @@ class TestPairTradingStrategy:
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
         # Create data with large spread deviation
-        df1 = pd.DataFrame(
-            {"close": 100.0 + np.arange(100) * 2.0}, index=dates
-        )
-        df2 = pd.DataFrame(
-            {"close": 50.0 + np.arange(100) * 0.5}, index=dates
-        )
+        df1 = pd.DataFrame({"close": 100.0 + np.arange(100) * 2.0}, index=dates)
+        df2 = pd.DataFrame({"close": 50.0 + np.arange(100) * 0.5}, index=dates)
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
         signals_df = strategy.generate_signals(merged_df)
@@ -215,12 +200,8 @@ class TestPairTradingStrategy:
         strategy = PairTradingStrategy(lookback_period=20)
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
-        df1 = pd.DataFrame(
-            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
-        )
-        df2 = pd.DataFrame(
-            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
-        )
+        df1 = pd.DataFrame({"close": 100.0 + np.arange(100) * 0.1}, index=dates)
+        df2 = pd.DataFrame({"close": 50.0 + np.arange(100) * 0.05}, index=dates)
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
 
@@ -230,9 +211,9 @@ class TestPairTradingStrategy:
         # Z-score formula: (spread - mean) / std
         valid_data = merged_df.iloc[strategy.lookback_period :]
         if len(valid_data) > 0:
-            calculated_z = (
-                valid_data["spread"] - valid_data["spread_mean"]
-            ) / valid_data["spread_std"].replace(0, 1)
+            calculated_z = (valid_data["spread"] - valid_data["spread_mean"]) / valid_data[
+                "spread_std"
+            ].replace(0, 1)
             pd.testing.assert_series_equal(
                 valid_data["z_score"],
                 calculated_z,
@@ -245,12 +226,8 @@ class TestPairTradingStrategy:
         strategy = PairTradingStrategy(lookback_period=20)
 
         dates = pd.date_range("2020-01-01", periods=100, freq="D")
-        df1 = pd.DataFrame(
-            {"close": 100.0 + np.arange(100) * 0.1}, index=dates
-        )
-        df2 = pd.DataFrame(
-            {"close": 50.0 + np.arange(100) * 0.05}, index=dates
-        )
+        df1 = pd.DataFrame({"close": 100.0 + np.arange(100) * 0.1}, index=dates)
+        df2 = pd.DataFrame({"close": 50.0 + np.arange(100) * 0.05}, index=dates)
 
         merged_df = strategy.calculate_spread_for_pair(df1, df2)
 

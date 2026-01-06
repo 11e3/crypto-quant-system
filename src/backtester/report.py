@@ -135,12 +135,12 @@ def calculate_metrics(
             cagr_pct = -100.0
         else:
             # Use np.exp/log to calculate power, creating a safe context for overflows
-            with np.errstate(over='ignore'):
+            with np.errstate(over="ignore"):
                 # Formula: (ratio ^ (365/days)) - 1
                 cagr_pct_raw = (np.exp((365.0 / total_days) * np.log(ratio)) - 1) * 100
 
             # Cap infinite values caused by extreme extrapolations
-            cagr_pct = 1e+18 if np.isinf(cagr_pct_raw) else cagr_pct_raw
+            cagr_pct = 1e18 if np.isinf(cagr_pct_raw) else cagr_pct_raw
 
     # Daily returns
     daily_returns = np.diff(equity_curve) / equity_curve[:-1]
@@ -414,25 +414,31 @@ class BacktestReport:
 
         # Add risk metrics if available
         if self.risk_metrics:
-            output_lines.extend([
-                "\n[Portfolio Risk Metrics]",
-                f"   VaR (95%):      {self.risk_metrics.var_95*100:.2f}%",
-                f"   CVaR (95%):     {self.risk_metrics.cvar_95*100:.2f}%",
-                f"   VaR (99%):      {self.risk_metrics.var_99*100:.2f}%",
-                f"   CVaR (99%):    {self.risk_metrics.cvar_99*100:.2f}%",
-                f"   Portfolio Vol:  {self.risk_metrics.portfolio_volatility*100:.2f}%",
-            ])
+            output_lines.extend(
+                [
+                    "\n[Portfolio Risk Metrics]",
+                    f"   VaR (95%):      {self.risk_metrics.var_95 * 100:.2f}%",
+                    f"   CVaR (95%):     {self.risk_metrics.cvar_95 * 100:.2f}%",
+                    f"   VaR (99%):      {self.risk_metrics.var_99 * 100:.2f}%",
+                    f"   CVaR (99%):    {self.risk_metrics.cvar_99 * 100:.2f}%",
+                    f"   Portfolio Vol:  {self.risk_metrics.portfolio_volatility * 100:.2f}%",
+                ]
+            )
             if self.risk_metrics.avg_correlation != 0.0:
-                output_lines.extend([
-                    f"   Avg Correlation: {self.risk_metrics.avg_correlation:.3f}",
-                    f"   Max Correlation: {self.risk_metrics.max_correlation:.3f}",
-                    f"   Min Correlation: {self.risk_metrics.min_correlation:.3f}",
-                ])
+                output_lines.extend(
+                    [
+                        f"   Avg Correlation: {self.risk_metrics.avg_correlation:.3f}",
+                        f"   Max Correlation: {self.risk_metrics.max_correlation:.3f}",
+                        f"   Min Correlation: {self.risk_metrics.min_correlation:.3f}",
+                    ]
+                )
             if self.risk_metrics.max_position_pct > 0:
-                output_lines.extend([
-                    f"   Max Position %:  {self.risk_metrics.max_position_pct*100:.2f}%",
-                    f"   Position HHI:     {self.risk_metrics.position_concentration:.3f}",
-                ])
+                output_lines.extend(
+                    [
+                        f"   Max Position %:  {self.risk_metrics.max_position_pct * 100:.2f}%",
+                        f"   Position HHI:     {self.risk_metrics.position_concentration:.3f}",
+                    ]
+                )
             if self.risk_metrics.portfolio_beta is not None:
                 output_lines.append(f"   Portfolio Beta:  {self.risk_metrics.portfolio_beta:.2f}")
 
@@ -670,12 +676,14 @@ class BacktestReport:
 
         # Add risk metrics if available
         if self.risk_metrics:
-            data.extend([
-                ["", ""],  # Separator
-                ["VaR (95%)", f"{self.risk_metrics.var_95*100:.2f}%"],
-                ["CVaR (95%)", f"{self.risk_metrics.cvar_95*100:.2f}%"],
-                ["Portfolio Vol", f"{self.risk_metrics.portfolio_volatility*100:.2f}%"],
-            ])
+            data.extend(
+                [
+                    ["", ""],  # Separator
+                    ["VaR (95%)", f"{self.risk_metrics.var_95 * 100:.2f}%"],
+                    ["CVaR (95%)", f"{self.risk_metrics.cvar_95 * 100:.2f}%"],
+                    ["Portfolio Vol", f"{self.risk_metrics.portfolio_volatility * 100:.2f}%"],
+                ]
+            )
             if self.risk_metrics.avg_correlation != 0.0:
                 data.append(["Avg Correlation", f"{self.risk_metrics.avg_correlation:.3f}"])
 
@@ -782,7 +790,7 @@ def generate_report(
     )
 
     # Add risk metrics to report if available
-    if hasattr(result, 'risk_metrics') and result.risk_metrics:
+    if hasattr(result, "risk_metrics") and result.risk_metrics:
         report.risk_metrics = result.risk_metrics
 
     report.print_summary()
@@ -802,7 +810,10 @@ def generate_report(
 
         if format == "html":
             from src.backtester.html_report import generate_html_report
-            generate_html_report(report, save_path, strategy_obj=strategy_obj, config=config, tickers=tickers)
+
+            generate_html_report(
+                report, save_path, strategy_obj=strategy_obj, config=config, tickers=tickers
+            )
         else:
             report.plot_full_report(save_path=save_path, show=show)
     elif show:

@@ -75,7 +75,12 @@ def optimize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
                     df[col] = df[col].astype(np.int32)
                 elif c_min > np.iinfo(np.int64).min and c_max < np.iinfo(np.int64).max:
                     df[col] = df[col].astype(np.int64)
-            elif str(col_type)[:5] == "float" and col in ["open", "high", "low", "close", "volume", "target", "sma", "sma_trend"] or c_min > np.finfo(np.float32).min and c_max < np.finfo(np.float32).max:
+            elif (
+                str(col_type)[:5] == "float"
+                and col in ["open", "high", "low", "close", "volume", "target", "sma", "sma_trend"]
+                or c_min > np.finfo(np.float32).min
+                and c_max < np.finfo(np.float32).max
+            ):
                 df[col] = df[col].astype(np.float32)
 
     end_memory = df.memory_usage(deep=True).sum() / 1024**2

@@ -92,9 +92,7 @@ class TestMeanReversionStrategy:
         assert "bb_lower" in indicators
         assert "rsi" in indicators
 
-    def test_calculate_indicators(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_calculate_indicators(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test indicator calculation."""
         strategy = MeanReversionStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -112,9 +110,7 @@ class TestMeanReversionStrategy:
         assert df["bb_lower"].notna().sum() > 0
         assert df["rsi"].notna().sum() > 0
 
-    def test_calculate_indicators_custom_periods(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_calculate_indicators_custom_periods(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test indicator calculation with custom periods."""
         strategy = MeanReversionStrategy(
             sma_period=30,
@@ -129,9 +125,7 @@ class TestMeanReversionStrategy:
         assert "bb_upper" in df.columns
         assert "rsi" in df.columns
 
-    def test_generate_signals(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation."""
         strategy = MeanReversionStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -145,9 +139,7 @@ class TestMeanReversionStrategy:
         assert df["entry_signal"].dtype == bool
         assert df["exit_signal"].dtype == bool
 
-    def test_generate_signals_empty_conditions(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_empty_conditions(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with no conditions."""
         strategy = MeanReversionStrategy(use_default_conditions=False)
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -158,9 +150,7 @@ class TestMeanReversionStrategy:
         # All exit signals should be False (no conditions = no exit)
         assert not df["exit_signal"].any()
 
-    def test_generate_signals_bollinger_lower_band(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_bollinger_lower_band(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with only Bollinger lower band condition."""
         strategy = MeanReversionStrategy(
             entry_conditions=[BollingerLowerBandCondition()],
@@ -191,9 +181,7 @@ class TestMeanReversionStrategy:
         if len(exit_rows) > 0:
             assert (exit_rows["high"] >= exit_rows["bb_upper"]).all()
 
-    def test_generate_signals_price_below_sma(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_price_below_sma(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with price below SMA condition."""
         strategy = MeanReversionStrategy(
             entry_conditions=[PriceBelowSMACondition(sma_key="sma")],
@@ -207,9 +195,7 @@ class TestMeanReversionStrategy:
         if len(entry_rows) > 0:
             assert (entry_rows["close"] < entry_rows["sma"]).all()
 
-    def test_generate_signals_rsi_oversold(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_rsi_oversold(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with RSI oversold condition."""
         strategy = MeanReversionStrategy(
             entry_conditions=[RSIOversoldCondition(oversold_threshold=30.0)],
@@ -223,9 +209,7 @@ class TestMeanReversionStrategy:
         if len(entry_rows) > 0:
             assert (entry_rows["rsi"] < 30.0).all()
 
-    def test_generate_signals_multiple_conditions(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_multiple_conditions(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with multiple entry conditions."""
         strategy = MeanReversionStrategy(
             entry_conditions=[
@@ -243,9 +227,7 @@ class TestMeanReversionStrategy:
             assert (entry_rows["close"] < entry_rows["sma"]).all()
             assert (entry_rows["low"] <= entry_rows["bb_lower"]).all()
 
-    def test_bollinger_bands_calculation(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_bollinger_bands_calculation(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test Bollinger Bands calculation."""
         strategy = MeanReversionStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -265,18 +247,12 @@ class TestMeanReversionStrategy:
             )
 
         # bb_upper should be >= bb_middle >= bb_lower
-        valid_rows = df[
-            df["bb_upper"].notna()
-            & df["bb_middle"].notna()
-            & df["bb_lower"].notna()
-        ]
+        valid_rows = df[df["bb_upper"].notna() & df["bb_middle"].notna() & df["bb_lower"].notna()]
         if len(valid_rows) > 0:
             assert (valid_rows["bb_upper"] >= valid_rows["bb_middle"]).all()
             assert (valid_rows["bb_middle"] >= valid_rows["bb_lower"]).all()
 
-    def test_rsi_calculation_range(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_rsi_calculation_range(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test that RSI values are in valid range (0-100)."""
         strategy = MeanReversionStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -304,9 +280,7 @@ class TestSimpleMeanReversionStrategy:
         strategy = SimpleMeanReversionStrategy(name="MySimpleMeanReversion")
         assert strategy.name == "MySimpleMeanReversion"
 
-    def test_simple_mean_reversion_signals(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_simple_mean_reversion_signals(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test SimpleMeanReversionStrategy signal generation."""
         strategy = SimpleMeanReversionStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())

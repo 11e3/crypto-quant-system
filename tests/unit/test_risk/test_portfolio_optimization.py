@@ -18,6 +18,7 @@ from src.risk.portfolio_optimization import (
 # Fixtures
 # -------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sample_returns_df() -> pd.DataFrame:
     """Generate a sample DataFrame of asset returns."""
@@ -33,20 +34,33 @@ def sample_returns_df() -> pd.DataFrame:
     )
     return returns
 
+
 @pytest.fixture
 def sample_trades_df() -> pd.DataFrame:
     """Generate a sample DataFrame of trade results for Kelly."""
     return pd.DataFrame(
         {
-            "ticker": ["ASSET1", "ASSET1", "ASSET2", "ASSET1", "ASSET2", "ASSET3", "ASSET1", "ASSET2", "ASSET3"],
+            "ticker": [
+                "ASSET1",
+                "ASSET1",
+                "ASSET2",
+                "ASSET1",
+                "ASSET2",
+                "ASSET3",
+                "ASSET1",
+                "ASSET2",
+                "ASSET3",
+            ],
             "pnl_pct": [10.0, -5.0, 15.0, 8.0, -7.0, 20.0, -3.0, 10.0, -10.0],
             "pnl": [1000, -500, 1500, 800, -700, 2000, -300, 1000, -1000],
         }
     )
 
+
 # -------------------------------------------------------------------------
 # Test Classes
 # -------------------------------------------------------------------------
+
 
 class TestPortfolioWeights:
     """Tests for the PortfolioWeights dataclass."""
@@ -95,9 +109,7 @@ class TestPortfolioOptimizer:
         assert isinstance(weights, PortfolioWeights)
         assert weights.expected_return == pytest.approx(target_return, rel=1e-3)
 
-    def test_optimize_mpt_empty_returns_df(
-        self, optimizer: PortfolioOptimizer
-    ) -> None:
+    def test_optimize_mpt_empty_returns_df(self, optimizer: PortfolioOptimizer) -> None:
         with pytest.raises(ValueError, match="Returns DataFrame is empty"):
             optimizer.optimize_mpt(pd.DataFrame())
 
@@ -110,12 +122,23 @@ class TestPortfolioOptimizer:
 
     @pytest.mark.parametrize("max_w, min_w", [(0.6, 0.1), (0.4, 0.0)])
     def test_optimize_mpt_constraints(
-        self, optimizer: PortfolioOptimizer, sample_returns_df: pd.DataFrame, max_w: float, min_w: float, mocker
+        self,
+        optimizer: PortfolioOptimizer,
+        sample_returns_df: pd.DataFrame,
+        max_w: float,
+        min_w: float,
+        mocker,
     ) -> None:
         # 가짜 최적화 결과 생성
         mock_weights = np.array([0.3, 0.3, 0.4])
         mock_result = OptimizeResult(
-            x=mock_weights, success=True, message="Ok", fun=0, nit=0, jac=np.array([]), hess_inv=None
+            x=mock_weights,
+            success=True,
+            message="Ok",
+            fun=0,
+            nit=0,
+            jac=np.array([]),
+            hess_inv=None,
         )
 
         # 중요: minimize 패치 경로는 소스 코드의 import 방식에 따라 다릅니다.
@@ -123,20 +146,21 @@ class TestPortfolioOptimizer:
         # Case B: 소스 코드가 `import scipy.optimize`를 쓰는 경우 -> "scipy.optimize.minimize"로 변경
         mocker.patch("src.risk.portfolio_optimization.minimize", return_value=mock_result)
 
-        weights = optimizer.optimize_mpt(
-            sample_returns_df, max_weight=max_w, min_weight=min_w
-        )
+        weights = optimizer.optimize_mpt(sample_returns_df, max_weight=max_w, min_weight=min_w)
         assert all(min_w <= w <= max_w for w in weights.weights.values())
 
     @pytest.mark.parametrize("method", ["SLSQP"])
     @pytest.mark.parametrize("success_status", [False])
     def test_optimize_mpt_optimization_failure(
-        self, optimizer: PortfolioOptimizer, sample_returns_df: pd.DataFrame, method, success_status, mocker
+        self,
+        optimizer: PortfolioOptimizer,
+        sample_returns_df: pd.DataFrame,
+        method,
+        success_status,
+        mocker,
     ) -> None:
         mock_result = OptimizeResult(
-            x=np.array([0.33, 0.33, 0.34]),
-            success=success_status,
-            message="Optimization failed"
+            x=np.array([0.33, 0.33, 0.34]), success=success_status, message="Optimization failed"
         )
         mocker.patch("src.risk.portfolio_optimization.minimize", return_value=mock_result)
 
@@ -173,28 +197,24 @@ class TestPortfolioOptimizer:
     # Integration Tests (Using optimize_portfolio wrapper)
     # -------------------------------------------------------------------------
 
-    def test_optimize_portfolio_mpt(
-        self, sample_returns_df: pd.DataFrame, mocker
-    ) -> None:
+    def test_optimize_portfolio_mpt(self, sample_returns_df: pd.DataFrame, mocker) -> None:
         """Test optimize_portfolio wrapper calls the correct class method."""
         # 문자열 경로 대신 객체를 직접 패치 (더 안전함)
         mock_method = mocker.patch.object(
             PortfolioOptimizer,
             "optimize_mpt",
-            return_value=PortfolioWeights(weights={}, method="mpt")
+            return_value=PortfolioWeights(weights={}, method="mpt"),
         )
 
         result = optimize_portfolio(sample_returns_df, method="mpt")
         assert result.method == "mpt"
         mock_method.assert_called_once()
 
-    def test_optimize_portfolio_risk_parity(
-        self, sample_returns_df: pd.DataFrame, mocker
-    ) -> None:
+    def test_optimize_portfolio_risk_parity(self, sample_returns_df: pd.DataFrame, mocker) -> None:
         mock_method = mocker.patch.object(
             PortfolioOptimizer,
             "optimize_risk_parity",
-            return_value=PortfolioWeights(weights={}, method="risk_parity")
+            return_value=PortfolioWeights(weights={}, method="risk_parity"),
         )
 
         result = optimize_portfolio(sample_returns_df, method="risk_parity")
@@ -207,7 +227,7 @@ class TestPortfolioOptimizer:
         mock_method = mocker.patch.object(
             PortfolioOptimizer,
             "optimize_kelly_portfolio",
-            return_value={"ASSET1": 5000.0, "ASSET2": 3000.0}
+            return_value={"ASSET1": 5000.0, "ASSET2": 3000.0},
         )
 
         result = optimize_portfolio(

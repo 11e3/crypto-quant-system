@@ -79,9 +79,7 @@ class MomentumStrategy(Strategy):
             ]
             default_exit = [
                 PriceBelowSMACondition(sma_key="sma"),
-                RSIOverboughtCondition(
-                    rsi_key="rsi", overbought_threshold=rsi_overbought
-                ),
+                RSIOverboughtCondition(rsi_key="rsi", overbought_threshold=rsi_overbought),
                 MACDBearishCondition(),
             ]
 

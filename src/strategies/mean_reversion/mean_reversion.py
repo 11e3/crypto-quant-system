@@ -75,16 +75,12 @@ class MeanReversionStrategy(Strategy):
             default_entry = [
                 PriceBelowSMACondition(sma_key="sma"),
                 BollingerLowerBandCondition(),
-                RSIOversoldCondition(
-                    rsi_key="rsi", oversold_threshold=rsi_oversold
-                ),
+                RSIOversoldCondition(rsi_key="rsi", oversold_threshold=rsi_oversold),
             ]
             default_exit = [
                 PriceAboveSMACondition(sma_key="sma"),
                 BollingerUpperBandCondition(),
-                RSIOverboughtCondition(
-                    rsi_key="rsi", overbought_threshold=rsi_overbought
-                ),
+                RSIOverboughtCondition(rsi_key="rsi", overbought_threshold=rsi_overbought),
             ]
 
         # Merge with custom conditions

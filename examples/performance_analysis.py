@@ -5,7 +5,6 @@ This example demonstrates how to analyze and compare strategy performance.
 It shows various performance metrics and how to interpret them.
 """
 
-
 from src.backtester import BacktestConfig, run_backtest
 from src.backtester.report import PerformanceMetrics
 from src.strategies.volatility_breakout import VanillaVBO

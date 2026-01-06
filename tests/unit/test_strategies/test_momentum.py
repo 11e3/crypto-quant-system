@@ -91,9 +91,7 @@ class TestMomentumStrategy:
         assert "macd_signal" in indicators
         assert "macd_histogram" in indicators
 
-    def test_calculate_indicators(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_calculate_indicators(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test indicator calculation."""
         strategy = MomentumStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -110,9 +108,7 @@ class TestMomentumStrategy:
         assert df["rsi"].notna().sum() > 0
         assert df["macd"].notna().sum() > 0
 
-    def test_calculate_indicators_custom_periods(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_calculate_indicators_custom_periods(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test indicator calculation with custom periods."""
         strategy = MomentumStrategy(
             sma_period=10,
@@ -128,9 +124,7 @@ class TestMomentumStrategy:
         assert "rsi" in df.columns
         assert "macd" in df.columns
 
-    def test_generate_signals(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation."""
         strategy = MomentumStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -144,9 +138,7 @@ class TestMomentumStrategy:
         assert df["entry_signal"].dtype == bool
         assert df["exit_signal"].dtype == bool
 
-    def test_generate_signals_empty_conditions(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_empty_conditions(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with no conditions."""
         strategy = MomentumStrategy(use_default_conditions=False)
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -157,9 +149,7 @@ class TestMomentumStrategy:
         # All exit signals should be False (no conditions = no exit)
         assert not df["exit_signal"].any()
 
-    def test_generate_signals_price_above_sma(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_price_above_sma(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with only price above SMA condition."""
         strategy = MomentumStrategy(
             entry_conditions=[PriceAboveSMACondition(sma_key="sma")],
@@ -173,9 +163,7 @@ class TestMomentumStrategy:
         if len(entry_rows) > 0:
             assert (entry_rows["close"] > entry_rows["sma"]).all()
 
-    def test_generate_signals_price_below_sma_exit(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_price_below_sma_exit(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with SMA exit condition."""
         strategy = MomentumStrategy(
             entry_conditions=[],
@@ -190,9 +178,7 @@ class TestMomentumStrategy:
         if len(exit_rows) > 0:
             assert (exit_rows["close"] < exit_rows["sma"]).all()
 
-    def test_generate_signals_macd_bullish(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_macd_bullish(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with MACD bullish condition."""
         strategy = MomentumStrategy(
             entry_conditions=[MACDBullishCondition()],
@@ -206,9 +192,7 @@ class TestMomentumStrategy:
         if len(entry_rows) > 0:
             assert (entry_rows["macd"] > entry_rows["macd_signal"]).all()
 
-    def test_generate_signals_rsi_overbought_exit(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_rsi_overbought_exit(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with RSI overbought exit condition."""
         strategy = MomentumStrategy(
             entry_conditions=[],
@@ -223,9 +207,7 @@ class TestMomentumStrategy:
         if len(exit_rows) > 0:
             assert (exit_rows["rsi"] > 70.0).all()
 
-    def test_generate_signals_multiple_conditions(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_generate_signals_multiple_conditions(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test signal generation with multiple entry conditions."""
         strategy = MomentumStrategy(
             entry_conditions=[
@@ -243,9 +225,7 @@ class TestMomentumStrategy:
             assert (entry_rows["close"] > entry_rows["sma"]).all()
             assert (entry_rows["macd"] > entry_rows["macd_signal"]).all()
 
-    def test_rsi_calculation_range(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_rsi_calculation_range(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test that RSI values are in valid range (0-100)."""
         strategy = MomentumStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -255,9 +235,7 @@ class TestMomentumStrategy:
             assert (valid_rsi >= 0).all()
             assert (valid_rsi <= 100).all()
 
-    def test_macd_calculation(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_macd_calculation(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test MACD calculation."""
         strategy = MomentumStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())
@@ -270,9 +248,7 @@ class TestMomentumStrategy:
         # MACD histogram should equal macd - signal
         valid_rows = df[df["macd"].notna() & df["macd_signal"].notna()]
         if len(valid_rows) > 0:
-            calculated_histogram = (
-                valid_rows["macd"] - valid_rows["macd_signal"]
-            )
+            calculated_histogram = valid_rows["macd"] - valid_rows["macd_signal"]
             pd.testing.assert_series_equal(
                 valid_rows["macd_histogram"],
                 calculated_histogram,
@@ -297,9 +273,7 @@ class TestSimpleMomentumStrategy:
         strategy = SimpleMomentumStrategy(name="MySimpleMomentum")
         assert strategy.name == "MySimpleMomentum"
 
-    def test_simple_momentum_signals(
-        self, sample_ohlcv_data: pd.DataFrame
-    ) -> None:
+    def test_simple_momentum_signals(self, sample_ohlcv_data: pd.DataFrame) -> None:
         """Test SimpleMomentumStrategy signal generation."""
         strategy = SimpleMomentumStrategy()
         df = strategy.calculate_indicators(sample_ohlcv_data.copy())

@@ -83,7 +83,7 @@ class IndicatorCache:
                                 self._access_times = OrderedDict(
                                     sorted(
                                         access_times_data.items(),
-                                        key=lambda x: x[1]  # Sort by access time
+                                        key=lambda x: x[1],  # Sort by access time
                                     )
                                 )
                         return data

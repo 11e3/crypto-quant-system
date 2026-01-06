@@ -21,8 +21,8 @@ def mock_strategy_factory():
     """Mock strategy factory function."""
     mock_strategy = MagicMock(spec=Strategy)
     mock_strategy.name = "MockStrategy"
-    mock_strategy.param1 = 10 # Example param for name generation
-    mock_strategy.param2 = "A" # Example param for name generation
+    mock_strategy.param1 = 10  # Example param for name generation
+    mock_strategy.param2 = "A"  # Example param for name generation
     return MagicMock(return_value=mock_strategy)
 
 
@@ -113,15 +113,17 @@ class TestParameterOptimizer:
     ) -> None:
         assert optimizer._extract_metric(mock_backtest_result, "sharpe_ratio") == 1.5
         assert optimizer._extract_metric(mock_backtest_result, "cagr") == 10.0
-        assert optimizer._extract_metric(mock_backtest_result, "invalid_metric") == 1.5 # Falls back to sharpe_ratio
+        assert (
+            optimizer._extract_metric(mock_backtest_result, "invalid_metric") == 1.5
+        )  # Falls back to sharpe_ratio
 
     def test_parse_params_from_name(self, optimizer: ParameterOptimizer) -> None:
         param_names = ["p1", "p2"]
-        name = "MockStrategy_1_A" # Format generated in _grid_search
+        name = "MockStrategy_1_A"  # Format generated in _grid_search
         parsed_params = optimizer._parse_params_from_name(name, param_names)
         # Simplified parsing expects numbers, so it should extract 1 and skip A
         # This implementation detail makes testing a bit tricky, might be better to store params
-        assert parsed_params == {"p1": 1} # Only p1=1 is parsed, 'A' is skipped
+        assert parsed_params == {"p1": 1}  # Only p1=1 is parsed, 'A' is skipped
 
         name_complex = "MockStrategy_5_10_True"
         param_names_complex = ["sma", "trend"]
@@ -157,7 +159,7 @@ class TestParameterOptimizer:
         result = optimizer._grid_search(param_grid_simple, "sharpe_ratio", maximize=True)
 
         assert isinstance(result, OptimizationResult)
-        assert result.best_score == 1.5 # All mock results have sharpe_ratio 1.5
+        assert result.best_score == 1.5  # All mock results have sharpe_ratio 1.5
         assert len(result.all_results) == 4
         mock_parallel_backtest_runner.assert_called_once()
         mock_runner_instance.run.assert_called_once()
@@ -173,7 +175,7 @@ class TestParameterOptimizer:
         param_grid_simple: dict[str, list[Any]],
     ) -> None:
         # Simulate random choice returning specific values for determinism
-        mock_random_choice.side_effect = [1, "A"] * 5 # Simulate 5 iterations
+        mock_random_choice.side_effect = [1, "A"] * 5  # Simulate 5 iterations
 
         mock_runner_instance = mock_parallel_backtest_runner.return_value
         # Simulate runner returning results for each task
@@ -184,15 +186,15 @@ class TestParameterOptimizer:
         # Mock strategy factory to ensure strategy.name is as expected by the search
         optimizer.strategy_factory.return_value.name = "MockStrategy"
 
-
-        result = optimizer._random_search(param_grid_simple, "sharpe_ratio", maximize=True, n_iter=5)
+        result = optimizer._random_search(
+            param_grid_simple, "sharpe_ratio", maximize=True, n_iter=5
+        )
 
         assert isinstance(result, OptimizationResult)
         assert result.best_score == 1.5
         assert len(result.all_results) == 5
-        assert mock_random_choice.call_count == 5 * len(param_grid_simple) # 5 iter * 2 params
+        assert mock_random_choice.call_count == 5 * len(param_grid_simple)  # 5 iter * 2 params
         mock_parallel_backtest_runner.assert_called_once()
-
 
     def test_optimize_method_dispatch(
         self,

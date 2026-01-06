@@ -51,8 +51,7 @@ class MonteCarloResult:
 
     def __repr__(self) -> str:
         return (
-            f"MonteCarloResult(n_simulations={self.n_simulations}, "
-            f"mean_cagr={self.mean_cagr:.2f}%)"
+            f"MonteCarloResult(n_simulations={self.n_simulations}, mean_cagr={self.mean_cagr:.2f}%)"
         )
 
 
@@ -93,9 +92,7 @@ class MonteCarloSimulator:
             equity = result.equity_curve
             self.daily_returns = np.diff(equity) / equity[:-1]
             # Remove NaN and Inf values
-            self.daily_returns = self.daily_returns[
-                np.isfinite(self.daily_returns)
-            ]
+            self.daily_returns = self.daily_returns[np.isfinite(self.daily_returns)]
         else:
             self.daily_returns = np.array([])
 
@@ -135,9 +132,7 @@ class MonteCarloSimulator:
         else:
             raise ValueError(f"Unknown simulation method: {method}")
 
-    def _bootstrap_simulation(
-        self, n_simulations: int, n_periods: int
-    ) -> MonteCarloResult:
+    def _bootstrap_simulation(self, n_simulations: int, n_periods: int) -> MonteCarloResult:
         """Bootstrap method: resample from historical returns."""
         if len(self.daily_returns) == 0:
             # Fallback: use zero returns
@@ -150,9 +145,7 @@ class MonteCarloSimulator:
 
         return self._process_simulations(simulated_returns, n_simulations)
 
-    def _parametric_simulation(
-        self, n_simulations: int, n_periods: int
-    ) -> MonteCarloResult:
+    def _parametric_simulation(self, n_simulations: int, n_periods: int) -> MonteCarloResult:
         """Parametric method: sample from normal distribution."""
         if len(self.daily_returns) == 0:
             # Fallback: use zero mean, small std
@@ -196,7 +189,8 @@ class MonteCarloSimulator:
             # CAGR
             if len(equity_curve) > 0 and equity_curve[-1] > 0 and n_periods > 0:
                 simulated_cagrs[i] = (
-                    (equity_curve[-1] / self.initial_capital) ** (annualization_factor / n_periods) - 1
+                    (equity_curve[-1] / self.initial_capital) ** (annualization_factor / n_periods)
+                    - 1
                 ) * 100
             else:
                 simulated_cagrs[i] = -100.0
@@ -208,9 +202,9 @@ class MonteCarloSimulator:
 
             # Sharpe Ratio
             if len(returns) > 0 and np.std(returns) > 0:
-                simulated_sharpes[i] = (
-                    np.mean(returns) / np.std(returns)
-                ) * np.sqrt(annualization_factor)
+                simulated_sharpes[i] = (np.mean(returns) / np.std(returns)) * np.sqrt(
+                    annualization_factor
+                )
             else:
                 simulated_sharpes[i] = 0.0
 
@@ -232,12 +226,8 @@ class MonteCarloSimulator:
 
         # Percentiles
         percentiles = [5, 25, 50, 75, 95]
-        cagr_percentiles = {
-            p: np.percentile(simulated_cagrs, p) for p in percentiles
-        }
-        mdd_percentiles = {
-            p: np.percentile(simulated_mdds, p) for p in percentiles
-        }
+        cagr_percentiles = {p: np.percentile(simulated_cagrs, p) for p in percentiles}
+        mdd_percentiles = {p: np.percentile(simulated_mdds, p) for p in percentiles}
 
         return MonteCarloResult(
             original_result=self.result,
@@ -275,9 +265,7 @@ class MonteCarloSimulator:
         negative_count = np.sum(mc_result.simulated_cagrs < 0)
         return negative_count / mc_result.n_simulations
 
-    def value_at_risk(
-        self, mc_result: MonteCarloResult, confidence: float = 0.95
-    ) -> float:
+    def value_at_risk(self, mc_result: MonteCarloResult, confidence: float = 0.95) -> float:
         """
         Calculate Value at Risk (VaR).
 
@@ -307,9 +295,7 @@ class MonteCarloSimulator:
         percentile = (1 - confidence) * 100
         var = np.percentile(mc_result.simulated_cagrs, percentile)
         # Average of returns below VaR
-        below_var = mc_result.simulated_cagrs[
-            mc_result.simulated_cagrs <= var
-        ]
+        below_var = mc_result.simulated_cagrs[mc_result.simulated_cagrs <= var]
         return np.mean(below_var) if len(below_var) > 0 else var
 
 
@@ -345,6 +331,4 @@ def run_monte_carlo(
             print(f"Probability of loss: {mc_result.probability_of_loss(mc_result)*100:.1f}%")
     """
     simulator = MonteCarloSimulator(result)
-    return simulator.simulate(
-        n_simulations=n_simulations, method=method, random_seed=random_seed
-    )
+    return simulator.simulate(n_simulations=n_simulations, method=method, random_seed=random_seed)

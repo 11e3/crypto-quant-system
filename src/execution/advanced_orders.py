@@ -229,7 +229,7 @@ class AdvancedOrderManager:
         self.orders[order_id] = order
         logger.info(
             f"Created trailing stop order: {ticker} @ {entry_price:.0f}, "
-            f"trailing {trailing_stop_pct*100:.1f}% from peak"
+            f"trailing {trailing_stop_pct * 100:.1f}% from peak"
         )
 
         return order
@@ -269,13 +269,13 @@ class AdvancedOrderManager:
                 continue
 
             # Update trailing stop highest price
-            if order.order_type == OrderType.TRAILING_STOP and (order.highest_price is None or check_high > order.highest_price):
+            if order.order_type == OrderType.TRAILING_STOP and (
+                order.highest_price is None or check_high > order.highest_price
+            ):
                 order.highest_price = check_high
                 # Update stop loss price to trail from new high
                 if order.trailing_stop_pct is not None:
-                    order.stop_loss_price = order.highest_price * (
-                        1 - order.trailing_stop_pct
-                    )
+                    order.stop_loss_price = order.highest_price * (1 - order.trailing_stop_pct)
                     logger.debug(
                         f"Updated trailing stop for {ticker}: "
                         f"high={order.highest_price:.0f}, "
@@ -360,5 +360,7 @@ class AdvancedOrderManager:
                 count += 1
 
         if count > 0:
-            logger.info(f"Cancelled {count} advanced order(s)" + (f" for {ticker}" if ticker else ""))
+            logger.info(
+                f"Cancelled {count} advanced order(s)" + (f" for {ticker}" if ticker else "")
+            )
         return count

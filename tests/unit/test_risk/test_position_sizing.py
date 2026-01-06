@@ -68,8 +68,12 @@ def test_volatility_based_sizing(sample_historical_data: pd.DataFrame) -> None:
     assert size_zero_vol == _equal_sizing(available_cash, available_slots)
 
     # NaN volatility (e.g., from constant or single value returns)
-    nan_vol_data = pd.DataFrame({"close": [100, 100, 100]}, index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]))
-    size_nan_vol = _volatility_based_sizing(available_cash, available_slots, nan_vol_data, lookback_period=2)
+    nan_vol_data = pd.DataFrame(
+        {"close": [100, 100, 100]}, index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"])
+    )
+    size_nan_vol = _volatility_based_sizing(
+        available_cash, available_slots, nan_vol_data, lookback_period=2
+    )
     assert size_nan_vol == _equal_sizing(available_cash, available_slots)
 
 
@@ -235,7 +239,10 @@ class TestCalculatePositionSize:
     def test_calculate_position_size_insufficient_data_fallback(self) -> None:
         """Test fallback to equal sizing when historical data is insufficient."""
         # Create a DataFrame with less than lookback_period data
-        insufficient_data = pd.DataFrame({"close": [100, 101, 102]}, index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]))
+        insufficient_data = pd.DataFrame(
+            {"close": [100, 101, 102]},
+            index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]),
+        )
         size = calculate_position_size(
             method="volatility",  # Requires historical data
             available_cash=1000,
@@ -247,7 +254,9 @@ class TestCalculatePositionSize:
         )
         assert size == 500  # Should fall back to equal sizing
 
-    def test_calculate_position_size_unknown_method(self, sample_historical_data: pd.DataFrame) -> None:
+    def test_calculate_position_size_unknown_method(
+        self, sample_historical_data: pd.DataFrame
+    ) -> None:
         """Test unknown position sizing method fallback."""
         size = calculate_position_size(
             method="unknown_method",  # type: ignore
@@ -264,7 +273,9 @@ class TestCalculateMultiAssetPositionSizes:
     """Test cases for calculate_multi_asset_position_sizes function."""
 
     @pytest.fixture
-    def multi_asset_historical_data(self, sample_historical_data: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    def multi_asset_historical_data(
+        self, sample_historical_data: pd.DataFrame
+    ) -> dict[str, pd.DataFrame]:
         """Generate sample historical data for multiple assets."""
         data_btc = sample_historical_data.copy()
         data_btc["close"] = data_btc["close"] * 10  # Different scale
@@ -272,7 +283,9 @@ class TestCalculateMultiAssetPositionSizes:
         data_eth["close"] = data_eth["close"] * 5  # Different scale
         return {"BTC": data_btc, "ETH": data_eth}
 
-    def test_multi_asset_equal_sizing(self, multi_asset_historical_data: dict[str, pd.DataFrame]) -> None:
+    def test_multi_asset_equal_sizing(
+        self, multi_asset_historical_data: dict[str, pd.DataFrame]
+    ) -> None:
         """Test equal sizing for multiple assets."""
         available_cash = 10000
         tickers = ["BTC", "ETH"]
@@ -286,7 +299,9 @@ class TestCalculateMultiAssetPositionSizes:
         )
         assert sizes == {"BTC": 5000, "ETH": 5000}
 
-    def test_multi_asset_volatility_sizing(self, multi_asset_historical_data: dict[str, pd.DataFrame]) -> None:
+    def test_multi_asset_volatility_sizing(
+        self, multi_asset_historical_data: dict[str, pd.DataFrame]
+    ) -> None:
         """Test volatility-based sizing for multiple assets."""
         available_cash = 10000
         tickers = ["BTC", "ETH"]
@@ -304,7 +319,9 @@ class TestCalculateMultiAssetPositionSizes:
         assert sizes["BTC"] > 0 and sizes["ETH"] > 0
         assert sum(sizes.values()) == pytest.approx(available_cash)
 
-    def test_multi_asset_fixed_risk_sizing(self, multi_asset_historical_data: dict[str, pd.DataFrame]) -> None:
+    def test_multi_asset_fixed_risk_sizing(
+        self, multi_asset_historical_data: dict[str, pd.DataFrame]
+    ) -> None:
         """Test fixed-risk sizing for multiple assets."""
         available_cash = 10000
         tickers = ["BTC", "ETH"]
@@ -322,9 +339,13 @@ class TestCalculateMultiAssetPositionSizes:
         assert isinstance(sizes, dict)
         assert "BTC" in sizes and "ETH" in sizes
         assert sizes["BTC"] > 0 and sizes["ETH"] > 0
-        assert sum(sizes.values()) <= available_cash + 0.01  # Can be slightly less due to normalization
+        assert (
+            sum(sizes.values()) <= available_cash + 0.01
+        )  # Can be slightly less due to normalization
 
-    def test_multi_asset_inverse_volatility_sizing(self, multi_asset_historical_data: dict[str, pd.DataFrame]) -> None:
+    def test_multi_asset_inverse_volatility_sizing(
+        self, multi_asset_historical_data: dict[str, pd.DataFrame]
+    ) -> None:
         """Test inverse volatility sizing for multiple assets."""
         available_cash = 10000
         tickers = ["BTC", "ETH"]
@@ -349,8 +370,14 @@ class TestCalculateMultiAssetPositionSizes:
         current_prices = {"BTC": 1000, "ETH": 500}
         # Insufficient data for both
         insufficient_data = {
-            "BTC": pd.DataFrame({"close": [100, 101, 102]}, index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"])),
-            "ETH": pd.DataFrame({"close": [50, 51, 52]}, index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"])),
+            "BTC": pd.DataFrame(
+                {"close": [100, 101, 102]},
+                index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]),
+            ),
+            "ETH": pd.DataFrame(
+                {"close": [50, 51, 52]},
+                index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]),
+            ),
         }
         sizes = calculate_multi_asset_position_sizes(
             method="volatility",
@@ -362,7 +389,9 @@ class TestCalculateMultiAssetPositionSizes:
         )
         assert sizes == {"BTC": 5000, "ETH": 5000}  # Fallback to equal
 
-    def test_multi_asset_mixed_data_fixed_risk(self, multi_asset_historical_data: dict[str, pd.DataFrame]) -> None:
+    def test_multi_asset_mixed_data_fixed_risk(
+        self, multi_asset_historical_data: dict[str, pd.DataFrame]
+    ) -> None:
         """Test fixed-risk with mixed sufficient/insufficient data and zero price."""
         available_cash = 10000
         tickers = ["BTC", "ETH", "XRP"]
@@ -371,8 +400,11 @@ class TestCalculateMultiAssetPositionSizes:
         # ETH has insufficient data
         mixed_historical_data = {
             "BTC": multi_asset_historical_data["BTC"],
-            "ETH": pd.DataFrame({"close": [50, 51, 52]}, index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"])),
-            "XRP": multi_asset_historical_data["ETH"], # Use ETH data for XRP for vol calculation
+            "ETH": pd.DataFrame(
+                {"close": [50, 51, 52]},
+                index=pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]),
+            ),
+            "XRP": multi_asset_historical_data["ETH"],  # Use ETH data for XRP for vol calculation
         }
 
         sizes = calculate_multi_asset_position_sizes(
@@ -389,15 +421,19 @@ class TestCalculateMultiAssetPositionSizes:
         # BTC and ETH should get some non-zero allocation, ETH will fallback to equal
         assert sizes["BTC"] > 0
         assert sizes["ETH"] > 0
-        assert sum(sizes.values()) <= available_cash + 0.01 # Due to normalization and XRP being 0
+        assert sum(sizes.values()) <= available_cash + 0.01  # Due to normalization and XRP being 0
 
-    def test_multi_asset_zero_volatility_fixed_risk(self, multi_asset_historical_data: dict[str, pd.DataFrame]) -> None:
+    def test_multi_asset_zero_volatility_fixed_risk(
+        self, multi_asset_historical_data: dict[str, pd.DataFrame]
+    ) -> None:
         """Test fixed-risk sizing with zero volatility for one asset."""
         available_cash = 10000
         tickers = ["BTC", "ETH"]
         current_prices = {"BTC": 1000, "ETH": 500}
 
-        zero_vol_data = pd.DataFrame({"close": [100] * 100}, index=multi_asset_historical_data["BTC"].index)
+        zero_vol_data = pd.DataFrame(
+            {"close": [100] * 100}, index=multi_asset_historical_data["BTC"].index
+        )
 
         mixed_historical_data = {
             "BTC": multi_asset_historical_data["BTC"],
@@ -417,4 +453,3 @@ class TestCalculateMultiAssetPositionSizes:
         assert sizes["ETH"] < 5000.0  # Should be scaled down from 5000.0 due to normalization
         assert sizes["BTC"] > 0
         assert sum(sizes.values()) == pytest.approx(available_cash)
-

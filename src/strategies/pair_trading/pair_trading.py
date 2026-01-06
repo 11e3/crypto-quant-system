@@ -66,14 +66,10 @@ class PairTradingStrategy(Strategy):
 
         if use_default_conditions:
             default_entry = [
-                SpreadZScoreCondition(
-                    z_score_key="z_score", entry_threshold=entry_z_score
-                ),
+                SpreadZScoreCondition(z_score_key="z_score", entry_threshold=entry_z_score),
             ]
             default_exit = [
-                SpreadMeanReversionCondition(
-                    z_score_key="z_score", exit_threshold=exit_z_score
-                ),
+                SpreadMeanReversionCondition(z_score_key="z_score", exit_threshold=exit_z_score),
             ]
 
         # Merge with custom conditions
@@ -149,7 +145,9 @@ class PairTradingStrategy(Strategy):
         # Calculate spread statistics
         df["spread_mean"] = sma(df["spread"], self.lookback_period)
         df["spread_std"] = (
-            df["spread"].rolling(window=self.lookback_period, min_periods=self.lookback_period).std()
+            df["spread"]
+            .rolling(window=self.lookback_period, min_periods=self.lookback_period)
+            .std()
         )
 
         # Calculate Z-score

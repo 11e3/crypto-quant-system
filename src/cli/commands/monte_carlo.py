@@ -191,15 +191,9 @@ def monte_carlo(
     logger.info(f"  Mean Sharpe: {mc_result.mean_sharpe:.2f} (std: {mc_result.std_sharpe:.2f})")
 
     logger.info("\n95% Confidence Intervals:")
-    logger.info(
-        f"  CAGR: [{mc_result.cagr_ci_lower:.2f}%, {mc_result.cagr_ci_upper:.2f}%]"
-    )
-    logger.info(
-        f"  MDD: [{mc_result.mdd_ci_lower:.2f}%, {mc_result.mdd_ci_upper:.2f}%]"
-    )
-    logger.info(
-        f"  Sharpe: [{mc_result.sharpe_ci_lower:.2f}, {mc_result.sharpe_ci_upper:.2f}]"
-    )
+    logger.info(f"  CAGR: [{mc_result.cagr_ci_lower:.2f}%, {mc_result.cagr_ci_upper:.2f}%]")
+    logger.info(f"  MDD: [{mc_result.mdd_ci_lower:.2f}%, {mc_result.mdd_ci_upper:.2f}%]")
+    logger.info(f"  Sharpe: [{mc_result.sharpe_ci_lower:.2f}, {mc_result.sharpe_ci_upper:.2f}]")
 
     logger.info("\nPercentiles:")
     logger.info("  CAGR:")
@@ -218,7 +212,7 @@ def monte_carlo(
     cvar_95 = simulator.conditional_value_at_risk(mc_result, confidence=0.95)
 
     logger.info("\nRisk Metrics:")
-    logger.info(f"  Probability of Loss: {prob_loss*100:.1f}%")
+    logger.info(f"  Probability of Loss: {prob_loss * 100:.1f}%")
     logger.info(f"  VaR (95%): {var_95:.2f}%")
     logger.info(f"  CVaR (95%): {cvar_95:.2f}%")
 

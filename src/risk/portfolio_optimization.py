@@ -132,7 +132,9 @@ class PortfolioOptimizer:
             # Calculate portfolio metrics
             portfolio_return = np.dot(weights, mean_returns)
             portfolio_vol = np.sqrt(np.dot(weights, np.dot(cov_matrix, weights)))
-            sharpe = (portfolio_return - risk_free_rate) / portfolio_vol if portfolio_vol > 0 else 0.0
+            sharpe = (
+                (portfolio_return - risk_free_rate) / portfolio_vol if portfolio_vol > 0 else 0.0
+            )
 
             # Convert to dictionary
             weights_dict = {ticker: float(w) for ticker, w in zip(tickers, weights, strict=False)}
@@ -343,7 +345,9 @@ class PortfolioOptimizer:
                 break
 
         if return_col is None:
-            raise ValueError("Trades DataFrame must have return column (pnl_pct, return, or return_pct)")
+            raise ValueError(
+                "Trades DataFrame must have return column (pnl_pct, return, or return_pct)"
+            )
 
         allocations: dict[str, float] = {}
 
@@ -433,7 +437,9 @@ def optimize_portfolio(
         allocations = optimizer.optimize_kelly_portfolio(trades, available_cash, max_kelly)
         # Convert to weights
         total = sum(allocations.values())
-        weights = {ticker: amount / total if total > 0 else 0.0 for ticker, amount in allocations.items()}
+        weights = {
+            ticker: amount / total if total > 0 else 0.0 for ticker, amount in allocations.items()
+        }
         return PortfolioWeights(weights=weights, method="kelly")
     else:
         raise ValueError(f"Unknown optimization method: {method}")

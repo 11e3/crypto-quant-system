@@ -48,7 +48,9 @@ def mock_backtest_result() -> BacktestResult:
     result.win_rate = 0.6
     result.profit_factor = 1.2
     result.equity_curve = np.array([100, 110, 120])
-    result.dates = np.array([datetime.date(2023, 1, 1), datetime.date(2023, 1, 2), datetime.date(2023, 1, 3)])
+    result.dates = np.array(
+        [datetime.date(2023, 1, 1), datetime.date(2023, 1, 2), datetime.date(2023, 1, 3)]
+    )
     return result
 
 
@@ -84,7 +86,10 @@ class TestWalkForwardPeriod:
             test_start=datetime.date(2024, 1, 1),
             test_end=datetime.date(2024, 3, 31),
         )
-        assert repr(period) == "WalkForwardPeriod(1, opt=2023-01-01 to 2023-12-31, test=2024-01-01 to 2024-03-31)"
+        assert (
+            repr(period)
+            == "WalkForwardPeriod(1, opt=2023-01-01 to 2023-12-31, test=2024-01-01 to 2024-03-31)"
+        )
 
 
 class TestWalkForwardResult:
@@ -156,10 +161,14 @@ class TestWalkForwardAnalyzer:
         )
         assert len(periods) == 0
 
-    def test_extract_metric(self, analyzer: WalkForwardAnalyzer, mock_backtest_result: BacktestResult) -> None:
+    def test_extract_metric(
+        self, analyzer: WalkForwardAnalyzer, mock_backtest_result: BacktestResult
+    ) -> None:
         assert analyzer._extract_metric(mock_backtest_result, "sharpe_ratio") == 1.5
         assert analyzer._extract_metric(mock_backtest_result, "cagr") == 10.0
-        assert analyzer._extract_metric(mock_backtest_result, "invalid_metric") == 1.5 # Falls back to sharpe_ratio
+        assert (
+            analyzer._extract_metric(mock_backtest_result, "invalid_metric") == 1.5
+        )  # Falls back to sharpe_ratio
 
     @patch("src.backtester.parallel.ParallelBacktestRunner")
     @patch("src.backtester.walk_forward.OptimizationResult")
@@ -195,7 +204,9 @@ class TestWalkForwardAnalyzer:
 
         opt_result = analyzer._optimize_period(period, param_grid, metric, n_workers=1)
         assert opt_result is not None
-        assert opt_result.best_params == {"param": 1} # Depends on sorting, this may need to be dynamic
+        assert opt_result.best_params == {
+            "param": 1
+        }  # Depends on sorting, this may need to be dynamic
         mock_parallel_backtest_runner.assert_called_once()
         mock_runner_instance.run.assert_called_once()
 
@@ -228,7 +239,10 @@ class TestWalkForwardAnalyzer:
         )
 
     def test_calculate_statistics(
-        self, analyzer: WalkForwardAnalyzer, mock_backtest_result: BacktestResult, mock_optimization_result: OptimizationResult
+        self,
+        analyzer: WalkForwardAnalyzer,
+        mock_backtest_result: BacktestResult,
+        mock_optimization_result: OptimizationResult,
     ) -> None:
         period1 = WalkForwardPeriod(
             period_num=1,
@@ -246,7 +260,7 @@ class TestWalkForwardAnalyzer:
             test_start=datetime.date(2024, 4, 1),
             test_end=datetime.date(2024, 6, 30),
             optimization_result=mock_optimization_result,
-            test_result=mock_backtest_result, # Another positive result
+            test_result=mock_backtest_result,  # Another positive result
         )
         period3 = WalkForwardPeriod(
             period_num=3,
@@ -277,13 +291,15 @@ class TestWalkForwardAnalyzer:
         periods = [period1, period2, period3, period4]
         stats = analyzer._calculate_statistics(periods)
 
-        assert stats.total_periods == 3 # period3 has no test_result
-        assert stats.positive_periods == 2 # period1, period2
-        assert stats.consistency_rate == pytest.approx((2/3)*100)
+        assert stats.total_periods == 3  # period3 has no test_result
+        assert stats.positive_periods == 2  # period1, period2
+        assert stats.consistency_rate == pytest.approx((2 / 3) * 100)
         assert stats.avg_test_cagr == pytest.approx((10.0 + 10.0 + (-5.0)) / 3)
         assert stats.avg_test_sharpe == pytest.approx((1.5 + 1.5 + (-0.5)) / 3)
         assert stats.avg_test_mdd == pytest.approx((0.05 + 0.05 + 0.1) / 3)
-        assert stats.avg_optimization_cagr == pytest.approx(mock_backtest_result.cagr) # opt_result.best_result.cagr
+        assert stats.avg_optimization_cagr == pytest.approx(
+            mock_backtest_result.cagr
+        )  # opt_result.best_result.cagr
 
     @patch("src.backtester.walk_forward.WalkForwardAnalyzer._calculate_statistics")
     @patch("src.backtester.walk_forward.WalkForwardAnalyzer._test_period")
@@ -343,9 +359,11 @@ class TestWalkForwardAnalyzer:
         assert period.test_result == mock_backtest_result
 
     @patch("src.data.upbit_source.UpbitDataSource")
-    def test_analyze_no_data(self, mock_upbit_data_source: MagicMock, analyzer: WalkForwardAnalyzer) -> None:
+    def test_analyze_no_data(
+        self, mock_upbit_data_source: MagicMock, analyzer: WalkForwardAnalyzer
+    ) -> None:
         mock_data_source_instance = mock_upbit_data_source.return_value
-        mock_data_source_instance.load_ohlcv.return_value = pd.DataFrame() # Empty DataFrame
+        mock_data_source_instance.load_ohlcv.return_value = pd.DataFrame()  # Empty DataFrame
 
         param_grid = {"sma": [10]}
         with pytest.raises(ValueError, match="No data available for walk-forward analysis"):
@@ -353,7 +371,10 @@ class TestWalkForwardAnalyzer:
 
     @patch("src.backtester.walk_forward.WalkForwardAnalyzer")
     def test_run_walk_forward_analysis(
-        self, mock_walk_forward_analyzer: MagicMock, mock_strategy_factory: MagicMock, mock_backtest_config: BacktestConfig
+        self,
+        mock_walk_forward_analyzer: MagicMock,
+        mock_strategy_factory: MagicMock,
+        mock_backtest_config: BacktestConfig,
     ) -> None:
         """Test run_walk_forward_analysis convenience function."""
         # Mock analyzer instance and its analyze method

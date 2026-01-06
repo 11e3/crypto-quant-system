@@ -144,7 +144,9 @@ def walk_forward(
     logger.info(f"Tickers: {ticker_list}")
     logger.info(f"Interval: {interval}")
     logger.info(f"Strategy: {strategy}")
-    logger.info(f"Optimization: {optimization_days} days, Test: {test_days} days, Step: {step_days} days")
+    logger.info(
+        f"Optimization: {optimization_days} days, Test: {test_days} days, Step: {step_days} days"
+    )
 
     # Parse parameter ranges
     def parse_range(range_str: str) -> list[int]:

@@ -238,8 +238,7 @@ class ConfigLoader:
             return self.get_upbit_keys()
         else:
             raise ValueError(
-                f"Exchange '{exchange_name}' not supported yet. "
-                f"Supported exchanges: upbit"
+                f"Exchange '{exchange_name}' not supported yet. Supported exchanges: upbit"
             )
 
     def get_telegram_config(self) -> dict[str, Any]:

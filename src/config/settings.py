@@ -33,7 +33,9 @@ class Settings(BaseSettings):
     )
 
     # Exchange Configuration
-    exchange_name: str = Field(default="upbit", description="Exchange name (e.g., 'upbit', 'binance')")
+    exchange_name: str = Field(
+        default="upbit", description="Exchange name (e.g., 'upbit', 'binance')"
+    )
 
     # Upbit API Configuration
     upbit_access_key: str = Field(default="", description="Upbit API access key")

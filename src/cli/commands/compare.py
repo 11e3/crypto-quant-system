@@ -165,9 +165,7 @@ def compare(
         elif strategy_name == "mean-reversion":
             strategy_objects.append(MeanReversionStrategy(name="MeanReversionStrategy"))
         elif strategy_name == "simple-mean-reversion":
-            strategy_objects.append(
-                SimpleMeanReversionStrategy(name="SimpleMeanReversion")
-            )
+            strategy_objects.append(SimpleMeanReversionStrategy(name="SimpleMeanReversion"))
 
     # Create config
     config = BacktestConfig(
@@ -198,9 +196,7 @@ def compare(
         sharpe = result.sharpe_ratio if hasattr(result, "sharpe_ratio") else 0.0
         trades = result.total_trades if hasattr(result, "total_trades") else 0
 
-        logger.info(
-            f"{strategy_name:<25} {cagr:>10.2f} {mdd:>10.2f} {sharpe:>10.2f} {trades:>10}"
-        )
+        logger.info(f"{strategy_name:<25} {cagr:>10.2f} {mdd:>10.2f} {sharpe:>10.2f} {trades:>10}")
 
     # Generate reports if output directory specified
     if output:

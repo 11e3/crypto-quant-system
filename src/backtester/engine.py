@@ -315,7 +315,11 @@ class VectorizedBacktestEngine:
 
                 # Normalize position values to portfolio value if total exceeds equity
                 final_equity = equity_curve[-1] if len(equity_curve) > 0 else 0.0
-                if total_position_value > 0 and final_equity > 0 and total_position_value > final_equity:
+                if (
+                    total_position_value > 0
+                    and final_equity > 0
+                    and total_position_value > final_equity
+                ):
                     scale_factor = final_equity / total_position_value
                     position_values_dict = {
                         ticker: value * scale_factor

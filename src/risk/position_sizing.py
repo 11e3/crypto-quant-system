@@ -54,8 +54,7 @@ def calculate_position_size(
 
     if historical_data is None or len(historical_data) < lookback_period:
         logger.warning(
-            f"Insufficient data for {method} sizing for {ticker}, "
-            f"falling back to equal sizing"
+            f"Insufficient data for {method} sizing for {ticker}, falling back to equal sizing"
         )
         return _equal_sizing(available_cash, available_slots)
 
@@ -246,8 +245,7 @@ def calculate_multi_asset_position_sizes(
         # Normalize and allocate
         if total_weight > 0:
             position_sizes = {
-                ticker: (available_cash * weights[ticker] / total_weight)
-                for ticker in tickers
+                ticker: (available_cash * weights[ticker] / total_weight) for ticker in tickers
             }
         else:
             position_sizes = {ticker: available_cash / len(tickers) for ticker in tickers}
