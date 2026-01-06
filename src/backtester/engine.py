@@ -25,6 +25,8 @@ from src.config import (
     RAW_DATA_DIR,
 )
 from src.data.cache import get_cache
+from src.data.collector import Interval
+from src.data.collector_factory import DataCollectorFactory
 from src.risk.metrics import (
     PortfolioRiskMetrics,
     calculate_portfolio_risk_metrics,
@@ -1343,9 +1345,6 @@ def run_backtest(
     Raises:
         FileNotFoundError: If data collection fails for all tickers
     """
-    from src.data.collector import Interval
-    from src.data.collector_factory import DataCollectorFactory
-
     data_dir = data_dir or RAW_DATA_DIR
     data_dir.mkdir(parents=True, exist_ok=True)
 
