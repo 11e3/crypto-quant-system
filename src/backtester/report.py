@@ -122,23 +122,26 @@ def calculate_metrics(
     final_equity = equity_curve[-1]
     total_return_pct = (final_equity / initial_capital - 1) * 100
 
-    # CAGR (matching legacy calculation)
+    # CAGR Calculation
     if total_days <= 0 or initial_capital <= 0:
         cagr_pct = 0.0
     elif final_equity <= 0:
         cagr_pct = -100.0
     else:
         ratio = final_equity / initial_capital
-        # Ensure ratio is positive for log. If it's not, it's already caught by final_equity <= 0.
-        # However, to be extra safe and avoid log(0) or log(negative number)
-        if ratio <= 0: # This case should theoretically be covered by final_equity <= 0, but added for robustness
-            cagr_pct = -100.0
+        # Ensure ratio is positive. If not, already caught by final_equity <= 0 check.
+        # Handling small positive ratio prevents log(negative) issues.
+        if ratio <= 0:
+            cagr_pct = -100.0 
         else:
-            with np.errstate(over='ignore'): # Ignore overflow for this calculation
+            # Use np.exp/log to calculate power, creating a safe context for overflows
+            with np.errstate(over='ignore'): 
+                # Formula: (ratio ^ (365/days)) - 1
                 cagr_pct_raw = (np.exp((365.0 / total_days) * np.log(ratio)) - 1) * 100
             
+            # Cap infinite values caused by extreme extrapolations
             if np.isinf(cagr_pct_raw):
-                cagr_pct = 1e18 # Cap at a very large number to avoid overflow in display/storage
+                cagr_pct = 1e18 # Cap at a very large number
             else:
                 cagr_pct = cagr_pct_raw
 
@@ -170,7 +173,13 @@ def calculate_metrics(
 
     # Trade statistics
     if len(trades_df) > 0:
-        closed_trades = trades_df[trades_df["exit_date"].notna()]
+        # Check if 'exit_date' exists to filter closed trades
+        if "exit_date" in trades_df.columns:
+            closed_trades = trades_df[trades_df["exit_date"].notna()]
+        else:
+            # Fallback if column missing (though it should be there from backtester)
+            closed_trades = pd.DataFrame() 
+
         total_trades = len(closed_trades)
 
         if total_trades > 0:
