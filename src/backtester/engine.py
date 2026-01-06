@@ -11,7 +11,7 @@ Uses pandas/numpy for high-performance backtesting with support for:
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -29,13 +29,12 @@ from src.risk.metrics import (
     PortfolioRiskMetrics,
     calculate_portfolio_risk_metrics,
 )
+from src.risk.portfolio_optimization import optimize_portfolio
 from src.risk.position_sizing import (
-    PositionSizingMethod,
     calculate_multi_asset_position_sizes,
     calculate_position_size,
 )
 from src.strategies.base import Strategy
-from src.execution.advanced_orders import AdvancedOrderManager, OrderType
 from src.utils.logger import get_logger
 from src.utils.memory import get_float_dtype, optimize_dtypes
 
@@ -60,14 +59,16 @@ class BacktestConfig:
     position_sizing_risk_pct: float = 0.02  # Target risk per position (for fixed-risk method)
     position_sizing_lookback: int = 20  # Lookback period for volatility calculation
     use_cache: bool = True  # Cache indicator calculations
-    
+
     # Advanced order settings
     stop_loss_pct: float | None = None  # Stop loss as percentage (e.g., 0.05 = 5%)
     take_profit_pct: float | None = None  # Take profit as percentage (e.g., 0.10 = 10%)
     trailing_stop_pct: float | None = None  # Trailing stop as percentage (e.g., 0.05 = 5%)
-    
+
     # Portfolio optimization settings
-    portfolio_optimization_method: str | None = None  # "mpt", "risk_parity", "kelly" (None = use position_sizing)
+    portfolio_optimization_method: str | None = (
+        None  # "mpt", "risk_parity", "kelly" (None = use position_sizing)
+    )
     risk_free_rate: float = 0.0  # Risk-free rate for MPT (annualized)
     max_kelly: float = 0.25  # Maximum Kelly percentage (fractional Kelly)
 
@@ -120,7 +121,7 @@ class BacktestResult:
     config: BacktestConfig | None = None
     strategy_name: str = ""
     interval: str = "day"  # Data interval (day, minute240, week)
-    
+
     # Portfolio risk metrics
     risk_metrics: PortfolioRiskMetrics | None = None
 
@@ -139,16 +140,16 @@ class BacktestResult:
             f"Total Trades: {self.total_trades}\n"
             f"Final Equity: {final_equity:.4f}\n"
         )
-        
+
         # Add risk metrics if available
         if self.risk_metrics:
             summary += (
                 f"\n--- Risk Metrics ---\n"
-                f"VaR (95%): {self.risk_metrics.var_95*100:.2f}%\n"
-                f"CVaR (95%): {self.risk_metrics.cvar_95*100:.2f}%\n"
-                f"Portfolio Volatility: {self.risk_metrics.portfolio_volatility*100:.2f}%\n"
+                f"VaR (95%): {self.risk_metrics.var_95 * 100:.2f}%\n"
+                f"CVaR (95%): {self.risk_metrics.cvar_95 * 100:.2f}%\n"
+                f"Portfolio Volatility: {self.risk_metrics.portfolio_volatility * 100:.2f}%\n"
             )
-        
+
         summary += f"{'=' * 50}"
         return summary
 
@@ -208,7 +209,11 @@ class VectorizedBacktestEngine:
             DataFrame with price columns added
         """
         # Only copy if we need to modify
-        if "target" not in df.columns or "entry_price" not in df.columns or "exit_price" not in df.columns:
+        if (
+            "target" not in df.columns
+            or "entry_price" not in df.columns
+            or "exit_price" not in df.columns
+        ):
             df = df.copy()
 
         # Whipsaw: entry occurs but close < sma on same bar
@@ -284,7 +289,7 @@ class VectorizedBacktestEngine:
                         ticker: np.array(returns[-min_length:])
                         for ticker, returns in valid_returns.items()
                     }
-        
+
         # Calculate final position values for concentration analysis
         # Use final equity curve value to estimate position values
         position_values_dict: dict[str, float] | None = None
@@ -302,7 +307,7 @@ class VectorizedBacktestEngine:
                     position_value = trade["amount"] * trade.get("entry_price", 0.0)
                     position_values_dict[ticker] += position_value
                     total_position_value += position_value
-                
+
                 # Normalize position values to portfolio value if total exceeds equity
                 final_equity = equity_curve[-1] if len(equity_curve) > 0 else 0.0
                 if total_position_value > 0 and final_equity > 0:
@@ -313,7 +318,7 @@ class VectorizedBacktestEngine:
                             ticker: value * scale_factor
                             for ticker, value in position_values_dict.items()
                         }
-        
+
         try:
             result.risk_metrics = calculate_portfolio_risk_metrics(
                 equity_curve=equity_curve,
@@ -382,9 +387,8 @@ class VectorizedBacktestEngine:
             BacktestResult with performance metrics
         """
         # Check if this is a pair trading strategy
-        is_pair_trading = (
-            PairTradingStrategy is not None
-            and isinstance(strategy, PairTradingStrategy)
+        is_pair_trading = PairTradingStrategy is not None and isinstance(
+            strategy, PairTradingStrategy
         )
 
         if is_pair_trading:
@@ -395,7 +399,9 @@ class VectorizedBacktestEngine:
                     f"got {len(data_files)}: {list(data_files.keys())}"
                 )
             # Use special pair trading processing
-            return self._run_pair_trading(strategy, data_files, start_date=start_date, end_date=end_date)
+            return self._run_pair_trading(
+                strategy, data_files, start_date=start_date, end_date=end_date
+            )
 
         # Get cache parameters
         cache_params = self._get_cache_params(strategy)
@@ -404,7 +410,7 @@ class VectorizedBacktestEngine:
         # Load and prepare data for all tickers
         ticker_data: dict[str, pd.DataFrame] = {}
         all_dates: set = set()
-        
+
         # Store original dataframes for position sizing (need historical data)
         ticker_historical_data: dict[str, pd.DataFrame] = {}
 
@@ -536,7 +542,7 @@ class VectorizedBacktestEngine:
             # Legacy only includes dates in processed_data, which excludes first 10 days per ticker
             has_valid_target = ~np.isnan(targets[:, d_idx])
             has_valid_data = ~np.isnan(closes[:, d_idx])
-            
+
             # SMA is optional (some strategies may not use it)
             if np.any(~np.isnan(smas[:, d_idx])):
                 has_valid_sma = ~np.isnan(smas[:, d_idx])
@@ -586,7 +592,7 @@ class VectorizedBacktestEngine:
 
         equity_curve = np.zeros(n_dates, dtype=float_dtype)
         trades_list: list[dict] = []
-        
+
         # Track individual asset returns for correlation analysis
         asset_returns: dict[str, list[float]] = {ticker: [] for ticker in tickers}
         previous_closes = np.full(n_tickers, np.nan, dtype=float_dtype)
@@ -596,14 +602,16 @@ class VectorizedBacktestEngine:
 
             # Get valid data mask for this date
             valid_data = ~np.isnan(closes[:, d_idx])
-            
+
             # Track individual asset returns
             for t_idx in range(n_tickers):
                 if valid_data[t_idx] and not np.isnan(closes[t_idx, d_idx]):
                     current_close = closes[t_idx, d_idx]
                     if not np.isnan(previous_closes[t_idx]):
                         # Calculate daily return
-                        daily_return = (current_close - previous_closes[t_idx]) / previous_closes[t_idx]
+                        daily_return = (current_close - previous_closes[t_idx]) / previous_closes[
+                            t_idx
+                        ]
                         asset_returns[tickers[t_idx]].append(daily_return)
                     previous_closes[t_idx] = current_close
 
@@ -640,8 +648,8 @@ class VectorizedBacktestEngine:
                     )
 
                     # Cancel advanced orders for this position
-                    advanced_order_manager.cancel_all_orders(ticker=tickers[t_idx])
-                    
+                    self.advanced_order_manager.cancel_all_orders(ticker=tickers[t_idx])
+
                     # Clear position
                     position_amounts[t_idx] = 0
                     position_entry_prices[t_idx] = 0
@@ -665,30 +673,40 @@ class VectorizedBacktestEngine:
                 position_sizes: dict[str, float] = {}
                 if self.config.position_sizing != "equal" and len(candidate_idx) > 1:
                     # Check if using portfolio optimization methods
-                    optimization_method = self.config.portfolio_optimization_method or self.config.position_sizing
-                    
+                    optimization_method = (
+                        self.config.portfolio_optimization_method or self.config.position_sizing
+                    )
+
                     if optimization_method in ["mpt", "risk_parity"]:
                         # Portfolio optimization methods
                         candidate_tickers = [tickers[idx] for idx in candidate_idx]
-                        
+
                         # Get historical returns for optimization
                         returns_data: dict[str, list[float]] = {}
                         for idx in candidate_idx:
                             ticker = tickers[idx]
-                            if ticker in asset_returns and len(asset_returns[ticker]) >= self.config.position_sizing_lookback:
+                            if (
+                                ticker in asset_returns
+                                and len(asset_returns[ticker])
+                                >= self.config.position_sizing_lookback
+                            ):
                                 # Use recent returns
-                                recent_returns = asset_returns[ticker][-self.config.position_sizing_lookback:]
+                                recent_returns = asset_returns[ticker][
+                                    -self.config.position_sizing_lookback :
+                                ]
                                 returns_data[ticker] = recent_returns
-                        
+
                         if len(returns_data) >= 2:
                             # Create returns DataFrame
                             max_len = max(len(r) for r in returns_data.values())
-                            returns_df = pd.DataFrame({
-                                ticker: r + [np.nan] * (max_len - len(r))
-                                for ticker, r in returns_data.items()
-                            })
+                            returns_df = pd.DataFrame(
+                                {
+                                    ticker: r + [np.nan] * (max_len - len(r))
+                                    for ticker, r in returns_data.items()
+                                }
+                            )
                             returns_df = returns_df.dropna()
-                            
+
                             if not returns_df.empty and len(returns_df) >= 10:
                                 try:
                                     # Optimize portfolio
@@ -697,16 +715,18 @@ class VectorizedBacktestEngine:
                                         method=optimization_method,
                                         risk_free_rate=self.config.risk_free_rate,
                                     )
-                                    
+
                                     # Convert weights to position sizes
                                     for ticker, weight in weights.weights.items():
                                         if ticker in candidate_tickers:
                                             position_sizes[ticker] = cash * weight
                                 except Exception as e:
-                                    logger.warning(f"Portfolio optimization failed: {e}, falling back to equal")
+                                    logger.warning(
+                                        f"Portfolio optimization failed: {e}, falling back to equal"
+                                    )
                                     # Fallback to equal
                                     position_sizes = {}
-                    
+
                     elif optimization_method == "kelly":
                         # Kelly Criterion: need trade history
                         if len(trades_list) >= 10:
@@ -716,6 +736,7 @@ class VectorizedBacktestEngine:
                                 if "pnl_pct" in trades_df.columns:
                                     # Calculate Kelly allocation
                                     from src.risk.portfolio_optimization import PortfolioOptimizer
+
                                     optimizer = PortfolioOptimizer()
                                     kelly_allocations = optimizer.optimize_kelly_portfolio(
                                         trades_df,
@@ -724,9 +745,11 @@ class VectorizedBacktestEngine:
                                     )
                                     position_sizes = kelly_allocations
                             except Exception as e:
-                                logger.warning(f"Kelly optimization failed: {e}, falling back to equal")
+                                logger.warning(
+                                    f"Kelly optimization failed: {e}, falling back to equal"
+                                )
                                 position_sizes = {}
-                    
+
                     if not position_sizes:
                         # Fallback to standard multi-asset position sizing
                         candidate_tickers = [tickers[idx] for idx in candidate_idx]
@@ -735,7 +758,7 @@ class VectorizedBacktestEngine:
                             for idx in candidate_idx
                             if not np.isnan(entry_prices[idx, d_idx])
                         }
-                        
+
                         # Get historical data up to current date
                         candidate_historical = {}
                         for idx in candidate_idx:
@@ -748,11 +771,13 @@ class VectorizedBacktestEngine:
                                     candidate_historical[ticker] = hist_df[
                                         hist_df["date"] <= current_date
                                     ]
-                                elif hist_df.index.name == "date" or isinstance(hist_df.index, pd.DatetimeIndex):
-                                    candidate_historical[ticker] = hist_df.iloc[:d_idx + 1]
+                                elif hist_df.index.name == "date" or isinstance(
+                                    hist_df.index, pd.DatetimeIndex
+                                ):
+                                    candidate_historical[ticker] = hist_df.iloc[: d_idx + 1]
                                 else:
-                                    candidate_historical[ticker] = hist_df.iloc[:d_idx + 1]
-                        
+                                    candidate_historical[ticker] = hist_df.iloc[: d_idx + 1]
+
                         position_sizes = calculate_multi_asset_position_sizes(
                             method=self.config.position_sizing,
                             available_cash=cash,
@@ -787,11 +812,13 @@ class VectorizedBacktestEngine:
                             hist_df = ticker_historical_data[ticker]
                             if "date" in hist_df.columns:
                                 hist_up_to_date = hist_df[hist_df["date"] <= current_date]
-                            elif hist_df.index.name == "date" or isinstance(hist_df.index, pd.DatetimeIndex):
-                                hist_up_to_date = hist_df.iloc[:d_idx + 1]
+                            elif hist_df.index.name == "date" or isinstance(
+                                hist_df.index, pd.DatetimeIndex
+                            ):
+                                hist_up_to_date = hist_df.iloc[: d_idx + 1]
                             else:
-                                hist_up_to_date = hist_df.iloc[:d_idx + 1]
-                            
+                                hist_up_to_date = hist_df.iloc[: d_idx + 1]
+
                             invest_amount = calculate_position_size(
                                 method=self.config.position_sizing,
                                 available_cash=cash,
@@ -876,7 +903,7 @@ class VectorizedBacktestEngine:
                         # If no valid price available, use entry price as fallback
                         current_price = position_entry_prices[t_idx]
                     positions_value += position_amounts[t_idx] * current_price
-            
+
             # Calculate equity
             equity_curve[d_idx] = cash + positions_value
             # Forward fill if equity is NaN or negative (shouldn't happen, but safety check)
@@ -937,9 +964,7 @@ class VectorizedBacktestEngine:
 
         tickers = list(data_files.keys())
         if len(tickers) != 2:
-            raise ValueError(
-                f"Pair trading requires exactly 2 tickers, got {len(tickers)}"
-            )
+            raise ValueError(f"Pair trading requires exactly 2 tickers, got {len(tickers)}")
 
         ticker1, ticker2 = tickers[0], tickers[1]
         filepath1, filepath2 = data_files[ticker1], data_files[ticker2]
@@ -947,7 +972,7 @@ class VectorizedBacktestEngine:
         # Load data for both tickers
         df1 = self.load_data(filepath1)
         df2 = self.load_data(filepath2)
-        
+
         # Filter by date range if specified
         if start_date is not None or end_date is not None:
             df1_index = pd.to_datetime(df1.index)
@@ -1042,11 +1067,11 @@ class VectorizedBacktestEngine:
             df_dates = pd.Series(df.index.date)
             df_idx = df_dates.map(date_to_idx)
             valid_mask = df_idx.notna()
-            
+
             if not valid_mask.any():
                 logger.warning(f"No valid dates found for {ticker}")
                 continue
-                
+
             idx = df_idx[valid_mask].astype(int).values
 
             # Ensure indices are within bounds
@@ -1060,7 +1085,9 @@ class VectorizedBacktestEngine:
             highs[t_idx, idx] = df.loc[valid_mask.values, "high"].values
             closes[t_idx, idx] = df.loc[valid_mask.values, "close"].values
             # Ensure boolean type for signals
-            entry_signals[t_idx, idx] = df.loc[valid_mask.values, "entry_signal"].astype(bool).values
+            entry_signals[t_idx, idx] = (
+                df.loc[valid_mask.values, "entry_signal"].astype(bool).values
+            )
             exit_signals[t_idx, idx] = df.loc[valid_mask.values, "exit_signal"].astype(bool).values
             entry_prices[t_idx, idx] = df.loc[valid_mask.values, "entry_price"].values
             exit_prices[t_idx, idx] = df.loc[valid_mask.values, "exit_price"].values
@@ -1108,7 +1135,7 @@ class VectorizedBacktestEngine:
 
         equity_curve = np.zeros(n_dates, dtype=float_dtype)
         trades_list: list[dict] = []
-        
+
         # Track individual asset returns for correlation analysis
         asset_returns: dict[str, list[float]] = {ticker: [] for ticker in tickers}
         previous_closes = np.full(n_tickers, np.nan, dtype=float_dtype)
@@ -1116,17 +1143,19 @@ class VectorizedBacktestEngine:
         for d_idx in range(n_dates):
             current_date = sorted_dates[d_idx]
             valid_data = ~np.isnan(closes[:, d_idx])
-            
+
             # Track individual asset returns
             for t_idx in range(n_tickers):
                 if valid_data[t_idx] and not np.isnan(closes[t_idx, d_idx]):
                     current_close = closes[t_idx, d_idx]
                     if not np.isnan(previous_closes[t_idx]):
                         # Calculate daily return
-                        daily_return = (current_close - previous_closes[t_idx]) / previous_closes[t_idx]
+                        daily_return = (current_close - previous_closes[t_idx]) / previous_closes[
+                            t_idx
+                        ]
                         asset_returns[tickers[t_idx]].append(daily_return)
                     previous_closes[t_idx] = current_close
-            
+
             # For pair trading, both assets must have valid data
             if not np.all(valid_data):
                 # Calculate daily equity even if no valid data
@@ -1178,10 +1207,9 @@ class VectorizedBacktestEngine:
             # Process entries
             # For pair trading, we need both assets to have entry signals
             # and both should not be in position
-            not_in_position = (position_amounts == 0.0)
+            not_in_position = position_amounts == 0.0
             has_entry_signal = entry_signals[:, d_idx].astype(bool)
             can_enter = has_entry_signal & not_in_position
-
 
             # For pair trading, enter both positions simultaneously when both have signals
             # Simplified: just check if both have entry signals and not in position
@@ -1202,7 +1230,7 @@ class VectorizedBacktestEngine:
                             )
                             continue
                         invest_amount = cash / 2  # Split capital between two assets
-                        
+
                         if invest_amount > 0:
                             amount = invest_amount / buy_price * (1 - fee_rate)
                             cash -= invest_amount
@@ -1210,7 +1238,7 @@ class VectorizedBacktestEngine:
                             position_amounts[t_idx] = amount
                             position_entry_prices[t_idx] = buy_price
                             position_entry_dates[t_idx] = d_idx
-                            
+
                             # Add entry trade record
                             trades_list.append(
                                 {
@@ -1232,7 +1260,9 @@ class VectorizedBacktestEngine:
                     current_close = closes[t_idx, d_idx]
                     if not np.isnan(previous_closes[t_idx]):
                         # Calculate daily return
-                        daily_return = (current_close - previous_closes[t_idx]) / previous_closes[t_idx]
+                        daily_return = (current_close - previous_closes[t_idx]) / previous_closes[
+                            t_idx
+                        ]
                         asset_returns[tickers[t_idx]].append(daily_return)
                     previous_closes[t_idx] = current_close
 
@@ -1327,9 +1357,8 @@ def run_backtest(
         else:
             # Check if file is too old (older than 1 day) or has insufficient data
             try:
-                import time
                 from datetime import datetime, timedelta
-                
+
                 file_age = datetime.now() - datetime.fromtimestamp(filepath.stat().st_mtime)
                 if file_age > timedelta(days=1):
                     missing_tickers.append(ticker)
@@ -1340,7 +1369,9 @@ def run_backtest(
                         df = pd.read_parquet(filepath)
                         if df.empty or len(df) < 10:  # Require at least 10 rows
                             missing_tickers.append(ticker)
-                            logger.info(f"Data file for {ticker} has insufficient data, will collect...")
+                            logger.info(
+                                f"Data file for {ticker} has insufficient data, will collect..."
+                            )
                     except Exception:
                         missing_tickers.append(ticker)
                         logger.info(f"Data file for {ticker} is corrupted, will re-collect...")
@@ -1352,16 +1383,16 @@ def run_backtest(
     if missing_tickers:
         logger.info(f"Collecting data for {len(missing_tickers)} ticker(s): {missing_tickers}")
         collector = DataCollectorFactory.create(data_dir=data_dir)
-        
+
         # Map interval string to Interval type
         interval_map: dict[str, Interval] = {
             "minute240": "minute240",
             "day": "day",
             "week": "week",
         }
-        
+
         interval_type = interval_map.get(interval, "day")  # type: ignore
-        
+
         for ticker in missing_tickers:
             try:
                 collector.collect(ticker, interval_type, full_refresh=False)
