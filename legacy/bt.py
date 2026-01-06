@@ -130,7 +130,7 @@ def load_and_prep_data(filepath, noise_period=SHORT_TERM_NOISE_PERIOD, sma_perio
 
 
 def run_portfolio_simulation(file_paths):
-    print(f"\n{'=' * 20} PORTFOLIO SIMULATION (Dynamic Relative Filter) {'=' * 20}")
+    print(f"\n{'=' * 20} PORTFOLIO SIMULATION {'=' * 20}")
     print(f"SMA: {SMA_PERIOD}, N: {N}")
 
     market_data = {}
@@ -215,13 +215,32 @@ def run_portfolio_simulation(file_paths):
                 else:
                     buy_price = row["target"] * (1 + SLIPPAGE)
                     amount = invest_money / buy_price * (1 - FEE)
-                    positions[coin] = {"amount": amount}
+                    positions[coin] = {"amount": amount, "entry_price": buy_price}
                     cash -= invest_money
 
-        daily_equity = cash
+        daily_positions_value = 0
+        dt_index = sorted_dates.index(dt)
+
         for coin, pos in positions.items():
+            price = None
             if coin in daily_market:
-                daily_equity += pos["amount"] * daily_market[coin]["close"]
+                # 오늘 종가 데이터가 있으면 사용
+                price = daily_market[coin]["close"]
+            else:
+                # 데이터가 없는 경우, 어제부터 역방향으로 탐색하여 마지막으로 유효했던 종가를 찾음
+                for i in range(dt_index - 1, -1, -1):
+                    prev_dt = sorted_dates[i]
+                    if coin in market_data.get(prev_dt, {}):
+                        price = market_data[prev_dt][coin]["close"]
+                        break
+                
+                # 그래도 가격을 못찾으면 (예: 매수 직후 다음날부터 데이터 없는 경우), 매수 가격으로 대체
+                if price is None:
+                    price = pos["entry_price"]
+
+            daily_positions_value += pos["amount"] * price
+
+        daily_equity = cash + daily_positions_value
         equity_curve.append(daily_equity)
 
     final_equity = equity_curve[-1]

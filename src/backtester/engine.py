@@ -44,6 +44,9 @@ try:
 except ImportError:
     PairTradingStrategy = None  # type: ignore
 
+from src.execution.advanced_orders import AdvancedOrderManager
+
+
 logger = get_logger(__name__)
 
 
@@ -169,6 +172,7 @@ class VectorizedBacktestEngine:
             config: Backtesting configuration
         """
         self.config = config or BacktestConfig()
+        self.advanced_order_manager = AdvancedOrderManager()
 
     def load_data(self, filepath: Path) -> pd.DataFrame:
         """

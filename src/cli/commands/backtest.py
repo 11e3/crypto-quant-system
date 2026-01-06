@@ -208,6 +208,9 @@ def backtest(
     logger.info(f"Tickers: {ticker_list}")
     logger.info(f"Interval: {interval}")
     logger.info(f"Strategy: {strategy}")
+
+
+
     logger.info(f"Initial capital: {initial_capital}")
     logger.info(f"Fee rate: {fee_rate}")
     logger.info(f"Max slots: {max_slots}")
@@ -227,11 +230,19 @@ def backtest(
         vbo_kwargs["exclude_current"] = exclude_current
     
     if strategy == "vanilla":
+        # Default vanilla parameters matching legacy
+        vanilla_params = {
+            "sma_period": sma_period if sma_period is not None else 5,
+            "trend_sma_period": trend_sma_period if trend_sma_period is not None else 10,
+            "short_noise_period": short_noise_period if short_noise_period is not None else 5,
+            "long_noise_period": long_noise_period if long_noise_period is not None else 10,
+            "exclude_current": exclude_current if exclude_current is not None else True,
+        }
         strategy_obj = create_vbo_strategy(
             name="VanillaVBO",
             use_trend_filter=True,
             use_noise_filter=True,
-            **vbo_kwargs,
+            **vanilla_params,
         )
     elif strategy == "minimal":
         strategy_obj = create_vbo_strategy(
@@ -276,6 +287,26 @@ def backtest(
         strategy_obj = PairTradingStrategy(name="PairTradingStrategy")
     else:
         raise ValueError(f"Unknown strategy: {strategy}")
+
+    # Log strategy-specific parameters
+    if (
+        hasattr(strategy_obj, "sma_period")
+        or hasattr(strategy_obj, "trend_sma_period")
+        or hasattr(strategy_obj, "short_noise_period")
+        or hasattr(strategy_obj, "long_noise_period")
+    ):
+        logger.info("--- Strategy Parameters ---")
+        if hasattr(strategy_obj, "sma_period"):
+            logger.info(f"SMA Period: {strategy_obj.sma_period}")
+        if hasattr(strategy_obj, "trend_sma_period"):
+            logger.info(f"Trend SMA Period: {strategy_obj.trend_sma_period}")
+        if hasattr(strategy_obj, "short_noise_period"):
+            logger.info(f"Short Noise Period: {strategy_obj.short_noise_period}")
+        if hasattr(strategy_obj, "long_noise_period"):
+            logger.info(f"Long Noise Period: {strategy_obj.long_noise_period}")
+        if hasattr(strategy_obj, "exclude_current"):
+            logger.info(f"Exclude Current: {strategy_obj.exclude_current}")
+        logger.info("---------------------------")
 
     # Create config
     config = BacktestConfig(
