@@ -196,7 +196,7 @@ class MonteCarloSimulator:
             returns = simulated_returns[i]
 
             # CAGR
-            if equity_curve[-1] > 0 and n_periods > 0:
+            if len(equity_curve) > 0 and equity_curve[-1] > 0 and n_periods > 0:
                 simulated_cagrs[i] = (
                     (equity_curve[-1] / self.initial_capital) ** (annualization_factor / n_periods) - 1
                 ) * 100
@@ -206,7 +206,7 @@ class MonteCarloSimulator:
             # MDD
             cummax = np.maximum.accumulate(equity_curve)
             drawdown = (cummax - equity_curve) / cummax
-            simulated_mdds[i] = np.nanmax(drawdown) * 100
+            simulated_mdds[i] = np.nanmax(drawdown) * 100 if len(drawdown) > 0 else 0.0
 
             # Sharpe Ratio
             if len(returns) > 0 and np.std(returns) > 0:

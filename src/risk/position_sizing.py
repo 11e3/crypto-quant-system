@@ -83,7 +83,10 @@ def calculate_position_size(
 
 def _equal_sizing(available_cash: float, available_slots: int) -> float:
     """Equal allocation among available slots."""
-    return available_cash / available_slots
+    try:
+        return available_cash / available_slots
+    except ZeroDivisionError:
+        return float("inf")
 
 
 def _volatility_based_sizing(

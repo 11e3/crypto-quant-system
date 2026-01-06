@@ -33,7 +33,7 @@ class PortfolioWeights:
         return (
             f"PortfolioWeights(method={self.method}, "
             f"assets={len(self.weights)}, "
-            f"sharpe={self.sharpe_ratio:.3f if self.sharpe_ratio else None})"
+            f"sharpe={f'{self.sharpe_ratio:.3f}' if self.sharpe_ratio is not None else 'None'})"
         )
 
 
