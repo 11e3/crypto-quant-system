@@ -13,11 +13,16 @@
 - Mermaid를 사용한 아키텍처 다이어그램
 - 문제 해결 가이드
 - FAQ 섹션
+- 문서 빌드 가이드에 Python 3.14 + uv 기반 흐름 추가 (docs/README.md, docs/README_SPHINX.md)
+- 가이드 인덱스에 예정된 Sphinx 빌드/배포 자동화 가이드 예고 (docs/guides/README.md)
 
 ### 변경됨
 - 동적 배지를 포함한 README 개선
 - API 문서 향상
 - 문서 구조 업데이트
+- mypy 설정: pandas-heavy/동적 모듈을 override로 무시, tests.* 완화 코드 포함
+- pre-commit mypy 오류 해결을 위한 buy_amount 계산 명시적 float 캐스트 (bot, bot_facade)
+- MemoryProfiler에서 psutil 타이포 수정으로 메모리 프로파일링 복구
 
 ## [0.1.0] - 2026-01-05
 

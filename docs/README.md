@@ -1,4 +1,4 @@
-# Upbit Quant System 문서
+# Crypto Quant System 문서
 
 이 디렉토리에는 프로젝트의 모든 문서가 포함되어 있습니다.
 
@@ -47,6 +47,17 @@ GitHub 공개를 위한 포트폴리오 준비 문서
 3. **어떤 전략을 사용할지 모르시나요?** → [전략 가이드](guides/strategies.md)
 4. **시스템 구조를 알고 싶으신가요?** → [아키텍처](architecture.md)
 5. **전략을 커스터마이징하고 싶으신가요?** → [전략 커스터마이징](guides/strategy_customization.md)
+
+### 문서 빌드 (Python 3.14, uv)
+
+```bash
+# 문서 의존성 설치
+uv sync --extra docs
+
+# HTML 문서 빌드
+cd docs
+uv run sphinx-build -b html . _build/html
+```
 
 ## 📝 문서 작성 가이드
 
