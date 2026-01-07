@@ -8,6 +8,7 @@ import click
 import numpy as np
 
 from src.backtester import BacktestConfig, run_backtest
+from src.strategies.base import Strategy
 from src.strategies.mean_reversion import (
     MeanReversionStrategy,
     SimpleMeanReversionStrategy,
@@ -218,7 +219,7 @@ def backtest(
 
     # Create strategy based on variant
     # Build kwargs for VBO strategies
-    vbo_kwargs: dict = {}
+    vbo_kwargs: dict[str, int | bool] = {}
     if sma_period is not None:
         vbo_kwargs["sma_period"] = sma_period
     if trend_sma_period is not None:
@@ -230,9 +231,10 @@ def backtest(
     if exclude_current is not None:
         vbo_kwargs["exclude_current"] = exclude_current
 
+    strategy_obj: Strategy
     if strategy == "vanilla":
         # Default vanilla parameters matching legacy
-        vanilla_params = {
+        vanilla_params: dict[str, int | bool] = {
             "sma_period": sma_period if sma_period is not None else 5,
             "trend_sma_period": trend_sma_period if trend_sma_period is not None else 10,
             "short_noise_period": short_noise_period if short_noise_period is not None else 5,
@@ -243,18 +245,18 @@ def backtest(
             name="VanillaVBO",
             use_trend_filter=True,
             use_noise_filter=True,
-            **vanilla_params,
+            **vanilla_params,  # type: ignore[arg-type]
         )
     elif strategy == "minimal":
         strategy_obj = create_vbo_strategy(
             name="MinimalVBO",
             use_trend_filter=False,
             use_noise_filter=False,
-            **vbo_kwargs,
+            **vbo_kwargs,  # type: ignore[arg-type]
         )
     elif strategy == "legacy":
         # Default legacy parameters
-        legacy_kwargs = {
+        legacy_kwargs: dict[str, int | bool] = {
             "sma_period": sma_period if sma_period is not None else 5,
             "trend_sma_period": trend_sma_period if trend_sma_period is not None else 10,
             "short_noise_period": short_noise_period if short_noise_period is not None else 5,
@@ -265,7 +267,7 @@ def backtest(
             name="LegacyBT",
             use_trend_filter=True,
             use_noise_filter=True,
-            **legacy_kwargs,
+            **legacy_kwargs,  # type: ignore[arg-type]
         )
     elif strategy == "momentum":
         strategy_obj = MomentumStrategy(name="MomentumStrategy")

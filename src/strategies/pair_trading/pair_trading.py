@@ -5,6 +5,8 @@ Implements statistical arbitrage using spread and Z-score between two correlated
 Assumes spread will revert to its mean after deviating.
 """
 
+from collections.abc import Sequence
+
 import pandas as pd
 
 from src.strategies.base import Condition, Strategy
@@ -37,8 +39,8 @@ class PairTradingStrategy(Strategy):
         entry_z_score: float = 2.0,
         exit_z_score: float = 0.5,
         spread_type: str = "ratio",  # "ratio" or "difference"
-        entry_conditions: list[Condition] | None = None,
-        exit_conditions: list[Condition] | None = None,
+        entry_conditions: Sequence[Condition] | None = None,
+        exit_conditions: Sequence[Condition] | None = None,
         use_default_conditions: bool = True,
     ) -> None:
         """
@@ -73,8 +75,8 @@ class PairTradingStrategy(Strategy):
             ]
 
         # Merge with custom conditions
-        all_entry = (entry_conditions or []) + default_entry
-        all_exit = (exit_conditions or []) + default_exit
+        all_entry = list(entry_conditions or []) + default_entry
+        all_exit = list(exit_conditions or []) + default_exit
 
         super().__init__(
             name=name,

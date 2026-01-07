@@ -402,15 +402,15 @@ class WalkForwardAnalyzer:
         # Calculate averages
         avg_test_cagr = np.mean(test_cagrs) if test_cagrs else 0.0
         avg_test_sharpe = np.mean(test_sharpes) if test_sharpes else 0.0
-        avg_test_mdd = np.mean(test_mdds) if test_mdds else 0.0
-        avg_optimization_cagr = np.mean(opt_cagrs) if opt_cagrs else 0.0
+        avg_test_mdd: float = float(np.mean(test_mdds)) if test_mdds else 0.0
+        avg_optimization_cagr: float = float(np.mean(opt_cagrs)) if opt_cagrs else 0.0
 
-        consistency_rate = (positive_count / total_count * 100) if total_count > 0 else 0.0
+        consistency_rate: float = (positive_count / total_count * 100) if total_count > 0 else 0.0
 
         return WalkForwardResult(
             periods=periods,
-            avg_test_cagr=avg_test_cagr,
-            avg_test_sharpe=avg_test_sharpe,
+            avg_test_cagr=float(avg_test_cagr),
+            avg_test_sharpe=float(avg_test_sharpe),
             avg_test_mdd=avg_test_mdd,
             avg_optimization_cagr=avg_optimization_cagr,
             positive_periods=positive_count,

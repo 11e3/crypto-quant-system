@@ -306,9 +306,9 @@ class MomentumStrengthCondition(Condition):
             return False
 
         # Calculate price change over lookback period
-        past_close = history.iloc[-self.lookback]["close"]
+        past_close: float = float(history.iloc[-self.lookback]["close"])
         if past_close <= 0:
             return False
 
-        change_pct = (current.close - past_close) / past_close
+        change_pct: float = float((current.close - past_close) / past_close)
         return change_pct >= self.min_change_pct

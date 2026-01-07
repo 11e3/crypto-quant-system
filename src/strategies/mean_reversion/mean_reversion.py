@@ -5,6 +5,8 @@ Implements mean reversion strategy using Bollinger Bands, RSI, and moving averag
 Assumes prices will revert to their mean after deviating.
 """
 
+from collections.abc import Sequence
+
 import pandas as pd
 
 from src.strategies.base import Condition, Strategy
@@ -40,8 +42,8 @@ class MeanReversionStrategy(Strategy):
         rsi_period: int = 14,
         rsi_oversold: float = 30.0,
         rsi_overbought: float = 70.0,
-        entry_conditions: list[Condition] | None = None,
-        exit_conditions: list[Condition] | None = None,
+        entry_conditions: Sequence[Condition] | None = None,
+        exit_conditions: Sequence[Condition] | None = None,
         use_default_conditions: bool = True,
     ) -> None:
         """
@@ -84,8 +86,8 @@ class MeanReversionStrategy(Strategy):
             ]
 
         # Merge with custom conditions
-        all_entry = (entry_conditions or []) + default_entry
-        all_exit = (exit_conditions or []) + default_exit
+        all_entry = list(entry_conditions or []) + default_entry
+        all_exit = list(exit_conditions or []) + default_exit
 
         super().__init__(
             name=name,

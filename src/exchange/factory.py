@@ -21,7 +21,7 @@ class ExchangeFactory:
     """Factory for creating exchange instances."""
 
     @staticmethod
-    def create(exchange_name: ExchangeName | None = None, **kwargs) -> Exchange:
+    def create(exchange_name: str | ExchangeName | None = None, **kwargs) -> Exchange:
         """
         Create an exchange instance.
 
@@ -37,15 +37,19 @@ class ExchangeFactory:
             ValueError: If exchange_name is not supported or API keys are missing
         """
         # Get exchange name from config if not provided
+        exchange_name_resolved: str
         if exchange_name is None:
             config = get_config()
-            exchange_name = config.get("exchange.name", "upbit") or "upbit"
+            config_name: str | None = config.get("exchange.name", "upbit")
+            exchange_name_resolved = config_name if config_name else "upbit"
+        else:
+            exchange_name_resolved = exchange_name
 
         # Normalize exchange name
-        exchange_name = exchange_name.lower()
+        exchange_name_lower: str = exchange_name_resolved.lower()
 
         # Create exchange instance
-        if exchange_name == "upbit":
+        if exchange_name_lower == "upbit":
             return ExchangeFactory._create_upbit(**kwargs)
         else:
             raise ValueError(

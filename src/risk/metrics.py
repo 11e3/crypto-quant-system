@@ -82,7 +82,7 @@ def calculate_var(
 
     # VaR is the negative of the percentile
     percentile = (1 - confidence_level) * 100
-    var = -np.percentile(returns, percentile)
+    var: float = float(-np.percentile(returns, percentile))
 
     return var
 
@@ -112,7 +112,7 @@ def calculate_cvar(
     threshold = -var
     tail_losses = returns[returns <= threshold]
 
-    cvar = -np.mean(tail_losses) if len(tail_losses) > 0 else var
+    cvar: float = float(-np.mean(tail_losses)) if len(tail_losses) > 0 else var
 
     return cvar
 
@@ -134,7 +134,7 @@ def calculate_portfolio_volatility(
     if len(returns) == 0:
         return 0.0
 
-    return np.std(returns) * np.sqrt(annualization_factor)
+    return float(np.std(returns) * np.sqrt(annualization_factor))
 
 
 def calculate_portfolio_correlation(
@@ -163,9 +163,9 @@ def calculate_portfolio_correlation(
     correlations = correlation_matrix.where(mask).stack()
 
     if len(correlations) > 0:
-        avg_correlation = correlations.mean()
-        max_correlation = correlations.max()
-        min_correlation = correlations.min()
+        avg_correlation = float(correlations.mean())
+        max_correlation = float(correlations.max())
+        min_correlation = float(correlations.min())
     else:
         avg_correlation = max_correlation = min_correlation = 0.0
 
@@ -239,28 +239,36 @@ def calculate_portfolio_risk_metrics(
     # Portfolio volatility
     portfolio_volatility = calculate_portfolio_volatility(daily_returns, annualization_factor)
 
-    # Correlation metrics
+    # Correlation metrics - declare type first
+    avg_corr: float | None
+    max_corr: float | None
+    min_corr: float | None
     if asset_returns and len(asset_returns) >= 2:
         avg_corr, max_corr, min_corr, _ = calculate_portfolio_correlation(asset_returns)
     else:
-        avg_corr = max_corr = min_corr = None
+        avg_corr = None
+        max_corr = None
+        min_corr = None
 
-    # Position concentration
+    # Position concentration - declare type first
+    max_pos_pct: float | None
+    hhi: float | None
     if position_values and total_portfolio_value and len(position_values) > 0:
         max_pos_pct, hhi = calculate_position_concentration(position_values, total_portfolio_value)
     else:
-        max_pos_pct = hhi = None
+        max_pos_pct = None
+        hhi = None
 
     # Beta (portfolio sensitivity to benchmark)
-    portfolio_beta = None
+    portfolio_beta: float | None = None
     if (
         benchmark_returns is not None
         and len(benchmark_returns) > 0
         and len(daily_returns) == len(benchmark_returns)
     ):
         # Calculate beta: Cov(portfolio, benchmark) / Var(benchmark)
-        covariance = np.cov(daily_returns, benchmark_returns)[0, 1]
-        benchmark_variance = np.var(benchmark_returns)
+        covariance: float = float(np.cov(daily_returns, benchmark_returns)[0, 1])
+        benchmark_variance: float = float(np.var(benchmark_returns))
         if benchmark_variance > 0:
             portfolio_beta = covariance / benchmark_variance
 

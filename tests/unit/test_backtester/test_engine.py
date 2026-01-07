@@ -13,6 +13,7 @@ from src.backtester.engine import (
     run_backtest,
 )
 from src.strategies.base import Strategy
+from src.strategies.pair_trading import PairTradingStrategy
 
 # -------------------------------------------------------------------------
 # Fixtures
@@ -412,7 +413,7 @@ class TestEngineTradingLogic:
 
 
 # Define dummy class at module level for correct patching behavior
-class DummyPairStrategy(Strategy):
+class DummyPairStrategy(PairTradingStrategy):
     def __init__(self):
         super().__init__("PairStrat")
         self.lookback_period = 10
@@ -439,48 +440,45 @@ class DummyPairStrategy(Strategy):
 class TestPairTradingExtended:
     def test_pair_trading_wrong_file_count(self, engine):
         """Test pair trading validates 2 files."""
-        # Use patch to replace PairTradingStrategy class with DummyPairStrategy class
-        # This allows isinstance(strategy, PairTradingStrategy) to work if we use the patched name,
-        # or we just rely on the engine importing the patched version.
-        with patch("src.backtester.engine.PairTradingStrategy", DummyPairStrategy):
-            strat = DummyPairStrategy()
-            with pytest.raises(ValueError, match="requires exactly 2 tickers"):
-                engine.run(strat, {"A": Path("a")})
+        # Since import is now inside run(), we need to patch before run() is called
+        # But the isinstance check will still work since we're importing inside run()
+        strat = DummyPairStrategy()
+        with pytest.raises(ValueError, match="requires exactly 2 tickers"):
+            engine.run(strat, {"A": Path("a")})
 
     def test_pair_trading_insufficient_slots(self, engine, tmp_path):
         """Test pair trading logic when slots < 2."""
-        with patch("src.backtester.engine.PairTradingStrategy", DummyPairStrategy):
-            strat = DummyPairStrategy()
+        strat = DummyPairStrategy()
 
-            # Setup data (reuse standard layout)
-            periods = 50
-            dates = pd.date_range("2023-01-01", periods=periods)
-            df = pd.DataFrame(
-                {
-                    "close": np.full(periods, 100.0),
-                    "open": np.full(periods, 100.0),
-                    "high": np.full(periods, 105.0),
-                    "low": np.full(periods, 95.0),
-                    "volume": np.full(periods, 1000.0),
-                    "entry_signal": np.zeros(periods, dtype=bool),
-                    "exit_signal": np.zeros(periods, dtype=bool),
-                    "entry_price": np.full(periods, 100.0),
-                    "exit_price": np.full(periods, 100.0),
-                },
-                index=dates,
-            )
+        # Setup data (reuse standard layout)
+        periods = 50
+        dates = pd.date_range("2023-01-01", periods=periods)
+        df = pd.DataFrame(
+            {
+                "close": np.full(periods, 100.0),
+                "open": np.full(periods, 100.0),
+                "high": np.full(periods, 105.0),
+                "low": np.full(periods, 95.0),
+                "volume": np.full(periods, 1000.0),
+                "entry_signal": np.zeros(periods, dtype=bool),
+                "exit_signal": np.zeros(periods, dtype=bool),
+                "entry_price": np.full(periods, 100.0),
+                "exit_price": np.full(periods, 100.0),
+            },
+            index=dates,
+        )
 
-            f1, f2 = tmp_path / "A.parquet", tmp_path / "B.parquet"
-            df.to_parquet(f1)
-            df.to_parquet(f2)
+        f1, f2 = tmp_path / "A.parquet", tmp_path / "B.parquet"
+        df.to_parquet(f1)
+        df.to_parquet(f2)
 
-            engine.config.max_slots = 1
+        engine.config.max_slots = 1
 
-            with patch("src.backtester.engine.optimize_dtypes", side_effect=lambda x: x):
-                result = engine.run(strat, {"A": f1, "B": f2})
+        with patch("src.backtester.engine.optimize_dtypes", side_effect=lambda x: x):
+            result = engine.run(strat, {"A": f1, "B": f2})
 
-            # Should enter NO trades because need at least 2 slots
-            assert len(result.trades) == 0
+        # Should enter NO trades because need at least 2 slots
+        assert len(result.trades) == 0
 
 
 # -------------------------------------------------------------------------

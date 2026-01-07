@@ -97,7 +97,7 @@ class TestPortfolioOptimizer:
         assert isinstance(weights, PortfolioWeights)
         assert weights.method == "mpt"
         assert sum(weights.weights.values()) == pytest.approx(1.0)
-        assert weights.sharpe_ratio > 0
+        assert weights.sharpe_ratio is not None and weights.sharpe_ratio > 0
 
     def test_optimize_mpt_target_return(
         self, optimizer: PortfolioOptimizer, sample_returns_df: pd.DataFrame

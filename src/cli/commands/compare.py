@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from src.backtester import BacktestConfig, compare_strategies
+from src.strategies.base import Strategy
 from src.strategies.mean_reversion import (
     MeanReversionStrategy,
     SimpleMeanReversionStrategy,
@@ -117,7 +118,7 @@ def compare(
     logger.info(f"Max slots: {max_slots}")
 
     # Create strategies
-    strategy_objects = []
+    strategy_objects: list[Strategy] = []
     for strategy_name in strategy_list:
         if strategy_name == "vanilla":
             strategy_objects.append(

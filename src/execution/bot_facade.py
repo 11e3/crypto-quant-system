@@ -289,7 +289,7 @@ class TradingBotFacade:
             return 0.0
 
         fee_rate = self.trading_config["fee_rate"]
-        buy_amount = (krw_bal / available_slots) * (1 - fee_rate)
+        buy_amount = float((krw_bal / available_slots) * (1 - fee_rate))
 
         return buy_amount if buy_amount > min_amount else 0.0
 

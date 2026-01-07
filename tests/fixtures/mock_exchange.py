@@ -193,7 +193,7 @@ class MockExchange(Exchange):
             raise ExchangeError(f"Order {order_id} not found")
         return self._orders[order_id]
 
-    def cancel_order(self, order_id: str) -> None:
+    def cancel_order(self, order_id: str) -> bool:
         """Cancel an order."""
         if order_id not in self._orders:
             raise ExchangeError(f"Order {order_id} not found")
@@ -209,6 +209,7 @@ class MockExchange(Exchange):
             filled_amount=order.filled_amount,
             created_at=order.created_at,
         )
+        return True
 
     # Helper methods for test configuration
     def set_balance(self, currency: str, balance: float, locked: float = 0.0) -> None:

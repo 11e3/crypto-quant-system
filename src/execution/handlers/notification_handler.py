@@ -105,7 +105,8 @@ class NotificationHandler:
             and "YOUR_" not in self.telegram.token
         ):
             # Real Telegram in test environment - block it
-            logger.debug(f"Order notification blocked during testing: {event.ticker}")
+            ticker_str = event.ticker if isinstance(event, OrderEvent) else "unknown"
+            logger.debug(f"Order notification blocked during testing: {ticker_str}")
             return
 
         if isinstance(event, OrderEvent) and self.telegram:

@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import ANNUALIZATION_FACTOR, RISK_FREE_RATE
+from src.risk.metrics import PortfolioRiskMetrics
 from src.utils.logger import get_logger
 
 # Use a clean style
@@ -89,9 +90,10 @@ def calculate_sortino_ratio(
     if downside_std <= 0:
         return 0.0
 
-    mean_excess = float(np.mean(excess_returns))
-    sqrt_annualization = float(np.sqrt(annualization))
-    result: float = (mean_excess / downside_std) * sqrt_annualization
+    mean_excess: float = float(np.mean(excess_returns))
+    sqrt_annualization: float = float(np.sqrt(annualization))
+    downside_std_float: float = float(downside_std)
+    result: float = (mean_excess / downside_std_float) * sqrt_annualization
     return result
 
 
@@ -342,7 +344,7 @@ class BacktestReport:
         """
         self.strategy_name = strategy_name
         self.initial_capital = initial_capital
-        self.risk_metrics = None
+        self.risk_metrics: PortfolioRiskMetrics | None = None
 
         # Convert to numpy arrays if needed
         self.equity_curve = np.array(equity_curve)
@@ -424,7 +426,7 @@ class BacktestReport:
                     f"   Portfolio Vol:  {self.risk_metrics.portfolio_volatility * 100:.2f}%",
                 ]
             )
-            if self.risk_metrics.avg_correlation != 0.0:
+            if self.risk_metrics.avg_correlation is not None:
                 output_lines.extend(
                     [
                         f"   Avg Correlation: {self.risk_metrics.avg_correlation:.3f}",
@@ -432,7 +434,10 @@ class BacktestReport:
                         f"   Min Correlation: {self.risk_metrics.min_correlation:.3f}",
                     ]
                 )
-            if self.risk_metrics.max_position_pct > 0:
+            if (
+                self.risk_metrics.max_position_pct is not None
+                and self.risk_metrics.max_position_pct > 0
+            ):
                 output_lines.extend(
                     [
                         f"   Max Position %:  {self.risk_metrics.max_position_pct * 100:.2f}%",

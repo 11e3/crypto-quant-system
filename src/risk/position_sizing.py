@@ -8,6 +8,7 @@ Provides various position sizing methods:
 - Inverse-volatility: Inverse volatility weighting
 """
 
+from collections.abc import Mapping
 from typing import Literal
 
 import numpy as np
@@ -106,18 +107,18 @@ def _volatility_based_sizing(
     # Calculate volatility (standard deviation of returns)
     recent_data = historical_data.tail(lookback_period)
     returns = recent_data["close"].pct_change().dropna()
-    volatility = returns.std()
+    volatility = float(returns.std())
 
     if volatility <= 0 or np.isnan(volatility):
         return _equal_sizing(available_cash, available_slots)
 
     # Inverse volatility weight (lower volatility = higher weight)
-    weight = 1.0 / volatility
+    weight: float = 1.0 / volatility
 
     # Normalize: assume all slots have similar volatility distribution
     # For single asset, use equal sizing scaled by weight
     base_size = available_cash / available_slots
-    return base_size * weight / (1.0 / volatility)  # Normalize to base size
+    return float(base_size * weight / (1.0 / volatility))  # Normalize to base size
 
 
 def _fixed_risk_sizing(
@@ -140,7 +141,7 @@ def _fixed_risk_sizing(
     # Calculate volatility
     recent_data = historical_data.tail(lookback_period)
     returns = recent_data["close"].pct_change().dropna()
-    volatility = returns.std()
+    volatility = float(returns.std())
 
     if volatility <= 0 or np.isnan(volatility) or current_price <= 0:
         return _equal_sizing(available_cash, available_slots)
@@ -149,13 +150,13 @@ def _fixed_risk_sizing(
     # Risk = position_value * volatility
     # position_value = target_risk / volatility
     target_risk_amount = available_cash * target_risk_pct
-    position_value = target_risk_amount / volatility
+    position_value = float(target_risk_amount / volatility)
 
     # Limit to available cash per slot
     max_per_slot = available_cash / available_slots
     position_value = min(position_value, max_per_slot)
 
-    return position_value
+    return float(position_value)
 
 
 def _inverse_volatility_sizing(
@@ -183,10 +184,10 @@ def _inverse_volatility_sizing(
 
     # Inverse volatility: lower volatility gets more capital
     # For single asset, scale by inverse volatility
-    base_size = available_cash / available_slots
+    base_size: float = float(available_cash / available_slots)
     # Normalize by average volatility (assume 0.02 = 2% daily volatility as baseline)
     baseline_volatility = 0.02
-    weight = baseline_volatility / volatility
+    weight: float = float(baseline_volatility / volatility)
 
     return base_size * weight
 
@@ -195,7 +196,7 @@ def calculate_multi_asset_position_sizes(
     method: PositionSizingMethod,
     available_cash: float,
     tickers: list[str],
-    current_prices: dict[str, float],
+    current_prices: Mapping[str, float],
     historical_data: dict[str, pd.DataFrame],
     target_risk_pct: float = 0.02,
     lookback_period: int = 20,

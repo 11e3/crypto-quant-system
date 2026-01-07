@@ -209,25 +209,29 @@ class MonteCarloSimulator:
                 simulated_sharpes[i] = 0.0
 
         # Calculate statistics
-        mean_cagr = np.mean(simulated_cagrs)
-        std_cagr = np.std(simulated_cagrs)
-        mean_mdd = np.mean(simulated_mdds)
-        std_mdd = np.std(simulated_mdds)
-        mean_sharpe = np.mean(simulated_sharpes)
-        std_sharpe = np.std(simulated_sharpes)
+        mean_cagr: float = float(np.mean(simulated_cagrs))
+        std_cagr: float = float(np.std(simulated_cagrs))
+        mean_mdd: float = float(np.mean(simulated_mdds))
+        std_mdd: float = float(np.std(simulated_mdds))
+        mean_sharpe: float = float(np.mean(simulated_sharpes))
+        std_sharpe: float = float(np.std(simulated_sharpes))
 
         # Confidence intervals (95%)
-        cagr_ci_lower = np.percentile(simulated_cagrs, 2.5)
-        cagr_ci_upper = np.percentile(simulated_cagrs, 97.5)
-        mdd_ci_lower = np.percentile(simulated_mdds, 2.5)
-        mdd_ci_upper = np.percentile(simulated_mdds, 97.5)
-        sharpe_ci_lower = np.percentile(simulated_sharpes, 2.5)
-        sharpe_ci_upper = np.percentile(simulated_sharpes, 97.5)
+        cagr_ci_lower: float = float(np.percentile(simulated_cagrs, 2.5))
+        cagr_ci_upper: float = float(np.percentile(simulated_cagrs, 97.5))
+        mdd_ci_lower: float = float(np.percentile(simulated_mdds, 2.5))
+        mdd_ci_upper: float = float(np.percentile(simulated_mdds, 97.5))
+        sharpe_ci_lower: float = float(np.percentile(simulated_sharpes, 2.5))
+        sharpe_ci_upper: float = float(np.percentile(simulated_sharpes, 97.5))
 
         # Percentiles
         percentiles = [5, 25, 50, 75, 95]
-        cagr_percentiles = {p: np.percentile(simulated_cagrs, p) for p in percentiles}
-        mdd_percentiles = {p: np.percentile(simulated_mdds, p) for p in percentiles}
+        cagr_percentiles: dict[float, float] = {
+            float(p): float(np.percentile(simulated_cagrs, p)) for p in percentiles
+        }
+        mdd_percentiles: dict[float, float] = {
+            float(p): float(np.percentile(simulated_mdds, p)) for p in percentiles
+        }
 
         return MonteCarloResult(
             original_result=self.result,
@@ -262,8 +266,8 @@ class MonteCarloSimulator:
         Returns:
             Probability (0-1) of negative return
         """
-        negative_count = np.sum(mc_result.simulated_cagrs < 0)
-        return negative_count / mc_result.n_simulations
+        negative_count = int(np.sum(mc_result.simulated_cagrs < 0))
+        return float(negative_count) / mc_result.n_simulations
 
     def value_at_risk(self, mc_result: MonteCarloResult, confidence: float = 0.95) -> float:
         """
@@ -277,7 +281,7 @@ class MonteCarloSimulator:
             VaR as percentage
         """
         percentile = (1 - confidence) * 100
-        return np.percentile(mc_result.simulated_cagrs, percentile)
+        return float(np.percentile(mc_result.simulated_cagrs, percentile))
 
     def conditional_value_at_risk(
         self, mc_result: MonteCarloResult, confidence: float = 0.95
@@ -293,10 +297,10 @@ class MonteCarloSimulator:
             CVaR as percentage
         """
         percentile = (1 - confidence) * 100
-        var = np.percentile(mc_result.simulated_cagrs, percentile)
+        var: float = float(np.percentile(mc_result.simulated_cagrs, percentile))
         # Average of returns below VaR
         below_var = mc_result.simulated_cagrs[mc_result.simulated_cagrs <= var]
-        return np.mean(below_var) if len(below_var) > 0 else var
+        return float(np.mean(below_var)) if len(below_var) > 0 else var
 
 
 def run_monte_carlo(

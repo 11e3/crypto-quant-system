@@ -86,15 +86,18 @@ class PortfolioOptimizer:
 
         # Objective function: negative Sharpe ratio (to minimize)
         def objective(weights: np.ndarray) -> float:
-            portfolio_return = np.dot(weights, mean_returns)
-            portfolio_vol = np.sqrt(np.dot(weights, np.dot(cov_matrix, weights)))
+            portfolio_return: float = float(np.dot(weights, mean_returns))
+            portfolio_vol: float = float(np.sqrt(np.dot(weights, np.dot(cov_matrix, weights))))
             if portfolio_vol == 0:
-                return np.inf
+                return float("inf")
             sharpe = (portfolio_return - risk_free_rate) / portfolio_vol
             return -sharpe  # Negative because we minimize
 
         # Constraints: weights sum to 1
-        constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1.0}
+        constraints: list[dict[str, Any]] | dict[str, Any] = {
+            "type": "eq",
+            "fun": lambda w: np.sum(w) - 1.0,
+        }
 
         # Bounds: each weight between min_weight and max_weight
         bounds = tuple((min_weight, max_weight) for _ in range(n_assets))
@@ -186,9 +189,9 @@ class PortfolioOptimizer:
 
         # Objective: minimize sum of squared differences in risk contributions
         def objective(weights: np.ndarray) -> float:
-            portfolio_vol = np.sqrt(np.dot(weights, np.dot(cov_matrix, weights)))
+            portfolio_vol: float = float(np.sqrt(np.dot(weights, np.dot(cov_matrix, weights))))
             if portfolio_vol == 0:
-                return np.inf
+                return float("inf")
 
             # Risk contribution of each asset
             marginal_contrib = np.dot(cov_matrix, weights) / portfolio_vol
@@ -199,7 +202,7 @@ class PortfolioOptimizer:
 
             # Sum of squared differences from target
             diff = risk_contrib - target_contrib
-            return np.sum(diff**2)
+            return float(np.sum(diff**2))
 
         # Constraints: weights sum to 1
         constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1.0}

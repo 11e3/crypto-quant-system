@@ -394,9 +394,9 @@ class VectorizedBacktestEngine:
             BacktestResult with performance metrics
         """
         # Check if this is a pair trading strategy
-        is_pair_trading = PairTradingStrategy is not None and isinstance(
-            strategy, PairTradingStrategy
-        )
+        from src.strategies.pair_trading import PairTradingStrategy
+
+        is_pair_trading = isinstance(strategy, PairTradingStrategy)
 
         if is_pair_trading:
             # Pair trading requires exactly 2 tickers
@@ -406,6 +406,8 @@ class VectorizedBacktestEngine:
                     f"got {len(data_files)}: {list(data_files.keys())}"
                 )
             # Use special pair trading processing
+            if not isinstance(strategy, PairTradingStrategy):
+                raise TypeError(f"Expected PairTradingStrategy, got {type(strategy)}")
             return self._run_pair_trading(
                 strategy, data_files, start_date=start_date, end_date=end_date
             )
@@ -788,7 +790,7 @@ class VectorizedBacktestEngine:
                                     candidate_historical[ticker] = hist_df.iloc[: d_idx + 1]
 
                         position_sizes = calculate_multi_asset_position_sizes(
-                            method=self.config.position_sizing,
+                            method=self.config.position_sizing,  # type: ignore[arg-type]
                             available_cash=cash,
                             tickers=candidate_tickers,
                             current_prices=candidate_prices,
@@ -800,7 +802,7 @@ class VectorizedBacktestEngine:
                 for t_idx in candidate_idx:
                     # Recalculate available_slots each iteration (matching legacy/bt.py)
                     current_positions = np.sum(position_amounts > 0)
-                    available_slots = max_slots - current_positions
+                    available_slots = int(max_slots - current_positions)
 
                     if (
                         available_slots <= 0
@@ -829,7 +831,7 @@ class VectorizedBacktestEngine:
                                 hist_up_to_date = hist_df.iloc[: d_idx + 1]
 
                             invest_amount = calculate_position_size(
-                                method=self.config.position_sizing,
+                                method=self.config.position_sizing,  # type: ignore[arg-type]
                                 available_cash=cash,
                                 available_slots=available_slots,
                                 ticker=ticker,
@@ -1398,7 +1400,7 @@ def run_backtest(
             "week": "week",
         }
 
-        interval_type = interval_map.get(interval, "day")  # type: ignore
+        interval_type: Interval = interval_map.get(interval, "day")
 
         for ticker in missing_tickers:
             try:

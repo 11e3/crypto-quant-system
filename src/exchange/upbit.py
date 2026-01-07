@@ -3,6 +3,7 @@ Upbit exchange implementation.
 """
 
 from datetime import datetime
+from typing import cast
 
 import pandas as pd
 import pyupbit
@@ -234,7 +235,7 @@ class UpbitExchange(Exchange):
             if df is None or len(df) == 0:
                 _get_logger().warning(f"No OHLCV data for {symbol}")
                 return None
-            return df
+            return cast(pd.DataFrame, df)
         except Exception as e:
             _get_logger().error(f"Error getting OHLCV for {symbol}: {e}", exc_info=True)
             return None

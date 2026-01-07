@@ -158,12 +158,12 @@ def get_event_bus() -> EventBus:
     return _default_event_bus
 
 
-def set_event_bus(event_bus: EventBus) -> None:
+def set_event_bus(event_bus: EventBus | None) -> None:
     """
     Set the default global event bus instance.
 
     Args:
-        event_bus: EventBus instance to use as default
+        event_bus: EventBus instance to use as default, or None to clear
     """
     global _default_event_bus
     _default_event_bus = event_bus

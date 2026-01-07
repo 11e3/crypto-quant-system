@@ -259,7 +259,7 @@ class TestCalculatePositionSize:
     ) -> None:
         """Test unknown position sizing method fallback."""
         size = calculate_position_size(
-            method="unknown_method",  # type: ignore
+            method="unknown_method",
             available_cash=1000,
             available_slots=2,
             ticker="TEST",

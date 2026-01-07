@@ -5,6 +5,8 @@ Implements the classic volatility breakout strategy with modular
 conditions and filters that can be added or removed.
 """
 
+from collections.abc import Sequence
+
 import pandas as pd
 
 from src.strategies.base import Condition, Strategy
@@ -40,8 +42,8 @@ class VanillaVBO(Strategy):
         trend_sma_period: int = 8,
         short_noise_period: int = 4,
         long_noise_period: int = 8,
-        entry_conditions: list[Condition] | None = None,
-        exit_conditions: list[Condition] | None = None,
+        entry_conditions: Sequence[Condition] | None = None,
+        exit_conditions: Sequence[Condition] | None = None,
         use_default_conditions: bool = True,
         exclude_current: bool = False,
     ) -> None:
@@ -82,8 +84,8 @@ class VanillaVBO(Strategy):
             ]
 
         # Merge with custom conditions
-        all_entry = (entry_conditions or []) + default_entry
-        all_exit = (exit_conditions or []) + default_exit
+        all_entry = list(entry_conditions or []) + default_entry
+        all_exit = list(exit_conditions or []) + default_exit
 
         super().__init__(
             name=name,
@@ -243,8 +245,8 @@ def create_vbo_strategy(
     use_sma_exit: bool = True,
     use_trend_filter: bool = True,
     use_noise_filter: bool = True,
-    extra_entry_conditions: list[Condition] | None = None,
-    extra_exit_conditions: list[Condition] | None = None,
+    extra_entry_conditions: Sequence[Condition] | None = None,
+    extra_exit_conditions: Sequence[Condition] | None = None,
     exclude_current: bool = False,
 ) -> VanillaVBO:
     """
@@ -298,14 +300,14 @@ def create_vbo_strategy(
     if use_noise_filter:
         entry_conditions.append(NoiseCondition())
     if extra_entry_conditions:
-        entry_conditions.extend(extra_entry_conditions)
+        entry_conditions.extend(list(extra_entry_conditions))
 
     # Build exit conditions
     exit_conditions: list[Condition] = []
     if use_sma_exit:
         exit_conditions.append(PriceBelowSMACondition())
     if extra_exit_conditions:
-        exit_conditions.extend(extra_exit_conditions)
+        exit_conditions.extend(list(extra_exit_conditions))
 
     # Create strategy with custom components
     return VanillaVBO(

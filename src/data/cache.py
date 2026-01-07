@@ -422,7 +422,7 @@ class IndicatorCache:
         )
         return total_size / (1024 * 1024)
 
-    def cleanup(self, max_age_days: int | None = None) -> dict[str, int]:
+    def cleanup(self, max_age_days: int | None = None) -> dict[str, int | float]:
         """
         Clean up cache by removing old or unused entries.
 
@@ -482,17 +482,17 @@ class IndicatorCache:
         return {
             "entries": len(self._metadata),
             "total_rows": total_rows,
-            "total_size_mb": round(total_size_mb, 2),
+            "total_size_mb": float(round(total_size_mb, 2)),
             "max_size_mb": self.max_size_mb,
             "max_entries": self.max_entries,
-            "usage_pct": round((len(self._metadata) / self.max_entries) * 100, 1)
+            "usage_pct": float(round((len(self._metadata) / self.max_entries) * 100, 1))
             if self.max_entries > 0
-            else 0,
-            "size_usage_pct": round((total_size_mb / self.max_size_mb) * 100, 1)
+            else 0.0,
+            "size_usage_pct": float(round((total_size_mb / self.max_size_mb) * 100, 1))
             if self.max_size_mb > 0
-            else 0,
-            "avg_age_days": round(sum(ages) / len(ages), 1) if ages else 0,
-            "oldest_entry_days": round(max(ages), 1) if ages else 0,
+            else 0.0,
+            "avg_age_days": float(round(sum(ages) / len(ages), 1)) if ages else 0.0,
+            "oldest_entry_days": float(round(max(ages), 1)) if ages else 0.0,
             "cache_dir": str(self.cache_dir),
         }
 
