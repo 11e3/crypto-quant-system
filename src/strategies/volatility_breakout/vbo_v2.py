@@ -1,6 +1,23 @@
 """
 Vanilla Volatility Breakout v2 (VBO v2) Strategy - Phase 2 개선버전.
 
+⚠️ DEPRECATED: This module will be removed in v2.0.0 (planned Q2 2026).
+
+Migration Guide:
+    # OLD (deprecated)
+    from src.strategies.volatility_breakout.vbo_v2 import VanillaVBO_v2
+    strategy = VanillaVBO_v2(...)
+
+    # NEW (recommended)
+    from src.strategies.volatility_breakout.vbo import VanillaVBO
+    strategy = VanillaVBO(
+        use_improved_noise=True,
+        use_adaptive_k=True,
+        use_dynamic_slippage=True,
+        use_cost_calculator=True,
+        ...
+    )
+
 개선사항:
 1. ImprovedNoiseIndicator: ATR 기반 동적 필터링 (고정 범위 → 변동성 적응)
 2. AdaptiveKValue: 동적 K-값 조정 (0.8x ~ 1.3x)
@@ -11,6 +28,7 @@ VBO v2 = VanillaVBO + 노이즈 필터 강화 + 슬리피지/비용 통합
 """
 
 from collections.abc import Sequence
+import warnings
 
 import pandas as pd
 
@@ -29,6 +47,15 @@ from src.utils.indicators_v2 import (
     AdaptiveKValue,
     ImprovedNoiseIndicator,
     apply_improved_indicators,
+)
+
+# Emit deprecation warning at module import time
+warnings.warn(
+    "vbo_v2 module is deprecated and will be removed in v2.0.0. "
+    "Use VanillaVBO with use_improved_noise=True, use_adaptive_k=True, "
+    "use_dynamic_slippage=True, and use_cost_calculator=True instead.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
 

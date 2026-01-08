@@ -38,7 +38,7 @@ def tests(session: nox.Session) -> None:
 def type_check(session: nox.Session) -> None:
     """Run type checking with mypy."""
     session.install(".[dev]")
-    session.run("mypy", ".")
+    session.run("mypy", ".", "--strict")
     session.log("✓ Type checking complete")
 
 

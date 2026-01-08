@@ -1,6 +1,16 @@
 """
 Phase 2: 동적 슬리피지 모델 (Slippage Model v2)
 
+⚠️ DEPRECATED: This module will be removed in v2.0.0 (planned Q2 2026).
+
+Migration Guide:
+    # OLD (deprecated)
+    from src.backtester.slippage_model_v2 import DynamicSlippageModel
+
+    # NEW (recommended)
+    from src.backtester.slippage_model import DynamicSlippageModel
+    # Class will be moved to main slippage_model module
+
 기존 문제점:
 - 고정 슬리피지율 (0.05%)
 - 시장 조건 무시
@@ -14,8 +24,17 @@ Phase 2: 동적 슬리피지 모델 (Slippage Model v2)
 """
 
 from dataclasses import dataclass
+import warnings
 
 import pandas as pd
+
+# Emit deprecation warning at module import time
+warnings.warn(
+    "slippage_model_v2 module is deprecated and will be removed in v2.0.0. "
+    "DynamicSlippageModel will be moved to main slippage_model module.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 @dataclass

@@ -1,6 +1,17 @@
 """
 Phase 2: 개선된 지표 (Indicators v2)
 
+⚠️ DEPRECATED: This module will be removed in v2.0.0 (planned Q2 2026).
+
+Migration Guide:
+    # OLD (deprecated)
+    from src.utils.indicators_v2 import ImprovedNoiseIndicator, AdaptiveKValue
+    noise_indicator = ImprovedNoiseIndicator()
+
+    # NEW (recommended)
+    from src.utils.indicators import calculate_improved_noise, calculate_adaptive_k
+    # Functions will be available in main indicators module
+
 기존 문제점:
 - noise = high.rolling() - low.rolling() 단순 범위만 사용
 - 시장 변동성 변화에 적응하지 못함
@@ -15,7 +26,17 @@ Phase 2: 개선된 지표 (Indicators v2)
 참고: 이 모듈은 VanillaVBO와 독립적으로 사용 가능
 """
 
+import warnings
+
 import pandas as pd
+
+# Emit deprecation warning at module import time
+warnings.warn(
+    "indicators_v2 module is deprecated and will be removed in v2.0.0. "
+    "Use functions from main indicators module instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class ImprovedNoiseIndicator:
