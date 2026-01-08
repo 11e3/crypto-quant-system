@@ -27,6 +27,7 @@ from src.backtester.trade_cost_calculator import (  # noqa: E402
     CostBreakdownAnalysis,
     TradeCostCalculator,
 )
+
 # Migrated from indicators_v2 to main indicators module
 from src.utils.indicators import add_improved_indicators  # noqa: E402
 

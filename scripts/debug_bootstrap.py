@@ -24,7 +24,6 @@ boot = BootstrapAnalyzer(
         trend_sma_period=8,
         use_improved_noise=True,
         use_adaptive_k=True,
-        min_hold_periods=3,
     ),
     backtest_config=BacktestConfig(
         initial_capital=100.0,
@@ -60,7 +59,6 @@ for i in range(3):
         trend_sma_period=8,
         use_improved_noise=True,
         use_adaptive_k=True,
-        min_hold_periods=3,
     )
     result = boot._simple_backtest(resampled, strategy)
     print(f"    Return: {result.total_return * 100:.2f}%, Sharpe: {result.sharpe_ratio:.2f}")

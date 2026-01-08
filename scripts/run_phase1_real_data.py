@@ -110,7 +110,6 @@ def main():
             use_adaptive_k=True,
             use_dynamic_slippage=False,
             use_cost_calculator=False,
-            min_hold_periods=3,
             **p,
         ),
         param_ranges={"sma_period": [3, 4, 5], "trend_sma_period": [7, 8, 9]},
@@ -124,7 +123,6 @@ def main():
             use_adaptive_k=True,
             use_dynamic_slippage=False,
             use_cost_calculator=False,
-            min_hold_periods=3,
             **p,
         ),
     )
@@ -169,4 +167,3 @@ def main():
 if __name__ == "__main__":
     logger.info(f"실데이터 재검증 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     main()
-

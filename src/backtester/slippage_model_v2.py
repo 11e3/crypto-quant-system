@@ -23,8 +23,8 @@ Migration Guide:
 - 시간대별 조정 (유동성 변화)
 """
 
-from dataclasses import dataclass
 import warnings
+from dataclasses import dataclass
 
 import pandas as pd
 

@@ -110,6 +110,7 @@ exclude = [
     "noxfile.py",
     "build/",
     "dist/",
+    "docs/archive/",
 ]
 
 # Namespace 패키지 허용

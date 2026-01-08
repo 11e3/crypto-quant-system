@@ -4,7 +4,6 @@ import json
 import os
 from collections.abc import Iterable
 from datetime import datetime
-from types import ModuleType
 
 try:
     import urllib.request as urlreq

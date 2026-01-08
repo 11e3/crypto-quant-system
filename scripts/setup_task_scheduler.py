@@ -15,10 +15,10 @@ PYTHON_PATH = sys.executable
 def create_monitoring_task(
     task_name: str = "CryptoQuantMonitoring",
     schedule_time: str = "10:00",  # 매일 10:00에 실행
-    tickers: list[str] = None,
-    output_dir: str = None,
-    slack_webhook: str = None,
-):
+    tickers: list[str] | None = None,
+    output_dir: str | None = None,
+    slack_webhook: str | None = None,
+) -> str:
     """
     Create Windows Task Scheduler task for monitoring.
 

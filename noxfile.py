@@ -22,14 +22,7 @@ def tests(session: nox.Session) -> None:
     session.install(".[test]")
 
     # Run tests with coverage
-    session.run(
-        "pytest",
-        "--cov=src",
-        "--cov-report=term-missing",
-        "--cov-report=html",
-        "--cov-report=xml",
-        "-v",
-    )
+    session.run("pytest", "src", "tests", "-q", "--tb=line")
 
     session.log("✓ Tests complete - coverage report in htmlcov/index.html")
 
@@ -38,7 +31,7 @@ def tests(session: nox.Session) -> None:
 def type_check(session: nox.Session) -> None:
     """Run type checking with mypy."""
     session.install(".[dev]")
-    session.run("mypy", ".", "--strict")
+    session.run("mypy", ".", "--strict", "--no-error-summary")
     session.log("✓ Type checking complete")
 
 
@@ -63,7 +56,7 @@ def docs(session: nox.Session) -> None:
 
     session.chdir("docs")
     # -w warnings.txt 옵션으로 경고를 파일에 저장하지만 빌드는 실패하지 않음
-    session.run("sphinx-build", "-b", "html", "-d", "_build/doctrees", ".", "_build/html")
+    session.run("sphinx-build", "-q", "-b", "html", "-d", "_build/doctrees", ".", "_build/html")
 
     session.chdir("..")
     session.log("✓ Documentation built - open docs/_build/html/index.html")

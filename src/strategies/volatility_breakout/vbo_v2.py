@@ -27,8 +27,8 @@ Migration Guide:
 VBO v2 = VanillaVBO + 노이즈 필터 강화 + 슬리피지/비용 통합
 """
 
-from collections.abc import Sequence
 import warnings
+from collections.abc import Sequence
 
 import pandas as pd
 
@@ -372,7 +372,7 @@ class VanillaVBO_v2(Strategy):  # noqa: N801
         # 슬리피지 추정 (있으면)
         if self.use_dynamic_slippage and market_condition:
             entry_slippage = self.slippage_model.calculate_dynamic_slippage(
-                data=None,  # 실제 구현에서는 데이터 패스
+                data=pd.DataFrame(),  # Empty dataframe as placeholder
                 condition=market_condition,
                 order_size=1.0,
             )

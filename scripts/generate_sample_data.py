@@ -3,6 +3,7 @@ import math
 import os
 import random
 from datetime import datetime, timedelta
+from typing import Any
 
 RAW_DIR = os.path.join("data", "raw")
 OUTPUT_FILE = os.path.join(RAW_DIR, "sample_KRW-BTC.csv")
@@ -18,11 +19,11 @@ DAYS = 180
 VOLUME_BASE = 50.0
 
 
-def ensure_dirs():
+def ensure_dirs() -> None:
     os.makedirs(RAW_DIR, exist_ok=True)
 
 
-def generate_series():
+def generate_series() -> list[float]:
     dt = 1.0
     prices = [START_PRICE]
     for _ in range(DAYS - 1):
@@ -32,7 +33,7 @@ def generate_series():
     return prices
 
 
-def to_ohlcv(prices):
+def to_ohlcv(prices: list[float]) -> list[dict[str, Any]]:
     ohlcv = []
     start = datetime.utcnow() - timedelta(days=DAYS)
     for i, p in enumerate(prices):
@@ -56,7 +57,7 @@ def to_ohlcv(prices):
     return ohlcv
 
 
-def write_csv(rows):
+def write_csv(rows: list[dict[str, Any]]) -> None:
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f, fieldnames=["timestamp", "open", "high", "low", "close", "volume"]

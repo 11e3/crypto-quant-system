@@ -64,7 +64,6 @@ def test_block_size_sensitivity():
                 trend_sma_period=8,
                 use_improved_noise=True,
                 use_adaptive_k=True,
-                min_hold_periods=3,
             ),
             backtest_config=BacktestConfig(
                 initial_capital=100.0,
@@ -136,7 +135,6 @@ def test_sample_count_convergence():
                 trend_sma_period=8,
                 use_improved_noise=True,
                 use_adaptive_k=True,
-                min_hold_periods=3,
             ),
             backtest_config=BacktestConfig(
                 initial_capital=100.0,
@@ -199,7 +197,6 @@ def test_ohlc_consistency():
             trend_sma_period=8,
             use_improved_noise=True,
             use_adaptive_k=True,
-            min_hold_periods=3,
         ),
         backtest_config=BacktestConfig(
             initial_capital=100.0, fee_rate=0.0005, slippage_rate=0.0005
@@ -264,4 +261,3 @@ if __name__ == "__main__":
     print("2. Sample Count: 테스트 2 결과 참조")
     print(f"3. OHLC Consistency: {'✅ PASS' if ohlc_valid else '⚠️ FAIL'}")
     print(f"\n완료: {datetime.now()}")
-

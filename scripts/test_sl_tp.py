@@ -23,7 +23,6 @@ def test_baseline():
         trend_sma_period=8,
         use_improved_noise=True,
         use_adaptive_k=True,
-        min_hold_periods=3,
     )
 
     config = BacktestConfig(
@@ -83,7 +82,6 @@ def test_with_sl_tp():
         trend_sma_period=8,
         use_improved_noise=True,
         use_adaptive_k=True,
-        min_hold_periods=3,
     )
 
     config = BacktestConfig(
@@ -153,4 +151,3 @@ if __name__ == "__main__":
     baseline = test_baseline()
     sl_tp = test_with_sl_tp()
     compare_results(baseline, sl_tp)
-

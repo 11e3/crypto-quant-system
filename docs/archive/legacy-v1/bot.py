@@ -41,6 +41,8 @@
 ================================================================================
 """
 
+import builtins
+import contextlib
 import datetime  # 시간 관련 로직 처리 (장 시작/마감 시간 체크)
 import time  # 지연(sleep) 처리 및 재시도 로직용
 
@@ -345,10 +347,8 @@ def run_bot():
             # [복구 로직] 웹소켓 끊김 등 예외 발생 시 재연결 시도
             print(f"Loop Error: {e}")
             time.sleep(3)
-            try:
+            with contextlib.suppress(builtins.BaseException):
                 wm.terminate()
-            except:
-                pass
             wm = pyupbit.WebSocketManager("ticker", TICKERS)
 
 

@@ -28,7 +28,6 @@ from src.backtester.permutation_test import PermutationTester  # noqa: E402
 from src.backtester.robustness_analysis import RobustnessAnalyzer  # noqa: E402
 from src.backtester.walk_forward_auto import WalkForwardAnalyzer  # noqa: E402
 from src.strategies.volatility_breakout.vbo import VanillaVBO  # noqa: E402
-from src.strategies.volatility_breakout.vbo import VanillaVBO  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -363,4 +362,3 @@ if __name__ == "__main__":
         logger.warning("일부 Phase 1 재검증 실패")
 
     exit(0 if all_passed else 1)
-

@@ -40,7 +40,7 @@ class UpbitLiveMonitor:
         self.config = self._load_config()
         self.collector_factory = DataCollectorFactory()
 
-    def _load_config(self) -> dict:
+    def _load_config(self) -> dict[str, dict[str, float]]:
         """Load monitoring configuration."""
         if self.config_path.exists():
             with open(self.config_path, encoding="utf-8") as f:
@@ -95,7 +95,6 @@ class UpbitLiveMonitor:
             trend_sma_period=8,
             use_improved_noise=True,
             use_adaptive_k=True,
-            min_hold_periods=3,
         )
 
         config = BacktestConfig(
@@ -133,10 +132,10 @@ class UpbitLiveMonitor:
             logger.error(f"Backtest failed: {e}")
             return {}
 
-    def check_thresholds(self, metrics: dict) -> list[tuple]:
+    def check_thresholds(self, metrics: dict[str, float]) -> list[tuple[str, float, float]]:
         """Check monitoring thresholds."""
         thresholds = self.config.get("thresholds", {})
-        violations = []
+        violations: list[tuple[str, float, float]] = []
 
         if "min_win_rate" in thresholds and metrics.get("win_rate", 0) < thresholds["min_win_rate"]:
             violations.append(("win_rate", metrics["win_rate"], thresholds["min_win_rate"]))
@@ -293,4 +292,3 @@ if __name__ == "__main__":
     )
 
     monitor.monitor(args.tickers, webhook_url=args.slack)
-

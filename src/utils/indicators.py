@@ -397,9 +397,9 @@ def calculate_adaptive_noise(
     atr_values = atr(high, low, close, atr_period)
 
     # Raw noise calculation
-    short_noise_raw = high.rolling(window=short_period).max() - low.rolling(
-        window=short_period
-    ).min()
+    short_noise_raw = (
+        high.rolling(window=short_period).max() - low.rolling(window=short_period).min()
+    )
     long_noise_raw = high.rolling(window=long_period).max() - low.rolling(window=long_period).min()
 
     # Normalize by ATR (prevent division by zero)

@@ -203,7 +203,7 @@ def run_portfolio_simulation(file_paths):
     equity_curve = []  # 자산 변화 곡선을 저장할 리스트
 
     # 설정된 슬롯 수와 실제 코인 수 중 최소값을 최대 슬롯으로 설정
-    MAX_SLOTS = min(len(file_paths), TARGET_SLOTS)
+    max_slots = min(len(file_paths), TARGET_SLOTS)
 
     for dt in sorted_dates:
         daily_market = market_data.get(dt, {})  # 당일 시장 데이터 추출
@@ -235,7 +235,7 @@ def run_portfolio_simulation(file_paths):
                 continue
             row = daily_market[coin]
 
-            available_slots = MAX_SLOTS - len(positions)  # 진입 가능한 남은 슬롯 계산
+            available_slots = max_slots - len(positions)  # 진입 가능한 남은 슬롯 계산
             if available_slots <= 0:
                 break
 
