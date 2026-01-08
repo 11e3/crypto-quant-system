@@ -27,6 +27,7 @@ from src.config import (
 from src.data.cache import get_cache
 from src.data.collector import Interval
 from src.data.collector_factory import DataCollectorFactory
+from src.execution.advanced_orders import AdvancedOrderManager
 from src.risk.metrics import (
     PortfolioRiskMetrics,
     calculate_portfolio_risk_metrics,
@@ -39,14 +40,6 @@ from src.risk.position_sizing import (
 from src.strategies.base import Strategy
 from src.utils.logger import get_logger
 from src.utils.memory import get_float_dtype, optimize_dtypes
-
-# Import for type checking
-try:
-    from src.strategies.pair_trading import PairTradingStrategy
-except ImportError:
-    PairTradingStrategy = None  # type: ignore
-
-from src.execution.advanced_orders import AdvancedOrderManager
 
 logger = get_logger(__name__)
 
@@ -573,11 +566,7 @@ class VectorizedBacktestEngine:
             BacktestResult with performance metrics
         """
         # Check if this is a pair trading strategy
-        from src.strategies.pair_trading import PairTradingStrategy
-
-        is_pair_trading = isinstance(strategy, PairTradingStrategy)
-
-        if is_pair_trading:
+        if strategy.is_pair_trading:
             # Pair trading requires exactly 2 tickers
             if len(data_files) != 2:
                 raise ValueError(
@@ -585,8 +574,6 @@ class VectorizedBacktestEngine:
                     f"got {len(data_files)}: {list(data_files.keys())}"
                 )
             # Use special pair trading processing
-            if not isinstance(strategy, PairTradingStrategy):
-                raise TypeError(f"Expected PairTradingStrategy, got {type(strategy)}")
             return self._run_pair_trading(
                 strategy, data_files, start_date=start_date, end_date=end_date
             )
@@ -1295,7 +1282,7 @@ class VectorizedBacktestEngine:
 
     def _run_pair_trading(
         self,
-        strategy: "PairTradingStrategy",
+        strategy: Strategy,
         data_files: dict[str, Path],
         start_date: date | None = None,
         end_date: date | None = None,
@@ -1306,15 +1293,12 @@ class VectorizedBacktestEngine:
         Pair trading requires two tickers and calculates spread between them.
 
         Args:
-            strategy: PairTradingStrategy instance
+            strategy: PairTradingStrategy instance (as Strategy interface)
             data_files: Dictionary with exactly 2 tickers
 
         Returns:
             BacktestResult with performance metrics
         """
-        if PairTradingStrategy is None:
-            raise ImportError("PairTradingStrategy is not available")
-
         tickers = list(data_files.keys())
         if len(tickers) != 2:
             raise ValueError(f"Pair trading requires exactly 2 tickers, got {len(tickers)}")

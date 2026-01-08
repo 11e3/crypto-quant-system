@@ -99,17 +99,33 @@ class UpbitDataCollector:
         Returns:
             DataFrame with OHLCV data or None if error
         """
-        try:
-            df = pyupbit.get_ohlcv(
-                ticker=ticker,
-                interval=interval,
-                count=min(count, UPBIT_MAX_CANDLES_PER_REQUEST),
-                to=to,
-            )
-            return df
-        except Exception as e:
-            logger.error(f"Error fetching candles for {ticker}: {e}", exc_info=True)
-            return None
+        max_retries = 3
+        retry_delay = 1.0
+
+        for attempt in range(max_retries):
+            try:
+                df = pyupbit.get_ohlcv(
+                    ticker=ticker,
+                    interval=interval,
+                    count=min(count, UPBIT_MAX_CANDLES_PER_REQUEST),
+                    to=to,
+                )
+                return df
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    sleep_time = retry_delay * (2**attempt)
+                    logger.warning(
+                        f"Error fetching candles for {ticker} (attempt {attempt + 1}/{max_retries}): {e}. "
+                        f"Retrying in {sleep_time}s..."
+                    )
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(
+                        f"Error fetching candles for {ticker} after {max_retries} attempts: {e}",
+                        exc_info=True,
+                    )
+                    return None
+        return None
 
     def _fetch_all_candles(
         self,

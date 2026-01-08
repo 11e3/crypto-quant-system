@@ -212,6 +212,11 @@ class Strategy(ABC):
             exit_conditions or [], operator="AND", name="ExitConditions"
         )
 
+    @property
+    def is_pair_trading(self) -> bool:
+        """Return True if this is a pair trading strategy."""
+        return False
+
     @abstractmethod
     def required_indicators(self) -> list[str]:
         """

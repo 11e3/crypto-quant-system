@@ -47,6 +47,8 @@ def mock_strategy() -> MagicMock:
     strategy.exit_conditions = MagicMock()
     strategy.exit_conditions.conditions = []
     strategy.required_indicators.return_value = []
+    # Explicitly set is_pair_trading to False for non-pair-trading tests
+    strategy.is_pair_trading = False
     return strategy
 
 

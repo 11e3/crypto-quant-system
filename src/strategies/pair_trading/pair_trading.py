@@ -32,6 +32,11 @@ class PairTradingStrategy(Strategy):
     needs both tickers' data simultaneously to calculate spread.
     """
 
+    @property
+    def is_pair_trading(self) -> bool:
+        """Return True for pair trading strategy."""
+        return True
+
     def __init__(
         self,
         name: str = "PairTradingStrategy",

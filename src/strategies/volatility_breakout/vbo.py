@@ -23,38 +23,38 @@ from src.utils.indicators import add_vbo_indicators
 
 class VanillaVBO(Strategy):
     """
-    Vanilla Volatility Breakout Strategy (변동성 돌파 전략).
+    Vanilla Volatility Breakout Strategy.
 
-    수익 메커니즘:
-    1. 변동성 기반 목표가(target) 설정
-       target = 어제 시가 + (어제 고저 범위) × K
-       K = (어제 고가 - 어제 저가) / (더 큰 고저 범위)
-       → 변동성이 크면 더 높은 목표가 = 더 보수적인 진입
+    Profit Mechanism:
+    1. Volatility-based Target Setting
+       target = Previous Open + (Previous High - Previous Low) * K
+       K = (Previous High - Previous Low) / (Larger Range)
+       -> Higher volatility results in a higher target = more conservative entry.
 
-    2. 고가 돌파 매수(Breakout)
-       진입조건: 당일 고가 ≥ target
-       의미: 변동성 시작 신호 + 추세 전환 신호
+    2. Breakout Entry
+       Entry Condition: Current High >= target
+       Meaning: Signal of volatility expansion + Trend reversal.
 
-    3. SMA 필터 (추세 필터)
-       target > SMA → 상승 추세 확인
-       → 추세 없이 변동성만 있는 경우 제거 (거짓신호 제거)
+    3. SMA Filter (Trend Filter)
+       target > SMA -> Confirms uptrend.
+       -> Removes cases with volatility but no trend (False signal filtering).
 
-    4. 트렌드 필터 (장기 추세)
-       target > SMA_Trend → 장기 상승추세 확인
-       → 단기 노이즈 제거, 강한 추세만 거래
+    4. Trend Filter (Long-term Trend)
+       target > SMA_Trend -> Confirms long-term uptrend.
+       -> Removes short-term noise, trades only in strong trends.
 
-    5. 노이즈 필터 (변동성 안정성)
-       short_noise < long_noise → 단기 변동성 < 장기 평균
-       → 변동성이 정상범위 내 = 신호 신뢰도 높음
+    5. Noise Filter (Volatility Stability)
+       short_noise < long_noise -> Short-term volatility < Long-term average.
+       -> Volatility is within normal range = High signal reliability.
 
-    6. SMA 퇴출 (손실 제한)
-       종가 < SMA → 추세 반전 신호
-       → 즉시 매도로 손실 최소화
+    6. SMA Exit (Stop Loss)
+       Close < SMA -> Trend reversal signal.
+       -> Immediate exit to minimize losses.
 
-    수익률 최대화 포인트:
-    - K값 조정: K↑ = 진입 어려움(승률↑ 거래수↓), K↓ = 진입 쉬움(거래수↑ 손실↑)
-    - SMA 기간: 길수록 추세 신호 정확도 ↑, 짧을수록 거래 빈도 ↑
-    - 필터 조합: 필터 많을수록 거래수 ↓ 승률 ↑, 필터 적을수록 거래수 ↑ 손실 ↑
+    Profit Maximization Points:
+    - K Value Adjustment: Higher K = Harder entry (Win rate up, Trade count down). Lower K = Easier entry (Trade count up, Loss up).
+    - SMA Period: Longer = Higher trend signal accuracy, Shorter = Higher trade frequency.
+    - Filter Combination: More filters = Trade count down, Win rate up. Fewer filters = Trade count up, Loss up.
 
     Default configuration:
     - Entry: Price breaks above target (Open + Range * K)
@@ -83,26 +83,24 @@ class VanillaVBO(Strategy):
 
         Args:
             name: Strategy name
-            sma_period: SMA 기간 (퇴출 신호 생성)
-                       → 짧을수록 빈번한 퇴출, 길수록 추세 유지
-                       기본값 4: 매우 단기, 높은 거래빈도
-            trend_sma_period: 장기 추세 SMA 기간
-                             → 추세필터 역할, 장기 상향 확인
-                             기본값 8: 중기 추세 확인
-            short_noise_period: K값 계산 기간 (단기 변동성)
-                               → 최근 변동성 반영 (민감도 높음)
-                               기본값 4: 매우 최근 변동성 적용
-            long_noise_period: 노이즈 베이스라인 기간 (장기 변동성)
-                              → short_noise와 비교해 안정성 판단
-                              기본값 8: 중기 평균 변동성
+            sma_period: SMA period (Exit signal generation)
+                       -> Shorter: Frequent exits. Longer: Trend following.
+                       Default 4: Very short-term, high frequency.
+            trend_sma_period: Long-term trend SMA period
+                             -> Trend filter role, confirms long-term uptrend.
+                             Default 8: Mid-term trend confirmation.
+            short_noise_period: K-value calculation period (Short-term volatility)
+                               -> Reflects recent volatility (High sensitivity).
+                               Default 4: Applies very recent volatility.
+            long_noise_period: Noise baseline period (Long-term volatility)
+                              -> Determines stability by comparing with short_noise.
+                              Default 8: Mid-term average volatility.
             entry_conditions: Custom entry conditions (optional)
-                             추가 진입 조건 지정 가능
             exit_conditions: Custom exit conditions (optional)
-                            추가 퇴출 조건 지정 가능
             use_default_conditions: Whether to add default conditions (includes market conditions)
-                                   기본 조건 자동 추가 (권장)
+                                   Recommended to use default.
             exclude_current: If True, exclude current bar from calculations (matching legacy/bt.py)
-                            과거 종가 데이터만 사용 (미래 정보 사용 금지)
+                            Use only past close data (No look-ahead bias).
         """
         # Store indicator parameters
         self.sma_period = sma_period
@@ -139,16 +137,16 @@ class VanillaVBO(Strategy):
     def required_indicators(self) -> list[str]:
         """Return list of required indicators.
 
-        VBO 전략에서 필요한 모든 지표 목록:
-        - noise: 변동성 기반 K값
-        - short_noise: 단기 평균 변동성 (민감도 높음)
-        - long_noise: 장기 평균 변동성 (안정도 높음)
-        - sma: 단기 이동평균 (퇴출 신호)
-        - sma_trend: 장기 이동평균 (추세 필터)
-        - target: 변동성 기반 돌파 목표가
-        - prev_high: 전일 고가
-        - prev_low: 전일 저가
-        - prev_range: 전일 고저 범위
+        All indicators required by VBO strategy:
+        - noise: Volatility-based K value
+        - short_noise: Short-term average volatility (High sensitivity)
+        - long_noise: Long-term average volatility (High stability)
+        - sma: Short-term Simple Moving Average (Exit signal)
+        - sma_trend: Long-term Simple Moving Average (Trend filter)
+        - target: Volatility-based breakout target price
+        - prev_high: Previous day's high
+        - prev_low: Previous day's low
+        - prev_range: Previous day's range (High - Low)
         """
         return [
             "noise",
