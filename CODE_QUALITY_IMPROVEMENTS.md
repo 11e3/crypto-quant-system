@@ -51,6 +51,22 @@ Legacy 프로토타입 파일을 docs/archive로 이동하여 참고용으로 �
 - 역사적 참조 가능성 유지
 - 프로젝트 구조 명확화
 
+### ✅ P2-1: Test Coverage Improvement
+**상태**: 완료  
+**영향**: 신뢰성, 유지보수성
+
+trade_cost_calculator.py에 대한 포괄적인 단위 테스트 추가.
+
+**테스트 추가**:
+- 30개 새로운 단위 테스트
+- UpbitFeeStructure, TradeCostCalculator, TradeExecution, TradeAnalyzer 커버
+- 통합 테스트 시나리오 (손익분기점, VIP 혜택, 변동성 영향)
+
+**성과**:
+- trade_cost_calculator.py: 0% → 95.18% (+95.18%)
+- 전체 테스트: 918개 → 948개 (+30개)
+- 전체 커버리지: 85.59% → 86.99% (+1.4%)
+
 ## 보류된 개선사항
 
 ### ⏸️ P0-3: Exception Type Specification
@@ -147,10 +163,10 @@ class VanillaVBO(Strategy):
 ## P2 (Medium Priority) 개선사항
 
 ### 📋 P2-1: Test Coverage Gaps
-**현황**: 85.59% (목표: 80% 이상)
+**현황**: 개선 중 ✅
 
-**0% 커버리지 파일**:
-- `src/backtester/trade_cost_calculator.py` (83 lines)
+**0% 커버리지 파일** (해결됨):
+- ~~`src/backtester/trade_cost_calculator.py` (83 lines)~~ → **95.18%** ✅
 
 **낮은 커버리지**:
 - `src/backtester/html_report.py`: 64.34%
@@ -159,6 +175,10 @@ class VanillaVBO(Strategy):
 - `src/cli/commands/monte_carlo.py`: 51.25%
 
 **권장**: CLI 명령어에 대한 통합 테스트 추가
+
+**진행 상황**:
+- ✅ trade_cost_calculator.py: 30개 테스트 추가, 95.18% 커버리지 달성
+- 📋 다음: CLI 명령어 테스트 추가
 
 ### 📋 P2-2: Documentation
 **제안**:
@@ -197,8 +217,8 @@ class VanillaVBO(Strategy):
 
 ```bash
 pytest --tb=short -q
-# 918 passed in 12.01s
-# Coverage: 85.59%
+# 948 passed in 13.34s  (+30 tests)
+# Coverage: 86.99% (+1.4%)
 ```
 
 ```bash
@@ -211,7 +231,8 @@ ruff check . --fix
 1. **즉시 실행 가능**:
    - ✅ Korean comments → English (완료)
    - ✅ print() → logger (완료)
-   - 📋 Dead code 제거 (legacy/ 검토)
+   - ✅ Dead code 제거 (완료)
+   - ✅ Test coverage 개선 (trade_cost_calculator 완료)
    - 📋 Type hints 추가
 
 2. **계획 필요**:
