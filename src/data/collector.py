@@ -135,7 +135,7 @@ class UpbitDataCollector:
         ticker: str,
         interval: Interval,
         since: datetime | None = None,
-        max_candles: int = 10000,
+        max_candles: int = 50000,
     ) -> pd.DataFrame | None:
         """
         Fetch all candles with pagination support.
