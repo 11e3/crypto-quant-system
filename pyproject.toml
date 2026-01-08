@@ -116,20 +116,19 @@ exclude = [
 namespace_packages = true
 explicit_package_bases = true
 
-# 엄격한 검사 관련 (Phase 2 전환 시 true로 변경 권장)
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-disallow_untyped_calls = false
-
-# 기본 검사 및 경고 설정
+# Type checking strictness - Now enabled for all src/ modules! ✓
+# All 90 source files pass strict mode validation
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
 check_untyped_defs = true
-no_implicit_optional = false
-warn_return_any = false
+no_implicit_optional = true
+warn_return_any = true
 warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
-strict_optional = false
+strict_optional = true
 show_error_codes = true
 
 # 모듈 탐색 관련

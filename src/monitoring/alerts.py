@@ -4,11 +4,12 @@ import json
 import os
 from collections.abc import Iterable
 from datetime import datetime
+from types import ModuleType
 
 try:
     import urllib.request as urlreq
 except Exception:  # pragma: no cover
-    urlreq = None
+    urlreq = None  # type: ignore[assignment]
 
 
 def _now() -> str:

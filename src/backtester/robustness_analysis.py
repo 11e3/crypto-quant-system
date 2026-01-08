@@ -509,19 +509,22 @@ class RobustnessAnalyzer:
             </tr>
         """)
 
-        for param_name in sorted(report.sensitivity_scores.keys()):
-            score = report.sensitivity_scores[param_name]
-            interpretation = (
-                "High (Risky)" if score > 0.7 else "Medium" if score > 0.4 else "Low (Stable)"
-            )
+        if report.sensitivity_scores is None:
+            html_parts.append("<tr><td colspan='3'>No sensitivity data available</td></tr>")
+        else:
+            for param_name in sorted(report.sensitivity_scores.keys()):
+                score = report.sensitivity_scores[param_name]
+                interpretation = (
+                    "High (Risky)" if score > 0.7 else "Medium" if score > 0.4 else "Low (Stable)"
+                )
 
-            html_parts.append(f"""
+                html_parts.append(f"""
             <tr>
                 <td>{param_name}</td>
                 <td>{score:.3f}</td>
                 <td>{interpretation}</td>
             </tr>
-            """)
+        """)
 
         html_parts.append("""
         </table>
