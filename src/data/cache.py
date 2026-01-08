@@ -218,8 +218,10 @@ class IndicatorCache:
         cache_path = self._get_cache_path(cache_key)
 
         # Save DataFrame with optional compression
-        compression = "snappy" if self.use_compression else None
-        df.to_parquet(cache_path, engine="pyarrow", compression=compression)
+        if self.use_compression:
+            df.to_parquet(cache_path, engine="pyarrow", compression="snappy")
+        else:
+            df.to_parquet(cache_path, engine="pyarrow", compression=None)
 
         # Update metadata
         current_time = time.time()

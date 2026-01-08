@@ -25,6 +25,7 @@ Migration Guide:
 
 import warnings
 from dataclasses import dataclass
+from enum import Enum
 
 import pandas as pd
 
@@ -35,6 +36,40 @@ warnings.warn(
     DeprecationWarning,
     stacklevel=2,
 )
+
+
+class VolatilityLevel(Enum):
+    """Market volatility classification."""
+
+    LOW = 0
+    MEDIUM = 1
+    HIGH = 2
+
+
+# Market condition adjustment factors
+class SlippageConstants:
+    """Constants for slippage calculation.
+
+    These values are calibrated based on Upbit market characteristics.
+    Adjust based on empirical testing and market observations.
+    """
+
+    # Volatility impact multipliers
+    HIGH_VOLATILITY_MULTIPLIER = 1.2  # +20% slippage in high volatility
+    LOW_VOLATILITY_MULTIPLIER = 0.85  # -15% slippage in low volatility
+
+    # Time-of-day liquidity adjustments
+    HIGH_LIQUIDITY_DISCOUNT = 0.9  # -10% during peak hours (9-18 KST)
+    LOW_LIQUIDITY_PREMIUM = 1.15  # +15% during off-peak hours (0-6 KST)
+
+    # Volume impact scaling
+    VOLUME_IMPACT_WEIGHT = 0.05  # 5% base weight for volume impact
+
+    # Spread volatility contribution
+    SPREAD_VOLATILITY_FACTOR = 0.5  # 50% contribution from spread volatility
+
+    # Maximum volume impact cap (extreme conditions)
+    MAX_VOLUME_IMPACT_PCT = 20.0
 
 
 @dataclass
@@ -76,37 +111,84 @@ class DynamicSlippageModel:
         self.maker_fee = maker_fee
         self.taker_fee = taker_fee
 
-    def calculate_spread(self, data: pd.DataFrame, window: int = 20) -> pd.Series:
+    def calculate_intrabar_range(self, data: pd.DataFrame) -> pd.Series:
         """
-        호가차 (Bid-Ask Spread) 추정.
+        Calculate intrabar price range (volatility measure).
 
-        데이터가 체결가만 제공하므로 근사:
-        spread = (high - low) / (high + low) * 100
-
-        실제 거래소에서 bid-ask 데이터가 있으면 직접 계산 가능.
+        This represents price volatility within each bar, NOT the bid-ask spread.
+        True bid-ask spread requires orderbook data.
 
         Args:
             data: OHLC 데이터
-            window: 추정 윈도우
 
         Returns:
-            스프레드 시리즈 (%)
+            Range ratio series (%) - represents volatility, not liquidity
         """
         high = data["high"]
         low = data["low"]
+        mid = (high + low) / 2
 
-        # 호가차 추정 (mid price 기반)
-        spread = (high - low) / ((high + low) / 2) * 100
+        # Intrabar range as percentage of mid price
+        # This measures VOLATILITY, not bid-ask spread
+        range_pct = ((high - low) / mid) * 100
 
-        return spread
+        return range_pct
+
+    def estimate_bid_ask_spread(
+        self, data: pd.DataFrame, volatility_proxy: float = 0.3
+    ) -> pd.Series:
+        """
+        Estimate bid-ask spread from OHLCV data.
+
+        ⚠️ WARNING: This is an approximation. Real spread requires orderbook data.
+
+        Method: Assume spread correlates with volatility but at lower magnitude.
+        Typical crypto spread: 0.01-0.1% of price in liquid markets
+
+        Args:
+            data: OHLCV data
+            volatility_proxy: Scaling factor (typical spread = volatility * proxy)
+
+        Returns:
+            Estimated spread series (%)
+        """
+        # Use short-term volatility as proxy
+        returns = data["close"].pct_change()
+        rolling_vol = returns.rolling(window=20).std() * 100  # Convert to %
+
+        # Spread is typically much smaller than volatility
+        # Empirical factor: spread ≈ 0.3 * short_term_volatility for liquid crypto
+        estimated_spread = rolling_vol * volatility_proxy
+
+        # Cap at reasonable levels for Upbit (0.01% - 0.5%)
+        estimated_spread = estimated_spread.clip(lower=0.01, upper=0.5)
+
+        return estimated_spread
+
+    def calculate_spread(self, data: pd.DataFrame, window: int = 20) -> pd.Series:
+        """
+        Backward compatibility wrapper.
+
+        ⚠️ DEPRECATED: Use estimate_bid_ask_spread() for spread estimation.
+        This method actually measures volatility, not spread.
+
+        Returns:
+            Estimated bid-ask spread (%) - now uses improved estimation
+        """
+        warnings.warn(
+            "calculate_spread() measures volatility, not true spread. "
+            "Use estimate_bid_ask_spread() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.estimate_bid_ask_spread(data)
 
     def calculate_spread_volatility(self, data: pd.DataFrame, window: int = 20) -> pd.Series:
         """
-        호가차 변동성.
+        Spread volatility - measures liquidity stability.
 
-        spread_vol = 호가차의 표준편차
-
-        → 호가차가 자주 변하면 슬리피지 증가.
+        Standard deviation of estimated spread over time.
+        Higher spread volatility → less predictable execution → higher slippage buffer.
 
         Args:
             data: OHLC 데이터
@@ -115,7 +197,7 @@ class DynamicSlippageModel:
         Returns:
             호가차 변동성 시리즈
         """
-        spread = self.calculate_spread(data)
+        spread = self.estimate_bid_ask_spread(data)
         spread_vol = spread.rolling(window=window).std()
 
         return spread_vol
@@ -151,8 +233,8 @@ class DynamicSlippageModel:
         # 거래량 영향도 (%)
         volume_impact = (order_size / (avg_volume + 1e-8)) * 100
 
-        # 제약: 최대 20% (극한 상황)
-        volume_impact = volume_impact.clip(upper=20.0)
+        # Cap at maximum impact level (extreme conditions)
+        volume_impact = volume_impact.clip(upper=SlippageConstants.MAX_VOLUME_IMPACT_PCT)
 
         return volume_impact
 
@@ -180,31 +262,33 @@ class DynamicSlippageModel:
         # 1. 기본: Taker 수수료
         slippage = self.taker_fee
 
-        # 2. 호가차 + 호가차 변동성
-        spread = self.calculate_spread(data).iloc[-1]
+        # 2. Bid-ask spread + spread volatility
+        spread = self.estimate_bid_ask_spread(data).iloc[-1]
         spread_vol = self.calculate_spread_volatility(data).iloc[-1]
 
-        # 스프레드 기여도: 기본 스프레드 + 변동성 * 시장 스트레스
-        spread_component = spread + (spread_vol * (1.0 + condition.spread_ratio * 0.5))
+        # Spread contribution: base spread + volatility-adjusted buffer
+        spread_component = spread + (
+            spread_vol * (1.0 + condition.spread_ratio * SlippageConstants.SPREAD_VOLATILITY_FACTOR)
+        )
         slippage += spread_component
 
-        # 3. 거래량 영향도
+        # 3. Volume impact (market depth consideration)
         volume_impact = self.calculate_volume_impact(data, order_size).iloc[-1]
-        slippage += volume_impact * (0.05 * condition.volume_ratio)  # 거래량 가중
+        slippage += volume_impact * SlippageConstants.VOLUME_IMPACT_WEIGHT * condition.volume_ratio
 
-        # 4. 시장 조건 추가 조정
-        if condition.volatility_level == 2:  # High 변동성
-            slippage *= 1.2  # +20%
-        elif condition.volatility_level == 0:  # Low 변동성
-            slippage *= 0.85  # -15%
+        # 4. Volatility regime adjustment
+        if condition.volatility_level == VolatilityLevel.HIGH.value:
+            slippage *= SlippageConstants.HIGH_VOLATILITY_MULTIPLIER
+        elif condition.volatility_level == VolatilityLevel.LOW.value:
+            slippage *= SlippageConstants.LOW_VOLATILITY_MULTIPLIER
 
-        # 5. 시간대 조정 (유동성 패턴)
-        # 9-18시 (거래량 높음): -10%
-        # 0-6시 (거래량 낮음): +15%
+        # 5. Time-of-day liquidity adjustment
+        # Peak hours (9-18 KST): higher liquidity → lower slippage
+        # Off-peak hours (0-6 KST): lower liquidity → higher slippage
         if 9 <= condition.time_of_day < 18:
-            slippage *= 0.9
+            slippage *= SlippageConstants.HIGH_LIQUIDITY_DISCOUNT
         elif 0 <= condition.time_of_day < 6:
-            slippage *= 1.15
+            slippage *= SlippageConstants.LOW_LIQUIDITY_PREMIUM
 
         return float(slippage)
 

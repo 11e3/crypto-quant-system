@@ -107,7 +107,8 @@ def noise_ratio(
     price_range = high - low
     body = (close - open_).abs()
     # Avoid division by zero
-    return np.where(price_range > 0, 1 - body / price_range, 0.0)
+    result = np.where(price_range > 0, 1 - body / price_range, 0.0)
+    return pd.Series(result, index=open_.index)
 
 
 def noise_ratio_sma(
@@ -133,7 +134,7 @@ def noise_ratio_sma(
         SMA of noise ratio
     """
     nr = noise_ratio(open_, high, low, close)
-    return sma(pd.Series(nr, index=open_.index), period, exclude_current=exclude_current)
+    return pd.Series(sma(pd.Series(nr, index=open_.index), period, exclude_current=exclude_current))
 
 
 def target_price(

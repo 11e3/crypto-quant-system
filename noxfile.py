@@ -1,8 +1,27 @@
+import shutil
+from contextlib import suppress
+from pathlib import Path
+
 import nox
 
 # Python version to test against
 DEFAULT_PYTHON = "3.14"
 PYTHON_VERSIONS = ["3.14"]
+LINE_LENGTH = "100"
+
+
+@nox.session(python=DEFAULT_PYTHON, reuse_venv=True)
+def format(session: nox.Session) -> None:
+    """Auto-format code and sort imports using ruff."""
+    session.install(".[dev]")
+
+    # 1. Sort imports (isort equivalent in ruff)
+    session.run("ruff", "check", ".", "--select", "I", "--fix")
+
+    # 2. Format code style
+    session.run("ruff", "format", ".", f"--line-length={LINE_LENGTH}")
+
+    session.log("✓ Code formatting and import sorting complete")
 
 
 @nox.session(python=DEFAULT_PYTHON, reuse_venv=True)
@@ -10,8 +29,11 @@ def lint(session: nox.Session) -> None:
     """Run linting and code quality checks."""
     session.install(".[dev]")
 
-    # Format with ruff
-    session.run("ruff", "check", ".", "--fix", "--unsafe-fixes")
+    # 1. Check all rules including import sorting (I)
+    session.run("ruff", "check", ".", "--fix")
+
+    # 2. Verify formatting consistency
+    session.run("ruff", "format", ".", "--check", f"--line-length={LINE_LENGTH}")
 
     session.log("✓ Linting complete")
 
@@ -20,11 +42,8 @@ def lint(session: nox.Session) -> None:
 def tests(session: nox.Session) -> None:
     """Run test suite with coverage."""
     session.install(".[test]")
-
-    # Run tests with coverage
     session.run("pytest", "src", "tests", "-q", "--tb=line")
-
-    session.log("✓ Tests complete - coverage report in htmlcov/index.html")
+    session.log("✓ Tests complete")
 
 
 @nox.session(python=DEFAULT_PYTHON, reuse_venv=True)
@@ -36,28 +55,12 @@ def type_check(session: nox.Session) -> None:
 
 
 @nox.session(python=DEFAULT_PYTHON, reuse_venv=True)
-def format(session: nox.Session) -> None:
-    """Auto-format code with black and isort."""
-    session.install(".[dev]")
-
-    # Format with ruff
-    session.run("ruff", "format", ".", "--line-length=100")
-
-    # Sort imports
-    session.run("isort", "src", "tests", "--profile=black", "--line-length=100")
-
-    session.log("✓ Code formatting complete")
-
-
-@nox.session(python=DEFAULT_PYTHON, reuse_venv=True)
 def docs(session: nox.Session) -> None:
     """Build documentation with Sphinx."""
     session.install(".[docs]")
 
     session.chdir("docs")
-    # -w warnings.txt 옵션으로 경고를 파일에 저장하지만 빌드는 실패하지 않음
     session.run("sphinx-build", "-Q", "-b", "html", "-d", "_build/doctrees", ".", "_build/html")
-
     session.chdir("..")
     session.log("✓ Documentation built - open docs/_build/html/index.html")
 
@@ -65,9 +68,6 @@ def docs(session: nox.Session) -> None:
 @nox.session(python=DEFAULT_PYTHON, reuse_venv=True)
 def clean(session: nox.Session) -> None:
     """Clean up generated files and caches."""
-    import shutil
-    from pathlib import Path
-
     dirs_to_remove = [
         "build",
         "dist",
@@ -77,28 +77,17 @@ def clean(session: nox.Session) -> None:
         ".ruff_cache",
         "docs/_build",
     ]
+    files_to_remove = [".coverage", "coverage.xml", "coverage.json"]
 
-    files_to_remove = [
-        ".coverage",
-        "coverage.xml",
-        "coverage.json",
-    ]
-
-    # Remove directories
     for dir_name in dirs_to_remove:
-        try:
+        with suppress(FileNotFoundError, NotADirectoryError, OSError):
             shutil.rmtree(dir_name)
             session.log(f"  Removed {dir_name}/")
-        except (FileNotFoundError, NotADirectoryError, OSError):
-            pass
 
-    # Remove files
     for file_name in files_to_remove:
-        try:
+        with suppress(FileNotFoundError, OSError):
             Path(file_name).unlink()
             session.log(f"  Removed {file_name}")
-        except FileNotFoundError:
-            pass
 
     session.log("✓ Cleanup complete")
 

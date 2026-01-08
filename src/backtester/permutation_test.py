@@ -323,19 +323,19 @@ class PermutationTester:
         # 블록 부트스트랩으로 수익률 재배열 (block_size=5)
         block_size = 5
         n = len(returns)
-        resampled_returns = []
+        resampled_returns: list[float] = []
         i = 0
         while i < n:
             start = np.random.randint(0, max(1, n - block_size))
             block = returns[start : start + block_size]
-            resampled_returns.extend(block)
+            resampled_returns.extend(block.tolist())
             i += block_size
-        resampled_returns = np.array(resampled_returns[:n])  # type: ignore[assignment]
+        resampled_array = np.array(resampled_returns[:n])
 
         # 재구성된 수익률로 가격 재생성
         base_price = shuffled["close"].iloc[0]
         new_close = [base_price]
-        for r in resampled_returns[1:]:
+        for r in resampled_array[1:]:
             new_close.append(new_close[-1] * (1 + r))
 
         shuffled["close"] = new_close
@@ -347,9 +347,10 @@ class PermutationTester:
 
         # volume은 원본 순서 유지 (또는 별도 셔플 가능)
         if "volume" in columns_to_shuffle and "volume" in shuffled.columns:
-            volume_values = shuffled["volume"].values.copy()
-            np.random.shuffle(volume_values)
-            shuffled["volume"] = volume_values
+            volume_values = shuffled["volume"].values
+            volume_array = np.array(volume_values, dtype=np.float64).copy()
+            np.random.shuffle(volume_array)
+            shuffled["volume"] = volume_array
 
         return shuffled
 

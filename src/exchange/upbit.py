@@ -56,6 +56,13 @@ class UpbitExchange(Exchange):
         """
         Get balance for a currency.
 
+        ⚠️ Performance Note:
+        This method retrieves locked amounts by querying pending orders.
+        For high-frequency calls or many assets, consider:
+        1. Caching balance data with TTL
+        2. Using batch balance queries
+        3. Maintaining local position state
+
         Args:
             currency: Currency code (e.g., 'KRW', 'BTC')
 
@@ -70,17 +77,22 @@ class UpbitExchange(Exchange):
             if balance is None:
                 return Balance(currency=currency, balance=0.0, locked=0.0)
 
-            # Get locked amount (in orders)
+            # Get locked amount from pending orders
+            # NOTE: This adds API call overhead. For production with many assets,
+            # implement caching or use WebSocket updates
             locked = 0.0
             try:
+                # Query waiting orders for this currency
+                # This is a performance bottleneck for multi-asset portfolios
                 orders = self.client.get_order(currency, state="wait")
-                if orders:
+                if orders and isinstance(orders, list):
                     for order in orders:
                         if isinstance(order, dict):
                             locked += float(order.get("locked", 0.0))
-            except Exception:
-                # If we can't get locked amount, assume 0
-                pass
+            except Exception as e:
+                # If locked amount query fails, log but don't fail the whole call
+                _get_logger().debug(f"Could not retrieve locked amount for {currency}: {e}")
+                # Locked remains 0.0
 
             return Balance(currency=currency, balance=float(balance), locked=locked)
         except Exception as e:
@@ -254,27 +266,31 @@ class UpbitExchange(Exchange):
         Raises:
             ExchangeError: If API call fails
 
-        Note:
-            pyupbit doesn't have a direct method to get order by UUID.
-            This implementation tries to get order from all markets.
-            For production, consider caching order info when placing orders.
+        Implementation Notes:
+            pyupbit.get_order() can return:
+            - Single dict for UUID-based queries
+            - List of dicts for market-based queries
+            - None if order not found
+
+            This implementation normalizes the response to always work with a single order.
         """
         try:
-            # pyupbit doesn't provide get_order_by_uuid, so we need to search
-            # This is a limitation - in production, cache order info when placing
+            # pyupbit.get_order() returns different types based on query:
+            # - UUID query: returns single order dict or None
+            # - Market query: returns list of orders or None
             result = self.client.get_order(order_id)
+
             if not result:
                 raise ExchangeError(f"Order {order_id} not found")
 
-            # Handle both single order dict and list of orders
+            # Normalize response: convert list to single item if needed
             if isinstance(result, list):
                 if len(result) == 0:
-                    raise ExchangeError(
-                        f"Order {order_id} not found"
-                    )  # pragma: no cover (dead code - empty list is falsy, caught by line 264)
+                    raise ExchangeError(f"Order {order_id} not found")
+                # Take first matching order
                 result = result[0]
 
-            # Parse order status
+            # Parse order status from Upbit format
             state = result.get("state", "wait")
             status_map = {
                 "wait": OrderStatus.PENDING,
@@ -283,9 +299,11 @@ class UpbitExchange(Exchange):
             }
             status = status_map.get(state, OrderStatus.PENDING)
 
+            # Parse order side
             side_str = result.get("side", "")
             side = OrderSide.BUY if side_str == "bid" else OrderSide.SELL
 
+            # Parse order type
             ord_type = result.get("ord_type", "")
             order_type = OrderType.MARKET if ord_type == "price" else OrderType.LIMIT
 

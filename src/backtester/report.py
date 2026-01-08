@@ -11,10 +11,13 @@ Generates comprehensive reports with:
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from src.config import ANNUALIZATION_FACTOR, RISK_FREE_RATE
 from src.risk.metrics import PortfolioRiskMetrics
@@ -259,10 +262,12 @@ def calculate_monthly_returns(
     monthly_returns = monthly.pct_change() * 100
 
     # Create pivot table (year x month)
+    # Cast to DatetimeIndex for year/month access
+    dt_index = pd.DatetimeIndex(monthly_returns.index)
     monthly_df = pd.DataFrame(
         {
-            "year": monthly_returns.index.year,
-            "month": monthly_returns.index.month,
+            "year": dt_index.year,
+            "month": dt_index.month,
             "return": monthly_returns.values,
         }
     )
@@ -314,7 +319,9 @@ def calculate_yearly_returns(
         first_year_return = (yearly.iloc[0] / equity_curve[0] - 1) * 100
         yearly_returns.iloc[0] = first_year_return
 
-    yearly_returns.index = yearly_returns.index.year
+    # Cast to DatetimeIndex for year access
+    dt_index = pd.DatetimeIndex(yearly_returns.index)
+    yearly_returns.index = pd.Index(dt_index.year)
 
     return yearly_returns
 
@@ -328,7 +335,7 @@ class BacktestReport:
         self,
         equity_curve: np.ndarray,
         dates: np.ndarray,
-        trades: list | pd.DataFrame,
+        trades: list[Any] | pd.DataFrame,
         strategy_name: str = "Strategy",
         initial_capital: float = 1.0,
     ) -> None:
@@ -455,9 +462,9 @@ class BacktestReport:
 
     def plot_equity_curve(
         self,
-        ax: plt.Axes | None = None,
+        ax: Axes | None = None,
         show_drawdown: bool = True,
-    ) -> plt.Figure | None:
+    ) -> Figure | None:
         """
         Plot equity curve with optional drawdown.
 
@@ -509,7 +516,7 @@ class BacktestReport:
 
         return fig
 
-    def plot_drawdown(self, ax: plt.Axes | None = None) -> plt.Figure | None:
+    def plot_drawdown(self, ax: Axes | None = None) -> Figure | None:
         """
         Plot drawdown curve.
 
@@ -553,7 +560,7 @@ class BacktestReport:
 
         return fig
 
-    def plot_monthly_heatmap(self, ax: plt.Axes | None = None) -> plt.Figure | None:
+    def plot_monthly_heatmap(self, ax: Axes | None = None) -> Figure | None:
         """
         Plot monthly returns heatmap.
 
@@ -590,8 +597,9 @@ class BacktestReport:
         for i in range(len(monthly.index)):
             for j in range(len(monthly.columns)):
                 val = monthly.iloc[i, j]
-                if not np.isnan(val):
-                    color = "white" if abs(val) > 10 else "black"
+                # Type guard: ensure val is numeric
+                if isinstance(val, (int, float, np.number)) and not np.isnan(val):
+                    color = "white" if abs(float(val)) > 10 else "black"
                     ax.text(
                         j,
                         i,
@@ -613,7 +621,7 @@ class BacktestReport:
         self,
         save_path: Path | str | None = None,
         show: bool = True,
-    ) -> plt.Figure:
+    ) -> Figure:
         """
         Generate full visual report with all charts.
 
@@ -660,7 +668,7 @@ class BacktestReport:
 
         return fig
 
-    def _plot_metrics_table(self, ax: plt.Axes) -> None:
+    def _plot_metrics_table(self, ax: Axes) -> None:
         """Plot metrics as a table."""
         ax.axis("off")
 
@@ -764,13 +772,13 @@ class BacktestReport:
 
 
 def generate_report(
-    result,  # BacktestResult
+    result: Any,  # BacktestResult
     strategy_name: str | None = None,
     save_path: Path | str | None = None,
     show: bool = True,
     format: str = "png",  # "png" or "html"
-    strategy_obj=None,  # Strategy instance for parameter extraction
-    config=None,  # BacktestConfig instance
+    strategy_obj: Any = None,  # Strategy instance for parameter extraction
+    config: Any = None,  # BacktestConfig instance
     tickers: list[str] | None = None,  # List of tickers used in backtest
 ) -> BacktestReport:
     """

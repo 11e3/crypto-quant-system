@@ -29,7 +29,7 @@ class TradeExecution:
     entry_size: float
     exit_price: float = 0.0
     exit_size: float = 0.0
-    exit_time: pd.Timestamp = None
+    exit_time: pd.Timestamp | None = None
 
     # 비용 관련
     entry_slippage_pct: float = 0.0
@@ -140,7 +140,7 @@ class TradeCostCalculator:
         return total_cost
 
     def calculate_roundtrip_cost_pct(
-        self, entry_slippage: float = None, exit_slippage: float = None
+        self, entry_slippage: float | None = None, exit_slippage: float | None = None
     ) -> float:
         """
         왕복 거래 비용 (Entry + Exit).
@@ -169,9 +169,9 @@ class TradeCostCalculator:
         entry_price: float,
         exit_price: float,
         position_size: float = 1.0,
-        entry_slippage: float = None,
-        exit_slippage: float = None,
-    ) -> dict:
+        entry_slippage: float | None = None,
+        exit_slippage: float | None = None,
+    ) -> dict[str, float]:
         """
         순이익률 계산 (슬리피지 + 수수료 반영).
 
@@ -230,8 +230,8 @@ class TradeCostCalculator:
     def calculate_minimum_profit_target(
         self,
         entry_price: float,
-        entry_slippage: float = None,
-        exit_slippage: float = None,
+        entry_slippage: float | None = None,
+        exit_slippage: float | None = None,
         target_pnl: float = 0.5,
     ) -> float:
         """
@@ -282,7 +282,9 @@ class TradeAnalyzer:
     def __init__(self, vip_tier: int = 0, volatility_regime: str = "medium"):
         self.calculator = TradeCostCalculator(vip_tier, volatility_regime)
 
-    def analyze_trades(self, trades: list[dict]) -> pd.DataFrame:
+    def analyze_trades(
+        self, trades: list[dict[str, float]]
+    ) -> tuple[pd.DataFrame, dict[str, float]]:
         """
         거래 목록 분석.
 
@@ -290,17 +292,23 @@ class TradeAnalyzer:
             trades: [{'entry_price': X, 'exit_price': Y, ...}, ...]
 
         Returns:
-            분석 결과 DataFrame
+            (분석 결과 DataFrame, 통계 요약 dict)
         """
         results = []
 
         for trade in trades:
+            entry_price = trade.get("entry_price", 0.0)
+            exit_price = trade.get("exit_price", 0.0)
+            position_size = trade.get("position_size", 1.0)
+            entry_slippage = trade.get("entry_slippage")
+            exit_slippage = trade.get("exit_slippage")
+
             analysis = self.calculator.calculate_net_pnl(
-                entry_price=trade.get("entry_price"),
-                exit_price=trade.get("exit_price"),
-                position_size=trade.get("position_size", 1.0),
-                entry_slippage=trade.get("entry_slippage"),
-                exit_slippage=trade.get("exit_slippage"),
+                entry_price=entry_price,
+                exit_price=exit_price,
+                position_size=position_size,
+                entry_slippage=entry_slippage,
+                exit_slippage=exit_slippage,
             )
             results.append(analysis)
 
@@ -337,7 +345,7 @@ class CostBreakdownAnalysis:
         entry_slippage: float = 0.02,
         exit_slippage: float = 0.02,
         taker_fee: float = 0.05,
-    ) -> dict:
+    ) -> dict[str, float]:
         """
         손실 요인별 분석.
 

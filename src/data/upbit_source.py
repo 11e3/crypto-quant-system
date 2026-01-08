@@ -97,7 +97,8 @@ class UpbitDataSource(DataSource):
                 logger.warning(f"No OHLCV data for {symbol} {interval}")
                 return None
 
-            return df
+            # Explicit conversion from Any to DataFrame
+            return pd.DataFrame(df)
         except Exception as e:
             logger.error(f"Error fetching OHLCV for {symbol}: {e}", exc_info=True)
             raise DataSourceConnectionError(f"Failed to fetch data: {e}") from e

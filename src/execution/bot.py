@@ -154,6 +154,8 @@ class TradingBot:
         """
         Calculate SMA for exit condition.
 
+        Uses rolling window ending at yesterday (excluding today's incomplete candle).
+
         Args:
             df: DataFrame with OHLCV data
 
@@ -163,12 +165,18 @@ class TradingBot:
         if df is None or len(df) < SMA_EXIT_PERIOD + 2:
             return None
 
-        # Calculate SMA using last 5 days before yesterday
-        # iloc[-7:-2] means last 7 to last 2 (5 days)
-        sma_period = SMA_EXIT_PERIOD
-        start_idx = -(sma_period + 2)
-        end_idx = YESTERDAY_INDEX
-        return float(df["close"].iloc[start_idx:end_idx].mean())
+        # Calculate SMA using last N days before yesterday
+        # Exclude today's incomplete candle (last row)
+        # Exclude yesterday (second to last) from calculation window
+        # Use previous N days for SMA
+        close_series = df["close"].iloc[:YESTERDAY_INDEX]  # All data up to yesterday
+
+        if len(close_series) < SMA_EXIT_PERIOD:
+            return None
+
+        # Calculate SMA from the last SMA_EXIT_PERIOD days before yesterday
+        sma_value = float(close_series.iloc[-SMA_EXIT_PERIOD:].mean())
+        return sma_value
 
     def check_exit_conditions(self, ticker: str) -> bool:
         """
@@ -391,7 +399,35 @@ class TradingBot:
         self._execute_buy_order(ticker, current_price, buy_amount)
 
     def run(self) -> None:
-        """Run the trading bot main loop."""
+        """
+        Run the trading bot main loop.
+
+        ⚠️ ARCHITECTURAL WARNING:
+        This method uses a blocking WebSocket loop (wm.get()) which can cause:
+        1. Delayed daily_reset execution if no ticks arrive
+        2. Difficulty implementing timeout mechanisms
+        3. Challenges with graceful shutdown
+
+        Recommended refactoring for production:
+        - Use async/await with asyncio for concurrent operations
+        - Implement timeout on WebSocket reads
+        - Separate data reception from business logic
+        - Use event-driven architecture instead of polling
+
+        Example improved structure:
+            async def run():
+                async with websocket_manager() as ws:
+                    while True:
+                        try:
+                            data = await asyncio.wait_for(ws.get(), timeout=5.0)
+                            await self.process_tick(data)
+                        except asyncio.TimeoutError:
+                            await self.check_scheduled_tasks()
+
+        Coverage Note:
+            This method is excluded from test coverage due to infinite loop
+            and WebSocket dependency. Integration tests should verify behavior.
+        """
         logger.info("Starting Trading Bot (VBO Strategy)...")
 
         # Test API connection

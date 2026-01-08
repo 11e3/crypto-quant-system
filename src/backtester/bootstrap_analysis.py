@@ -141,14 +141,16 @@ class BootstrapAnalyzer:
             return result
 
     def _block_bootstrap(self, returns: np.ndarray, n: int, block_size: int) -> np.ndarray:
-        blocks = []
+        blocks: list[np.ndarray] = []
         i = 0
         while i < n:
             start = np.random.randint(0, max(1, n - block_size))
-            block = returns[start : start + block_size]
+            block: np.ndarray = returns[start : start + block_size]
             blocks.append(block)
             i += block_size
-        return np.concatenate(blocks)[:n]
+        concatenated: np.ndarray = np.concatenate(blocks)
+        result: np.ndarray = concatenated[:n]
+        return result
 
     def _resample_data(self, data: pd.DataFrame, block_size: int) -> pd.DataFrame:
         """
@@ -174,10 +176,22 @@ class BootstrapAnalyzer:
         resampled_df = df.iloc[resampled_indices].copy()
 
         # Reset index to maintain continuous datetime (for indicator calculations)
+        # Try to infer frequency from original index
+        inferred_freq = None
+        if hasattr(df.index, "freq") and df.index.freq is not None:
+            inferred_freq = df.index.freq
+        else:
+            try:
+                # pd.infer_freq requires DatetimeIndex/Series
+                if isinstance(df.index, pd.DatetimeIndex):
+                    inferred_freq = pd.infer_freq(df.index)
+            except (ValueError, TypeError):
+                pass
+
         resampled_df.index = pd.date_range(
             start=df.index[0],
             periods=len(resampled_df),
-            freq=df.index.freq or pd.infer_freq(df.index) or "D",
+            freq=inferred_freq or "D",
         )
 
         return resampled_df

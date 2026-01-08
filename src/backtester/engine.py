@@ -584,7 +584,7 @@ class VectorizedBacktestEngine:
 
         # Load and prepare data for all tickers
         ticker_data: dict[str, pd.DataFrame] = {}
-        all_dates: set = set()
+        all_dates: set[date] = set()
 
         # Store original dataframes for position sizing (need historical data)
         ticker_historical_data: dict[str, pd.DataFrame] = {}
@@ -636,7 +636,9 @@ class VectorizedBacktestEngine:
                     valid_mask = valid_mask & df["sma"].notna()
                 if "target" in df.columns:
                     valid_mask = valid_mask & df["target"].notna()
-                valid_dates = df.index[valid_mask].date
+                # Cast to DatetimeIndex for date access
+                dt_index = pd.DatetimeIndex(df.index[valid_mask])
+                valid_dates = dt_index.date
                 all_dates.update(valid_dates)
             except Exception as e:
                 logger.error(f"Error processing {ticker} from {filepath}: {e}", exc_info=True)

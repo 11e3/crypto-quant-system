@@ -104,13 +104,16 @@ class UpbitDataCollector:
 
         for attempt in range(max_retries):
             try:
-                df = pyupbit.get_ohlcv(
+                result = pyupbit.get_ohlcv(
                     ticker=ticker,
                     interval=interval,
                     count=min(count, UPBIT_MAX_CANDLES_PER_REQUEST),
                     to=to,
                 )
-                return df
+                if result is None:
+                    return None
+                # Explicit conversion from Any to DataFrame
+                return pd.DataFrame(result)
             except Exception as e:
                 if attempt < max_retries - 1:
                     sleep_time = retry_delay * (2**attempt)
