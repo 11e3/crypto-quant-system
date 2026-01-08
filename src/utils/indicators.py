@@ -302,3 +302,237 @@ def add_vbo_indicators(
     df["target"] = df["open"] + df["prev_range"] * df["short_noise"]
 
     return df
+
+
+# ===== Phase 2 Improvements (formerly indicators_v2) =====
+
+
+def calculate_natr(
+    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
+) -> pd.Series:
+    """
+    Normalized Average True Range (NATR).
+
+    NATR = (ATR / Close) * 100
+    - Price-independent volatility metric
+    - Useful for comparing volatility across different price levels
+
+    Args:
+        high: High prices
+        low: Low prices
+        close: Close prices
+        period: ATR calculation period
+
+    Returns:
+        NATR series (percentage)
+    """
+    atr_values = atr(high, low, close, period)
+    natr = (atr_values / close) * 100
+    return natr
+
+
+def calculate_volatility_regime(
+    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14, window: int = 100
+) -> pd.Series:
+    """
+    Classify volatility regime based on NATR.
+
+    Classification:
+    - 0 (Low): NATR < 33rd percentile
+    - 1 (Medium): 33rd <= NATR < 67th percentile
+    - 2 (High): NATR >= 67th percentile
+
+    Args:
+        high: High prices
+        low: Low prices
+        close: Close prices
+        period: ATR period
+        window: Rolling window for percentile calculation
+
+    Returns:
+        Volatility regime series (0=Low, 1=Medium, 2=High)
+    """
+    natr = calculate_natr(high, low, close, period)
+
+    # Calculate rolling percentiles
+    actual_window = min(window, len(natr) // 4) if len(natr) > 0 else window
+    p33 = natr.rolling(window=actual_window).quantile(0.33)
+    p67 = natr.rolling(window=actual_window).quantile(0.67)
+
+    # Classify regime
+    regime = pd.Series(0, index=natr.index)
+    regime[(natr >= p33) & (natr < p67)] = 1  # Medium
+    regime[natr >= p67] = 2  # High
+
+    return regime
+
+
+def calculate_adaptive_noise(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    short_period: int = 4,
+    long_period: int = 8,
+    atr_period: int = 14,
+) -> tuple[pd.Series, pd.Series]:
+    """
+    Calculate ATR-normalized adaptive noise.
+
+    Traditional: noise = high.rolling().max() - low.rolling().min()
+    Improved: noise_normalized = noise / ATR
+
+    This adapts the filter strength based on market volatility.
+
+    Args:
+        high: High prices
+        low: Low prices
+        close: Close prices
+        short_period: Short-term noise window
+        long_period: Long-term noise window
+        atr_period: ATR period for normalization
+
+    Returns:
+        Tuple of (short_noise_adaptive, long_noise_adaptive)
+    """
+    atr_values = atr(high, low, close, atr_period)
+
+    # Raw noise calculation
+    short_noise_raw = high.rolling(window=short_period).max() - low.rolling(
+        window=short_period
+    ).min()
+    long_noise_raw = high.rolling(window=long_period).max() - low.rolling(window=long_period).min()
+
+    # Normalize by ATR (prevent division by zero)
+    short_noise_adaptive = short_noise_raw / (atr_values + 1e-8)
+    long_noise_adaptive = long_noise_raw / (atr_values + 1e-8)
+
+    return short_noise_adaptive, long_noise_adaptive
+
+
+def calculate_noise_ratio(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    short_period: int = 4,
+    long_period: int = 8,
+    atr_period: int = 14,
+) -> pd.Series:
+    """
+    Calculate noise ratio (short / long).
+
+    Interpretation:
+    - Ratio >= 0.5: High short-term noise → exclude trade (low confidence)
+    - Ratio < 0.5: Low short-term noise → high confidence
+
+    Args:
+        high: High prices
+        low: Low prices
+        close: Close prices
+        short_period: Short-term period
+        long_period: Long-term period
+        atr_period: ATR period
+
+    Returns:
+        Noise ratio series
+    """
+    short_noise, long_noise = calculate_adaptive_noise(
+        high, low, close, short_period, long_period, atr_period
+    )
+
+    # Prevent division by zero
+    ratio = short_noise / (long_noise + 1e-8)
+
+    return ratio
+
+
+def calculate_adaptive_k_value(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    base_k: float = 0.5,
+    atr_period: int = 14,
+    window: int = 100,
+) -> pd.Series:
+    """
+    Calculate adaptive K-value based on volatility regime.
+
+    Strategy:
+    - Low volatility: K * 0.8 (increase sensitivity)
+    - Medium volatility: K * 1.0 (maintain baseline)
+    - High volatility: K * 1.3 (reduce false signals)
+
+    Args:
+        high: High prices
+        low: Low prices
+        close: Close prices
+        base_k: Base K value
+        atr_period: ATR period
+        window: Window for volatility regime classification
+
+    Returns:
+        Adaptive K value series
+    """
+    regime = calculate_volatility_regime(high, low, close, atr_period, window)
+
+    k_values = pd.Series(base_k, index=regime.index)
+    k_values[regime == 0] = base_k * 0.8  # Low volatility
+    k_values[regime == 1] = base_k * 1.0  # Medium volatility
+    k_values[regime == 2] = base_k * 1.3  # High volatility
+
+    return k_values
+
+
+def add_improved_indicators(
+    df: pd.DataFrame,
+    short_period: int = 4,
+    long_period: int = 8,
+    atr_period: int = 14,
+    base_k: float = 0.5,
+) -> pd.DataFrame:
+    """
+    Add Phase 2 improved indicators to DataFrame.
+
+    Added columns:
+    - atr: Average True Range
+    - natr: Normalized ATR (%)
+    - volatility_regime: Volatility classification (0/1/2)
+    - short_noise_adaptive: ATR-normalized short-term noise
+    - long_noise_adaptive: ATR-normalized long-term noise
+    - noise_ratio: Short/long noise ratio
+    - k_value_adaptive: Dynamic K-value
+
+    Args:
+        df: DataFrame with OHLC columns
+        short_period: Short-term period
+        long_period: Long-term period
+        atr_period: ATR period
+        base_k: Base K value for adaptive calculation
+
+    Returns:
+        DataFrame with added improved indicators
+    """
+    result = df.copy()
+
+    # Basic indicators
+    result["atr"] = atr(df["high"], df["low"], df["close"], atr_period)
+    result["natr"] = calculate_natr(df["high"], df["low"], df["close"], atr_period)
+    result["volatility_regime"] = calculate_volatility_regime(
+        df["high"], df["low"], df["close"], atr_period
+    )
+
+    # Adaptive noise
+    short_noise, long_noise = calculate_adaptive_noise(
+        df["high"], df["low"], df["close"], short_period, long_period, atr_period
+    )
+    result["short_noise_adaptive"] = short_noise
+    result["long_noise_adaptive"] = long_noise
+    result["noise_ratio"] = calculate_noise_ratio(
+        df["high"], df["low"], df["close"], short_period, long_period, atr_period
+    )
+
+    # Adaptive K-value
+    result["k_value_adaptive"] = calculate_adaptive_k_value(
+        df["high"], df["low"], df["close"], base_k, atr_period
+    )
+
+    return result
