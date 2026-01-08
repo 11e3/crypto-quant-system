@@ -62,26 +62,29 @@ def optimize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.columns:
         col_type = df[col].dtype
 
-        if not isinstance(col_type, type(object)):
-            c_min: Any = df[col].min()
-            c_max: Any = df[col].max()
+        # Only attempt optimization for numeric dtypes
+        if not pd.api.types.is_numeric_dtype(col_type):
+            continue
 
-            if str(col_type)[:3] == "int":
-                if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
-                    df[col] = df[col].astype(np.int8)
-                elif c_min > np.iinfo(np.int16).min and c_max < np.iinfo(np.int16).max:
-                    df[col] = df[col].astype(np.int16)
-                elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
-                    df[col] = df[col].astype(np.int32)
-                elif c_min > np.iinfo(np.int64).min and c_max < np.iinfo(np.int64).max:
-                    df[col] = df[col].astype(np.int64)
-            elif (
-                str(col_type)[:5] == "float"
-                and col in ["open", "high", "low", "close", "volume", "target", "sma", "sma_trend"]
-                or c_min > np.finfo(np.float32).min
-                and c_max < np.finfo(np.float32).max
-            ):
-                df[col] = df[col].astype(np.float32)
+        c_min: Any = df[col].min()
+        c_max: Any = df[col].max()
+
+        if str(col_type)[:3] == "int":
+            if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
+                df[col] = df[col].astype(np.int8)
+            elif c_min > np.iinfo(np.int16).min and c_max < np.iinfo(np.int16).max:
+                df[col] = df[col].astype(np.int16)
+            elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
+                df[col] = df[col].astype(np.int32)
+            elif c_min > np.iinfo(np.int64).min and c_max < np.iinfo(np.int64).max:
+                df[col] = df[col].astype(np.int64)
+        elif (
+            str(col_type)[:5] == "float"
+            and col in ["open", "high", "low", "close", "volume", "target", "sma", "sma_trend"]
+            or c_min > np.finfo(np.float32).min
+            and c_max < np.finfo(np.float32).max
+        ):
+            df[col] = df[col].astype(np.float32)
 
     end_memory: float = float(df.memory_usage(deep=True).sum() / 1024**2)
     reduction: float = ((start_memory - end_memory) / start_memory) * 100

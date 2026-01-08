@@ -90,6 +90,11 @@ class Trade:
     pnl: float = 0.0
     pnl_pct: float = 0.0
     is_whipsaw: bool = False
+    commission_cost: float = 0.0
+    slippage_cost: float = 0.0
+    is_stop_loss: bool = False
+    is_take_profit: bool = False
+    exit_reason: str = "signal"  # "signal", "stop_loss", "take_profit", "open"
 
     @property
     def is_closed(self) -> bool:
@@ -800,6 +805,106 @@ class VectorizedBacktestEngine:
                         asset_returns[tickers[t_idx]].append(daily_return)
                     previous_closes[t_idx] = current_close
 
+            # ---- PROCESS STOP-LOSS / TAKE-PROFIT (강제 청산) ----
+            if self.config.stop_loss_pct is not None or self.config.take_profit_pct is not None:
+                in_position = position_amounts > 0
+                for t_idx in range(n_tickers):
+                    if not in_position[t_idx] or not valid_data[t_idx]:
+                        continue
+
+                    current_price = closes[t_idx, d_idx]
+                    entry_price = position_entry_prices[t_idx]
+                    pnl_pct_current = current_price / entry_price - 1.0
+
+                    # Check stop-loss
+                    if (
+                        self.config.stop_loss_pct is not None
+                        and pnl_pct_current <= -self.config.stop_loss_pct
+                    ):
+                        exit_price = exit_prices[t_idx, d_idx]
+                        amount = position_amounts[t_idx]
+                        revenue = amount * exit_price * (1 - fee_rate)
+                        cash += revenue
+
+                        pnl = revenue - (amount * entry_price)
+                        pnl_pct = (exit_price / entry_price - 1) * 100
+                        commission_cost = (
+                            amount * entry_price * fee_rate + amount * exit_price * fee_rate
+                        )
+                        slippage_cost = amount * (
+                            entry_price * self.config.slippage_rate
+                            + exit_price * self.config.slippage_rate
+                        )
+
+                        trades_list.append(
+                            {
+                                "ticker": tickers[t_idx],
+                                "entry_date": sorted_dates[position_entry_dates[t_idx]],
+                                "entry_price": entry_price,
+                                "exit_date": current_date,
+                                "exit_price": exit_price,
+                                "amount": amount,
+                                "pnl": pnl,
+                                "pnl_pct": pnl_pct,
+                                "is_whipsaw": False,
+                                "commission_cost": commission_cost,
+                                "slippage_cost": slippage_cost,
+                                "is_stop_loss": True,
+                                "is_take_profit": False,
+                                "exit_reason": "stop_loss",
+                            }
+                        )
+
+                        self.advanced_order_manager.cancel_all_orders(ticker=tickers[t_idx])
+                        position_amounts[t_idx] = 0
+                        position_entry_prices[t_idx] = 0
+                        position_entry_dates[t_idx] = -1
+                        continue
+
+                    # Check take-profit
+                    if (
+                        self.config.take_profit_pct is not None
+                        and pnl_pct_current >= self.config.take_profit_pct
+                    ):
+                        exit_price = exit_prices[t_idx, d_idx]
+                        amount = position_amounts[t_idx]
+                        revenue = amount * exit_price * (1 - fee_rate)
+                        cash += revenue
+
+                        pnl = revenue - (amount * entry_price)
+                        pnl_pct = (exit_price / entry_price - 1) * 100
+                        commission_cost = (
+                            amount * entry_price * fee_rate + amount * exit_price * fee_rate
+                        )
+                        slippage_cost = amount * (
+                            entry_price * self.config.slippage_rate
+                            + exit_price * self.config.slippage_rate
+                        )
+
+                        trades_list.append(
+                            {
+                                "ticker": tickers[t_idx],
+                                "entry_date": sorted_dates[position_entry_dates[t_idx]],
+                                "entry_price": entry_price,
+                                "exit_date": current_date,
+                                "exit_price": exit_price,
+                                "amount": amount,
+                                "pnl": pnl,
+                                "pnl_pct": pnl_pct,
+                                "is_whipsaw": False,
+                                "commission_cost": commission_cost,
+                                "slippage_cost": slippage_cost,
+                                "is_stop_loss": False,
+                                "is_take_profit": True,
+                                "exit_reason": "take_profit",
+                            }
+                        )
+
+                        self.advanced_order_manager.cancel_all_orders(ticker=tickers[t_idx])
+                        position_amounts[t_idx] = 0
+                        position_entry_prices[t_idx] = 0
+                        position_entry_dates[t_idx] = -1
+
             # ---- PROCESS EXITS (퇴출 신호 처리) ----
             # 기존 포지션이 있는 자산만 선택
             in_position = position_amounts > 0
@@ -826,6 +931,19 @@ class VectorizedBacktestEngine:
                     # 예: (10,500/10,000 - 1) × 100 = 5% 수익
                     pnl_pct = (exit_price / entry_price - 1) * 100
 
+                    # Cost breakdown
+                    # Entry commission: amount * entry_price * fee_rate
+                    # Exit commission: amount * exit_price * fee_rate
+                    commission_cost = (
+                        amount * entry_price * fee_rate + amount * exit_price * fee_rate
+                    )
+                    # Slippage cost: difference from ideal mid price
+                    # Approximation: slippage_rate * (entry + exit) * amount
+                    slippage_cost = amount * (
+                        entry_price * self.config.slippage_rate
+                        + exit_price * self.config.slippage_rate
+                    )
+
                     trades_list.append(
                         {
                             "ticker": tickers[t_idx],
@@ -837,6 +955,11 @@ class VectorizedBacktestEngine:
                             "pnl": pnl,  # 절대 손익
                             "pnl_pct": pnl_pct,  # 퍼센트 손익
                             "is_whipsaw": False,
+                            "commission_cost": commission_cost,
+                            "slippage_cost": slippage_cost,
+                            "is_stop_loss": False,
+                            "is_take_profit": False,
+                            "exit_reason": "signal",
                         }
                     )
 
@@ -1054,6 +1177,15 @@ class VectorizedBacktestEngine:
                         pnl = return_money - invest_amount
                         pnl_pct = (sell_price / buy_price - 1) * 100
 
+                        # Cost breakdown for whipsaw
+                        commission_cost = (
+                            amount * buy_price * fee_rate + amount * sell_price * fee_rate
+                        )
+                        slippage_cost = amount * (
+                            buy_price * self.config.slippage_rate
+                            + sell_price * self.config.slippage_rate
+                        )
+
                         trades_list.append(
                             {
                                 "ticker": tickers[t_idx],
@@ -1065,6 +1197,11 @@ class VectorizedBacktestEngine:
                                 "pnl": pnl,
                                 "pnl_pct": pnl_pct,
                                 "is_whipsaw": True,
+                                "commission_cost": commission_cost,
+                                "slippage_cost": slippage_cost,
+                                "is_stop_loss": False,
+                                "is_take_profit": False,
+                                "exit_reason": "whipsaw",
                             }
                         )
                     else:
@@ -1113,6 +1250,11 @@ class VectorizedBacktestEngine:
                         "pnl": 0.0,
                         "pnl_pct": 0.0,
                         "is_whipsaw": False,
+                        "commission_cost": 0.0,
+                        "slippage_cost": 0.0,
+                        "is_stop_loss": False,
+                        "is_take_profit": False,
+                        "exit_reason": "open",
                     }
                 )
 
@@ -1140,6 +1282,11 @@ class VectorizedBacktestEngine:
                     pnl=row["pnl"],
                     pnl_pct=row["pnl_pct"],
                     is_whipsaw=row["is_whipsaw"],
+                    commission_cost=row.get("commission_cost", 0.0),
+                    slippage_cost=row.get("slippage_cost", 0.0),
+                    is_stop_loss=row.get("is_stop_loss", False),
+                    is_take_profit=row.get("is_take_profit", False),
+                    exit_reason=row.get("exit_reason", "signal"),
                 )
                 for _, row in trades_df.iterrows()
             ]

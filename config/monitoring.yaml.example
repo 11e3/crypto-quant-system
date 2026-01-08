@@ -1,0 +1,16 @@
+# Phase 4 Monitoring configuration
+
+thresholds:
+  # Risk: drawdown is negative (e.g., -0.30 means -30%)
+  max_max_drawdown: -0.25
+
+  # Return quality
+  min_cagr: 0.05
+  min_sharpe: 0.40
+  min_win_rate: 0.30
+
+# Optional: future extensions
+# data:
+#   trades_path: reports/engine_trades.csv
+# alerts:
+#   slack_webhook: "https://hooks.slack.com/services/XXX/YYY/ZZZ"

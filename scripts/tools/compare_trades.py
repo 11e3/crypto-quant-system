@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import pandas as pd
@@ -136,6 +136,11 @@ def compare_trades():
                     "pnl": t.pnl,
                     "pnl_pct": t.pnl_pct,
                     "is_whipsaw": t.is_whipsaw,
+                    "commission_cost": getattr(t, "commission_cost", 0.0),
+                    "slippage_cost": getattr(t, "slippage_cost", 0.0),
+                    "is_stop_loss": getattr(t, "is_stop_loss", False),
+                    "is_take_profit": getattr(t, "is_take_profit", False),
+                    "exit_reason": getattr(t, "exit_reason", "signal"),
                 }
                 for t in engine_result.trades
             ]
@@ -154,7 +159,10 @@ def compare_trades():
         print(engine_trades_df.head(20).to_string())
 
         # Save to CSV
-        output_path = project_root / "reports" / "engine_trades.csv"
+        # Make sure reports directory exists
+        output_dir = project_root / "reports"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "engine_trades.csv"
         engine_trades_df.to_csv(output_path, index=False)
         print(f"\n[+] Engine trades saved to: {output_path}")
 

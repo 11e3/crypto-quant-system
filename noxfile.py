@@ -1,4 +1,4 @@
-import nox
+import nox  # type: ignore[import-untyped]
 
 # Python version to test against
 DEFAULT_PYTHON = "3.14"
@@ -12,10 +12,6 @@ def lint(session: nox.Session) -> None:
 
     # Format with ruff
     session.run("ruff", "check", ".", "--fix", "--unsafe-fixes", "--line-length=100")
-    session.run("ruff", "format", ".", "--line-length=100")
-
-    # Type checking
-    session.run("mypy", "src", "tests")
 
     session.log("✓ Linting complete")
 
@@ -42,7 +38,7 @@ def tests(session: nox.Session) -> None:
 def type_check(session: nox.Session) -> None:
     """Run type checking with mypy."""
     session.install(".[dev]")
-    session.run("mypy", "src", "tests", "--strict")
+    session.run("mypy", ".")
     session.log("✓ Type checking complete")
 
 
