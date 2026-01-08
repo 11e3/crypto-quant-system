@@ -11,7 +11,7 @@ def lint(session: nox.Session) -> None:
     session.install(".[dev]")
 
     # Format with ruff
-    session.run("ruff", "check", ".", "--fix", "--unsafe-fixes", "--line-length=100")
+    session.run("ruff", "check", ".", "--fix", "--unsafe-fixes")
 
     session.log("✓ Linting complete")
 
