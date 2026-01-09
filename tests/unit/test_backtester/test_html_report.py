@@ -10,8 +10,8 @@ import pandas as pd
 import pytest
 
 from src.backtester.engine import BacktestConfig, Trade
-from src.backtester.html_report import generate_html_report
-from src.backtester.report import BacktestReport
+from src.backtester.html.html_report import generate_html_report
+from src.backtester.report_pkg.report import BacktestReport
 from src.risk.metrics import PortfolioRiskMetrics
 
 
@@ -117,8 +117,9 @@ def test_generate_html_report(
     assert "Strategy Configuration" in html_content
     assert "Initial Capital" in html_content
     assert "1,000,000" in html_content
-    assert "Tickers" in html_content
-    assert "KRW-BTC, KRW-ETH" in html_content
+    # Tickers are shown as "Universe" with count in config section
+    assert "Universe" in html_content
+    assert "2 tickers" in html_content
 
     # Check for risk metrics
     assert "Risk Metrics" in html_content

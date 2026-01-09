@@ -226,6 +226,34 @@ class TestCompositeCondition:
         assert composite.operator == "AND"  # Should be uppercase
         assert composite.evaluate(current, history, indicators) is True
 
+    def test_composite_condition_with_series_returning_condition(self) -> None:
+        """Test CompositeCondition with condition returning pd.Series (line 99)."""
+
+        # Create a condition that returns a pd.Series
+        class SeriesCondition(Condition):
+            def __init__(self, name: str, series_values: list[bool]) -> None:
+                super().__init__(name)
+                self.series_values = series_values
+
+            def evaluate(
+                self,
+                current: OHLCV,
+                history: pd.DataFrame,
+                indicators: dict[str, float],
+            ) -> pd.Series:
+                return pd.Series(self.series_values)
+
+        condition1 = SeriesCondition("SeriesCondition", [False, True, True])
+        composite = CompositeCondition([condition1], operator="AND")
+
+        current = OHLCV(date(2024, 1, 1), 100.0, 110.0, 95.0, 105.0, 1000.0)
+        history = pd.DataFrame()
+        indicators: dict[str, float] = {}
+
+        # Should use the last value (True) from the series
+        result = composite.evaluate(current, history, indicators)
+        assert result is True
+
 
 class TestStrategy:
     """Tests for Strategy base class."""

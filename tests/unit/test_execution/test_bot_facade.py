@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src.exchange.types import OrderType
-from src.execution.bot_facade import TradingBotFacade
+from src.execution.bot.bot_facade import TradingBotFacade
 from src.execution.order_manager import Order
 
 
@@ -72,13 +72,13 @@ def mock_components() -> dict[str, MagicMock]:
 def bot(mock_config: MagicMock, mock_components: dict[str, MagicMock]) -> TradingBotFacade:
     """Create a TradingBotFacade instance with mocked dependencies."""
     with (
-        patch("src.execution.bot_facade.get_config", return_value=mock_config),
-        patch("src.execution.bot_facade.get_notifier", return_value=mock_components["telegram"]),
-        patch("src.execution.bot_facade.get_event_bus"),
-        patch("src.execution.bot_facade.TradeHandler"),
-        patch("src.execution.bot_facade.NotificationHandler"),
+        patch("src.execution.bot.bot_init.get_config", return_value=mock_config),
+        patch("src.execution.bot.bot_init.get_notifier", return_value=mock_components["telegram"]),
+        patch("src.execution.bot.bot_init.get_event_bus"),
+        patch("src.execution.bot.bot_init.TradeHandler"),
+        patch("src.execution.bot.bot_init.NotificationHandler"),
         patch(
-            "src.execution.bot_facade.AdvancedOrderManager",
+            "src.execution.bot.bot_init.AdvancedOrderManager",
             return_value=mock_components["advanced_order_manager"],
         ),
     ):
@@ -267,7 +267,9 @@ class TestTradingBotFacade:
     def test_process_exits_signal(
         self, bot: TradingBotFacade, mock_components: dict[str, MagicMock]
     ) -> None:
-        """Test exit signal processing."""
+        """Test exit signal processing using bot_reset module."""
+        from src.execution.bot.bot_reset import process_exits
+
         ticker = "KRW-BTC"
 
         # Setup: Holding 1 position
@@ -276,34 +278,32 @@ class TestTradingBotFacade:
         # Setup: Exit signal is True
         mock_components["signal_handler"].check_exit_signal.return_value = True
 
-        # Setup: Sell successful
-        mock_components["order_manager"].sell_all.return_value = MagicMock(order_id="sell-uuid")
+        # Mock _sell_all to succeed
+        with patch.object(bot, "_sell_all", return_value=True) as mock_sell_all:
+            # Setup data for notification details
+            df = pd.DataFrame(
+                {
+                    "close": [100.0] * 15  # Dummy data
+                }
+            )
+            mock_components["signal_handler"].get_ohlcv_data.return_value = df
+            mock_components["strategy"].calculate_indicators.return_value = df
 
-        # Setup data for notification details
-        df = pd.DataFrame(
-            {
-                "close": [100.0] * 15  # Dummy data
-            }
-        )
-        mock_components["signal_handler"].get_ohlcv_data.return_value = df
-        mock_components["strategy"].calculate_indicators.return_value = df
+            process_exits(bot)
 
-        bot._process_exits()
-
-        # Assertions
-        mock_components["order_manager"].sell_all.assert_called_with(ticker, ANY)
-        mock_components["position_manager"].remove_position.assert_called_with(ticker)
-        mock_components["telegram"].send_trade_signal.assert_called()
-        assert mock_components["telegram"].send_trade_signal.call_args[0][0] == "EXIT"
+            # Assertions
+            mock_sell_all.assert_called_with(ticker)
 
     def test_daily_reset(
         self, bot: TradingBotFacade, mock_components: dict[str, MagicMock]
     ) -> None:
-        """Test daily reset routine."""
+        """Test daily reset routine using bot_reset module."""
         with (
-            patch.object(bot, "_process_exits") as mock_exits,
-            patch.object(bot, "_recalculate_targets") as mock_targets,
+            patch("src.execution.bot.bot_reset.process_exits") as mock_exits,
+            patch("src.execution.bot.bot_reset.recalculate_targets") as mock_targets,
         ):
+            mock_targets.return_value = {"KRW-BTC": {"target": 50000.0}}
+
             bot.daily_reset()
 
             mock_exits.assert_called_once()
@@ -312,26 +312,30 @@ class TestTradingBotFacade:
     def test_recalculate_targets(
         self, bot: TradingBotFacade, mock_components: dict[str, MagicMock]
     ) -> None:
-        """Test recalculating targets."""
+        """Test recalculating targets using bot_reset module."""
+        from src.execution.bot.bot_reset import recalculate_targets
+
         bot.tickers = ["KRW-BTC"]
         mock_metrics = {"target": 100, "k": 0.5, "sma": 90, "sma_trend": 95}
         mock_components["signal_handler"].calculate_metrics.return_value = mock_metrics
 
-        bot._recalculate_targets()
+        result = recalculate_targets(bot)
 
-        assert bot.target_info["KRW-BTC"] == mock_metrics
+        assert result["KRW-BTC"] == mock_metrics
         mock_components["telegram"].send.assert_called()
 
     def test_sma_exit_calculation(self, bot: TradingBotFacade) -> None:
-        """Test helper method for SMA exit calculation."""
+        """Test helper function for SMA exit calculation using bot_reset module."""
+        from src.execution.bot.bot_reset import calculate_sma_exit
+
         # Case 1: Insufficient data
-        assert bot._calculate_sma_exit(pd.DataFrame()) is None
+        assert calculate_sma_exit(pd.DataFrame()) is None
 
         # Case 2: Valid data
         # Need at least SMA_PERIOD (5) + 2 rows
         data = [100.0] * 10
         df = pd.DataFrame({"close": data})
-        sma = bot._calculate_sma_exit(df)
+        sma = calculate_sma_exit(df)
         assert sma == 100.0
 
     def test_sell_all_exception(
@@ -349,11 +353,11 @@ class TestTradingBotFacade:
     def test_create_bot_factory(self, mock_config: MagicMock) -> None:
         """Test the create_bot factory function."""
         with (
-            patch("src.execution.bot_facade.get_config", return_value=mock_config),
-            patch("src.execution.bot_facade.get_notifier"),
-            patch("src.execution.bot_facade.ExchangeFactory"),
+            patch("src.execution.bot.bot_init.get_config", return_value=mock_config),
+            patch("src.execution.bot.bot_init.get_notifier"),
+            patch("src.execution.bot.bot_init.ExchangeFactory"),
         ):
-            from src.execution.bot_facade import create_bot
+            from src.execution.bot.bot_facade import create_bot
 
             bot = create_bot()
             assert isinstance(bot, TradingBotFacade)

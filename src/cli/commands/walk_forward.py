@@ -2,13 +2,19 @@
 CLI command for walk-forward analysis.
 """
 
+from datetime import datetime
 from pathlib import Path
-from typing import Any  # <-- 추가 필요
 
 import click
 
 from src.backtester import BacktestConfig, run_walk_forward_analysis
-from src.strategies.volatility_breakout import create_vbo_strategy
+from src.cli.commands.walk_forward_utils import (
+    create_strategy_factory,
+    parse_range,
+    print_period_details,
+    print_walk_forward_results,
+    save_walk_forward_report,
+)
 from src.utils.logger import get_logger, setup_logging
 
 setup_logging()
@@ -141,47 +147,18 @@ def walk_forward(
     ticker_list = list(tickers)
 
     logger.info("Starting walk-forward analysis...")
-    logger.info(f"Tickers: {ticker_list}")
-    logger.info(f"Interval: {interval}")
-    logger.info(f"Strategy: {strategy}")
-    logger.info(
-        f"Optimization: {optimization_days} days, Test: {test_days} days, Step: {step_days} days"
-    )
+    logger.info(f"Tickers: {ticker_list}, Interval: {interval}, Strategy: {strategy}")
+    logger.info(f"Optimization: {optimization_days}d, Test: {test_days}d, Step: {step_days}d")
 
     # Parse parameter ranges
-    def parse_range(range_str: str) -> list[int]:
-        return [int(x.strip()) for x in range_str.split(",")]
-
     param_grid: dict[str, list[int]] = {}
     param_grid["sma_period"] = parse_range(sma_range)
     param_grid["trend_sma_period"] = parse_range(trend_range)
-    param_grid["short_noise_period"] = param_grid["sma_period"]  # Default: same as sma
-    param_grid["long_noise_period"] = param_grid["trend_sma_period"]  # Default: same as trend
+    param_grid["short_noise_period"] = param_grid["sma_period"]
+    param_grid["long_noise_period"] = param_grid["trend_sma_period"]
 
     # Create strategy factory
-    def create_strategy(params: dict[str, int]) -> Any:
-        if strategy == "vanilla":
-            return create_vbo_strategy(
-                name=f"VBO_{params['sma_period']}_{params['trend_sma_period']}",
-                sma_period=params["sma_period"],
-                trend_sma_period=params["trend_sma_period"],
-                short_noise_period=params.get("short_noise_period", params["sma_period"]),
-                long_noise_period=params.get("long_noise_period", params["trend_sma_period"]),
-                exclude_current=False,
-                use_trend_filter=True,
-                use_noise_filter=True,
-            )
-        else:  # legacy
-            return create_vbo_strategy(
-                name=f"Legacy_{params['sma_period']}_{params['trend_sma_period']}",
-                sma_period=params["sma_period"],
-                trend_sma_period=params["trend_sma_period"],
-                short_noise_period=params.get("short_noise_period", params["sma_period"]),
-                long_noise_period=params.get("long_noise_period", params["trend_sma_period"]),
-                exclude_current=True,
-                use_trend_filter=True,
-                use_noise_filter=True,
-            )
+    create_strategy = create_strategy_factory(strategy)
 
     # Create config
     config = BacktestConfig(
@@ -207,36 +184,11 @@ def walk_forward(
     )
 
     # Print results
-    logger.info("\n=== Walk-Forward Analysis Results ===\n")
-    logger.info(f"Total Periods: {result.total_periods}")
-    logger.info(f"Positive Periods: {result.positive_periods}")
-    logger.info(f"Consistency Rate: {result.consistency_rate:.1f}%")
-    logger.info("\nAverage Test Metrics:")
-    logger.info(f"  CAGR: {result.avg_test_cagr:.2f}%")
-    logger.info(f"  Sharpe Ratio: {result.avg_test_sharpe:.2f}")
-    logger.info(f"  MDD: {result.avg_test_mdd:.2f}%")
-    logger.info(f"\nAverage Optimization CAGR: {result.avg_optimization_cagr:.2f}%")
-
-    # Print period details
-    logger.info("\n=== Period Details ===")
-    for period in result.periods:
-        if period.test_result:
-            logger.info(
-                f"Period {period.period_num}: "
-                f"Test CAGR={period.test_result.cagr:.2f}%, "
-                f"Sharpe={period.test_result.sharpe_ratio:.2f}, "
-                f"MDD={period.test_result.mdd:.2f}%"
-            )
-            if period.optimization_result:
-                logger.info(
-                    f"  Best params: {period.optimization_result.best_params}, "
-                    f"score: {period.optimization_result.best_score:.4f}"
-                )
+    print_walk_forward_results(result)
+    print_period_details(result)
 
     # Generate report if output specified
     if output:
-        from datetime import datetime
-
         output_path = Path(output)
         if output_path.is_dir() or not output_path.suffix:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -244,30 +196,4 @@ def walk_forward(
         else:
             output_path = Path(output)
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Write text report
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write("Walk-Forward Analysis Report\n")
-            f.write("=" * 60 + "\n\n")
-            f.write(f"Total Periods: {result.total_periods}\n")
-            f.write(f"Positive Periods: {result.positive_periods}\n")
-            f.write(f"Consistency Rate: {result.consistency_rate:.1f}%\n\n")
-            f.write(f"Average Test CAGR: {result.avg_test_cagr:.2f}%\n")
-            f.write(f"Average Test Sharpe: {result.avg_test_sharpe:.2f}\n")
-            f.write(f"Average Test MDD: {result.avg_test_mdd:.2f}%\n\n")
-            f.write("Period Details:\n")
-            f.write("-" * 60 + "\n")
-            for period in result.periods:
-                if period.test_result:
-                    f.write(
-                        f"Period {period.period_num} ({period.test_start} to {period.test_end}):\n"
-                    )
-                    f.write(f"  CAGR: {period.test_result.cagr:.2f}%\n")
-                    f.write(f"  Sharpe: {period.test_result.sharpe_ratio:.2f}\n")
-                    f.write(f"  MDD: {period.test_result.mdd:.2f}%\n")
-                    if period.optimization_result:
-                        f.write(f"  Best params: {period.optimization_result.best_params}\n")
-                    f.write("\n")
-
-        logger.info(f"\nReport saved: {output_path}")
+        save_walk_forward_report(result, output_path)

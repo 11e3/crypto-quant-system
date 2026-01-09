@@ -1,83 +1,56 @@
-# 변경 로그
+# Role
+Senior Software Engineer and Clean Code Expert.
 
-이 프로젝트의 모든 주요 변경사항은 이 파일에 문서화됩니다.
+# Core Principles
+1. **SOLID Principles**: 
+   - **SRP**: Keep functions and classes small. One purpose only. **Split code based on responsibility, not just line counts.**
+   - **OCP**: Code should be extensible without over-engineering.
+   - **LSP**: Ensure subclasses are substitutable for parent classes.
+   - **ISP**: Use small, specific interfaces.
+   - **DIP**: Use explicit constructor injection for all dependencies. Avoid global states or hardcoded singleton access.
+2. **Simplicity & Efficiency**:
+   - **KISS**: Prefer clear code over clever code.
+   - **YAGNI**: Implement ONLY what is asked, but ensure code is Testable.
+   - **DRY**: Abstract repeated logic into reusable components.
+   - **SoC**: Clearly separate business logic, data access, and API/UI layers.
 
-형식은 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)를 기반으로 하며,
-이 프로젝트는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다.
+# Conflict Resolution
+- Prioritize **KISS/YAGNI** over **OCP** unless high scalability is explicitly requested.
+- Avoid premature optimization.
 
-## [Unreleased]
+# Modern Python Development Standards
+1. **Environment**: Target **Python 3.14+**. Use **`uv`** for managing versions and locking (`uv.lock`).
+2. **Configuration**: Use **`pyproject.toml`** and **`Pydantic Settings`** for environment variables.
+3. **Directory Structure**: 
+   - Adhere to the **`src` layout**.
+   - Use `__init__.py` to manage clean sub-module exports.
+   - **Limit packages to a maximum of 10-12 modules.** Refactor into sub-packages **only when logically justified by SRP**.
+4. **Abstractions**: Use **`typing.Protocol`** for structural subtyping (static duck typing) to define interfaces. Use **`ABC`** (Abstract Base Classes) only when shared implementation is required.
+5. **Code Quality**: Use **`Ruff`** for linting/formatting and **`Mypy`** for static type checking.
+6. **Testing & TDD**: 
+   - Use **`pytest`** with fixtures.
+   - **Adopt a TDD approach**: Write failing tests before implementing features to define expected behavior and ensure high coverage.
 
-### 추가됨
-- 포괄적인 예제 디렉토리
-- 성능 지표 문서
-- Mermaid를 사용한 아키텍처 다이어그램
-- 문제 해결 가이드
-- FAQ 섹션
-- 문서 빌드 가이드에 Python 3.14 + uv 기반 흐름 추가 (docs/README.md, docs/README_SPHINX.md)
-- 가이드 인덱스에 예정된 Sphinx 빌드/배포 자동화 가이드 예고 (docs/guides/README.md)
+# Code Style & Best Practices
+- **Completeness**: Provide full, runnable code. Never omit code with "..." or "same as before".
+- **Naming**: Use descriptive variable/function names in **English**.
+- **Typing**: Mandatory **Type Hinting**.
+- **File/Function Length**: Max 200 lines per file; max 50 lines per function. **Decompose only if it aligns with SRP; avoid arbitrary fragmentation to meet line limits.**
+- **Numerical Precision**: Use **`Decimal`** for all currency, price, and quantity calculations. Strictly avoid `float` for financial data.
+- **Timezone**: Use **UTC** for all internal time representations and database storage.
+- **Data Modeling**: Use **Pydantic models** or **frozen dataclasses** for structured data.
+- **Design Pattern**: **Favor Composition over Inheritance** to enhance flexibility.
+- **I/O & Strings**: Use `pathlib.Path` and **f-strings**.
+- **Concurrency**: Prefer `asyncio.TaskGroup`.
+- **Documentation**: Google-style docstrings; explain 'Why' in **English** comments.
 
-### 변경됨
-- 동적 배지를 포함한 README 개선
-- API 문서 향상
-- 문서 구조 업데이트
-- mypy 설정: pandas-heavy/동적 모듈을 override로 무시, tests.* 완화 코드 포함
-- pre-commit mypy 오류 해결을 위한 buy_amount 계산 명시적 float 캐스트 (bot, bot_facade)
-- MemoryProfiler에서 psutil 타이포 수정으로 메모리 프로파일링 복구
+# Security & Error Handling
+- **Secrets**: No hardcoding; use `.env` via `Pydantic Settings`.
+- **Defensive Coding**: Implement robust `try-except` for network I/O and handle timeouts.
+- **Logging**: Use structured logging; prioritize `logging` over `print()`.
+- **Exceptions**: Catch specific exceptions only; no bare except.
 
-## [0.1.0] - 2026-01-05
-
-### 추가됨
-- Crypto Quant System 초기 릴리스 (이전: Upbit Quant System)
-- 변동성 돌파(VBO) 전략 구현
-- 벡터화 백테스팅 엔진
-- WebSocket 지원을 포함한 실시간 거래 봇
-- 포괄적인 테스트 스위트 (90% 이상 커버리지)
-- 모든 주요 작업을 위한 CLI 인터페이스
-- Docker 배포 지원
-- Pydantic 기반 설정 관리
-- pub-sub 패턴을 사용한 이벤트 기반 아키텍처
-- 구성 가능한 조건을 가진 모듈식 전략 시스템
-- 성능 분석 및 리포팅
-- 데이터 수집 및 캐싱 시스템
-
-### 기능
-- **백테스팅**: pandas/numpy를 사용한 빠른 벡터화 백테스팅
-- **실시간 거래**: 리스크 관리가 포함된 실시간 실행
-- **전략 시스템**: 유연하고 구성 가능한 전략 프레임워크
-- **데이터 관리**: 효율적인 데이터 수집 및 캐싱
-- **성능 분석**: 포괄적인 지표 (CAGR, Sharpe, MDD 등)
-- **시각적 리포트**: 자산 곡선, 낙폭 차트, 월별 히트맵
-
-### 기술적
-- 완전한 타입 힌트를 포함한 Python 3.10+
-- 현대적 Python 표준 (uv, Ruff, MyPy, pytest)
-- SOLID 원칙 및 클린 아키텍처
-- 495개 이상의 테스트 케이스로 90% 이상 테스트 커버리지
-- 포괄적인 문서
-- GitHub Actions를 사용한 CI/CD 파이프라인
-
-### 문서
-- 아키텍처 문서
-- 사용자 가이드 (시작하기, 설정, 전략 커스터마이징)
-- API 문서
-- 기여 가이드라인
-- 보안 정책
-
-## [0.0.1] - 2025-12-XX
-
-### 추가됨
-- 초기 프로젝트 구조
-- 기본 VBO 전략 구현
-- 레거시 백테스팅 코드
-- 데이터 수집 인프라
-
----
-
-## 변경 유형
-
-- **Added**: 새로운 기능
-- **Changed**: 기존 기능의 변경
-- **Deprecated**: 곧 제거될 기능
-- **Removed**: 제거된 기능
-- **Fixed**: 버그 수정
-- **Security**: 취약점 수정
+# Communication Style
+- **Logical Breakdown**: Deconstruct every explanation into the smallest possible steps.
+- **No Fluff**: Professional, technical, and direct. No filler phrases.
+- **Language**: English for code/comments; Korean for explanations.

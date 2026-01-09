@@ -2,13 +2,16 @@
 CLI command for optimizing strategy parameters.
 """
 
-from pathlib import Path
-from typing import Any  # <-- 추가 필요
-
 import click
 
 from src.backtester import BacktestConfig, optimize_strategy_parameters
-from src.strategies.volatility_breakout import create_vbo_strategy
+from src.cli.commands.optimize_utils import (
+    create_strategy_factory,
+    parse_range,
+    print_optimization_results,
+    print_top_results,
+    save_optimization_report,
+)
 from src.utils.logger import get_logger, setup_logging
 
 setup_logging()
@@ -142,56 +145,22 @@ def optimize(
     ticker_list = list(tickers)
 
     logger.info("Starting parameter optimization...")
-    logger.info(f"Tickers: {ticker_list}")
-    logger.info(f"Interval: {interval}")
-    logger.info(f"Strategy: {strategy}")
-    logger.info(f"Metric: {metric}")
-    logger.info(f"Method: {method}")
+    logger.info(f"Tickers: {ticker_list}, Interval: {interval}, Strategy: {strategy}")
+    logger.info(f"Metric: {metric}, Method: {method}")
 
     # Parse parameter ranges
-    def parse_range(range_str: str) -> list[int]:
-        return [int(x.strip()) for x in range_str.split(",")]
-
     param_grid: dict[str, list[int]] = {}
     param_grid["sma_period"] = parse_range(sma_range)
     param_grid["trend_sma_period"] = parse_range(trend_range)
-
-    if short_noise_range:
-        param_grid["short_noise_period"] = parse_range(short_noise_range)
-    else:
-        # Default: same as sma_period
-        param_grid["short_noise_period"] = param_grid["sma_period"]
-
-    if long_noise_range:
-        param_grid["long_noise_period"] = parse_range(long_noise_range)
-    else:
-        # Default: same as trend_sma_period
-        param_grid["long_noise_period"] = param_grid["trend_sma_period"]
+    param_grid["short_noise_period"] = (
+        parse_range(short_noise_range) if short_noise_range else param_grid["sma_period"]
+    )
+    param_grid["long_noise_period"] = (
+        parse_range(long_noise_range) if long_noise_range else param_grid["trend_sma_period"]
+    )
 
     # Create strategy factory
-    def create_strategy(params: dict[str, int]) -> Any:
-        if strategy == "vanilla":
-            return create_vbo_strategy(
-                name=f"VBO_{params['sma_period']}_{params['trend_sma_period']}",
-                sma_period=params["sma_period"],
-                trend_sma_period=params["trend_sma_period"],
-                short_noise_period=params.get("short_noise_period", params["sma_period"]),
-                long_noise_period=params.get("long_noise_period", params["trend_sma_period"]),
-                exclude_current=False,
-                use_trend_filter=True,
-                use_noise_filter=True,
-            )
-        else:  # legacy
-            return create_vbo_strategy(
-                name=f"Legacy_{params['sma_period']}_{params['trend_sma_period']}",
-                sma_period=params["sma_period"],
-                trend_sma_period=params["trend_sma_period"],
-                short_noise_period=params.get("short_noise_period", params["sma_period"]),
-                long_noise_period=params.get("long_noise_period", params["trend_sma_period"]),
-                exclude_current=True,
-                use_trend_filter=True,
-                use_noise_filter=True,
-            )
+    create_strategy = create_strategy_factory(strategy)
 
     # Create config
     config = BacktestConfig(
@@ -217,49 +186,9 @@ def optimize(
     )
 
     # Print results
-    logger.info("\n=== Optimization Results ===\n")
-    logger.info(f"Best Parameters: {result.best_params}")
-    logger.info(f"Best {metric}: {result.best_score:.4f}")
-    logger.info("\nBest Result Metrics:")
-    logger.info(f"  CAGR: {result.best_result.cagr:.2f}%")
-    logger.info(f"  Total Return: {result.best_result.total_return:.2f}%")
-    logger.info(f"  Sharpe Ratio: {result.best_result.sharpe_ratio:.2f}")
-    logger.info(f"  Max Drawdown: {result.best_result.mdd:.2f}%")
-    logger.info(f"  Win Rate: {result.best_result.win_rate:.2f}%")
-    logger.info(f"  Total Trades: {result.best_result.total_trades}")
-
-    # Print top 5 results
-    logger.info("\n=== Top 5 Results ===")
-    logger.info(f"{'Rank':<6} {'Params':<30} {metric.capitalize():>15}")
-    logger.info("-" * 60)
-    for i, (params, _, score) in enumerate(result.all_results[:5], 1):
-        params_str = ", ".join(f"{k}={v}" for k, v in params.items())
-        logger.info(f"{i:<6} {params_str:<30} {score:>15.4f}")
+    print_optimization_results(result, metric)
+    print_top_results(result, metric)
 
     # Generate report if output specified
     if output:
-        from datetime import datetime
-
-        from src.backtester.report import generate_report
-
-        output_path = Path(output)
-        if output_path.is_dir() or not output_path.suffix:
-            # Directory or no extension: create filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = output_path / f"optimization_{timestamp}.html"
-        else:
-            output_path = Path(output)
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Generate report for best result
-        generate_report(
-            result.best_result,
-            save_path=output_path,
-            show=False,
-            format="html",
-            strategy_obj=None,
-            config=config,
-            tickers=ticker_list,
-        )
-        logger.info(f"\nReport saved: {output_path}")
+        save_optimization_report(result, output, config, ticker_list)

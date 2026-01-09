@@ -64,3 +64,15 @@ class TestDataSourceNotFoundError:
         error = DataSourceNotFoundError("Data source not found", source="test_source")
         assert error.source == "test_source"
         assert error.details["source"] == "test_source"
+
+    def test_not_found_error_with_existing_details(self) -> None:
+        """Test DataSourceNotFoundError with pre-existing details dict (line 44->46)."""
+        existing_details = {"request_id": "req-123", "timestamp": "2024-01-01"}
+        error = DataSourceNotFoundError(
+            "Data source not found",
+            source="test_source",
+            details=existing_details,
+        )
+        assert error.details["request_id"] == "req-123"
+        assert error.details["timestamp"] == "2024-01-01"
+        assert error.details["source"] == "test_source"

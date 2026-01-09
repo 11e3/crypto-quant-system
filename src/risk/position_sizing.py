@@ -8,7 +8,6 @@ Provides various position sizing methods:
 - Inverse-volatility: Inverse volatility weighting
 """
 
-from collections.abc import Mapping
 from typing import Literal
 
 import numpy as np
@@ -192,101 +191,13 @@ def _inverse_volatility_sizing(
     return base_size * weight
 
 
-def calculate_multi_asset_position_sizes(
-    method: PositionSizingMethod,
-    available_cash: float,
-    tickers: list[str],
-    current_prices: Mapping[str, float],
-    historical_data: dict[str, pd.DataFrame],
-    target_risk_pct: float = 0.02,
-    lookback_period: int = 20,
-) -> dict[str, float]:
-    """
-    Calculate position sizes for multiple assets simultaneously.
+# Re-export from position_sizing_multi for backward compatibility
+from src.risk.position_sizing_multi import (  # noqa: E402
+    calculate_multi_asset_position_sizes as calculate_multi_asset_position_sizes,
+)
 
-    This is used when multiple entry signals occur at the same time.
-
-    Args:
-        method: Position sizing method
-        available_cash: Total available cash
-        tickers: List of tickers to size positions for
-        current_prices: Current prices for each ticker
-        historical_data: Historical data for each ticker
-        target_risk_pct: Target risk per position (for fixed-risk)
-        lookback_period: Lookback period for volatility
-
-    Returns:
-        Dictionary mapping ticker to position size
-    """
-    if method == "equal":
-        size_per_ticker = available_cash / len(tickers)
-        return dict.fromkeys(tickers, size_per_ticker)
-
-    if method == "volatility" or method == "inverse-volatility":
-        # Calculate weights based on inverse volatility
-        weights: dict[str, float] = {}
-        total_weight = 0.0
-
-        for ticker in tickers:
-            if ticker not in historical_data or len(historical_data[ticker]) < lookback_period:
-                weights[ticker] = 1.0  # Equal weight if no data
-            else:
-                recent_data = historical_data[ticker].tail(lookback_period)
-                returns = recent_data["close"].pct_change().dropna()
-                volatility = returns.std()
-
-                if volatility <= 0 or np.isnan(volatility):
-                    weights[ticker] = 1.0
-                else:
-                    # Inverse volatility weight
-                    weights[ticker] = 1.0 / volatility
-
-            total_weight += weights[ticker]
-
-        # Normalize and allocate
-        if total_weight > 0:
-            position_sizes = {
-                ticker: (available_cash * weights[ticker] / total_weight) for ticker in tickers
-            }
-        else:
-            position_sizes = {ticker: available_cash / len(tickers) for ticker in tickers}
-
-        return position_sizes
-
-    elif method == "fixed-risk":
-        # Calculate position sizes to achieve fixed risk per position
-        position_values: dict[str, float] = {}
-
-        for ticker in tickers:
-            if ticker not in historical_data or len(historical_data[ticker]) < lookback_period:
-                # Fallback to equal
-                position_values[ticker] = available_cash / len(tickers)
-                continue
-
-            if ticker not in current_prices or current_prices[ticker] <= 0:
-                position_values[ticker] = 0.0
-                continue
-
-            recent_data = historical_data[ticker].tail(lookback_period)
-            returns = recent_data["close"].pct_change().dropna()
-            volatility = returns.std()
-
-            if volatility <= 0 or np.isnan(volatility):
-                position_values[ticker] = available_cash / len(tickers)
-            else:
-                target_risk_amount = available_cash * target_risk_pct
-                position_value = target_risk_amount / volatility
-                position_values[ticker] = position_value
-
-        # Normalize to ensure total doesn't exceed available cash
-        total_value = sum(position_values.values())
-        if total_value > available_cash:
-            scale = available_cash / total_value
-            position_values = {k: v * scale for k, v in position_values.items()}
-
-        return position_values
-
-    else:
-        # Fallback to equal
-        size_per_ticker = available_cash / len(tickers)
-        return dict.fromkeys(tickers, size_per_ticker)
+__all__ = [
+    "PositionSizingMethod",
+    "calculate_position_size",
+    "calculate_multi_asset_position_sizes",
+]

@@ -25,7 +25,7 @@ class TestMonteCarloCommand:
         assert result.exit_code == 0
         assert "Monte Carlo" in result.output
 
-    @patch("src.cli.commands.monte_carlo.create_vbo_strategy")
+    @patch("src.cli.commands.monte_carlo_utils.create_strategy_for_monte_carlo")
     @patch("src.cli.commands.monte_carlo.run_backtest")
     @patch("src.cli.commands.monte_carlo.run_monte_carlo")
     def test_monte_carlo_basic_execution(
@@ -57,7 +57,7 @@ class TestMonteCarloCommand:
         result = runner.invoke(monte_carlo, ["--help"])
         assert "help" in result.output.lower() or "Show this message" in result.output
 
-    @patch("src.cli.commands.monte_carlo.create_vbo_strategy")
+    @patch("src.cli.commands.monte_carlo_utils.create_strategy_for_monte_carlo")
     @patch("src.cli.commands.monte_carlo.run_backtest")
     @patch("src.cli.commands.monte_carlo.run_monte_carlo")
     def test_monte_carlo_with_custom_tickers(
@@ -84,7 +84,7 @@ class TestMonteCarloCommand:
         # Check command accepts options
         assert "error" not in result.output.lower() or result.exit_code == 0
 
-    @patch("src.cli.commands.monte_carlo.create_vbo_strategy")
+    @patch("src.cli.commands.monte_carlo_utils.create_strategy_for_monte_carlo")
     @patch("src.cli.commands.monte_carlo.run_backtest")
     @patch("src.cli.commands.monte_carlo.run_monte_carlo")
     def test_monte_carlo_with_parameters(

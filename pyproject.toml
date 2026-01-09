@@ -186,13 +186,9 @@ module = [
     "src.backtester.engine",
     
     # === Visualization (LOW PRIORITY) ===
-    # src.backtester.html_report: Complex template generation
+    # src.backtester.html: Complex template generation
     # Action required: Type annotations for Jinja2 template variables
-    "src.backtester.html_report",
-    
-    # === Non-core scripts (EXCLUDED from migration) ===
-    # scripts.performance_profiling: External profiling tool, not part of core system
-    "scripts.performance_profiling",
+    "src.backtester.html",
 ]
 ignore_errors = true
 
@@ -283,7 +279,7 @@ exclude_lines = [
     "@abstractmethod",
 ]
 # Coverage threshold (will be enabled gradually)
-fail_under = 80  # Portfolio target: 80%+ coverage
+fail_under = 80  # Branch coverage target: 80%+ (line coverage 80.85%)
 precision = 2
 show_missing = true
 skip_covered = false

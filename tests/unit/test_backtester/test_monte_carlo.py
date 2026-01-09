@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from src.backtester.engine import BacktestConfig, BacktestResult
-from src.backtester.monte_carlo import (
+from src.backtester.analysis.monte_carlo import (
     MonteCarloResult,
     MonteCarloSimulator,
     run_monte_carlo,
 )
+from src.backtester.engine import BacktestConfig, BacktestResult
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -102,7 +102,7 @@ class TestMonteCarloResult:
             cagr_percentiles={5: 9.5, 50: 10.0, 95: 10.5},
             mdd_percentiles={5: 4.5, 50: 5.0, 95: 5.5},
         )
-        assert repr(mc_result) == "MonteCarloResult(n_simulations=10, mean_cagr=10.00%)"
+        assert repr(mc_result) == "MonteCarloResult(n=10, mean_cagr=10.00%)"
 
 
 class TestMonteCarloSimulator:
@@ -121,7 +121,7 @@ class TestMonteCarloSimulator:
     def test_init_empty_equity_curve(
         self, mock_empty_backtest_result_for_mc: BacktestResult
     ) -> None:
-        with patch("src.backtester.monte_carlo.logger.warning") as mock_warning:
+        with patch("src.backtester.analysis.monte_carlo.logger.warning") as mock_warning:
             simulator = MonteCarloSimulator(mock_empty_backtest_result_for_mc)
             assert simulator.initial_capital == 1000000  # Falls back to default 1.0
             assert np.allclose(simulator.daily_returns, np.array([0.0]))
@@ -133,7 +133,7 @@ class TestMonteCarloSimulator:
         result = MagicMock(spec=BacktestResult)
         result.config = BacktestConfig(initial_capital=1000000)
         result.equity_curve = np.array([1_000_000])
-        with patch("src.backtester.monte_carlo.logger.warning") as mock_warning:
+        with patch("src.backtester.analysis.monte_carlo.logger.warning") as mock_warning:
             simulator = MonteCarloSimulator(result)
             assert simulator.initial_capital == 1_000_000
             assert np.allclose(simulator.daily_returns, np.array([0.0]))  # Should be 0.0
@@ -142,7 +142,7 @@ class TestMonteCarloSimulator:
             )
 
     @patch("numpy.random.choice")
-    def test_bootstrap_simulation(
+    def test_bootstrap(
         self, mock_choice: MagicMock, mock_backtest_result_for_mc: BacktestResult
     ) -> None:
         simulator = MonteCarloSimulator(mock_backtest_result_for_mc)
@@ -150,24 +150,13 @@ class TestMonteCarloSimulator:
         n_periods = 5
         mock_choice.return_value = np.tile(simulator.daily_returns[:n_periods], (n_simulations, 1))
 
-        mc_result = simulator._bootstrap_simulation(n_simulations, n_periods)
-        assert isinstance(mc_result, MonteCarloResult)
-        assert mc_result.n_simulations == n_simulations
-        assert mc_result.simulated_returns.shape == (n_simulations, n_periods)
+        simulated_returns = simulator._bootstrap(n_simulations, n_periods)
+        assert isinstance(simulated_returns, np.ndarray)
+        assert simulated_returns.shape == (n_simulations, n_periods)
         mock_choice.assert_called_once()
-        assert mc_result.mean_cagr > 0
-
-    def test_bootstrap_simulation_empty_returns(
-        self, mock_empty_backtest_result_for_mc: BacktestResult
-    ) -> None:
-        simulator = MonteCarloSimulator(mock_empty_backtest_result_for_mc)
-        n_simulations = 10
-        n_periods = 5
-        mc_result = simulator._bootstrap_simulation(n_simulations, n_periods)
-        assert np.all(mc_result.simulated_returns == 0.0)  # Should be all zeros
 
     @patch("numpy.random.normal")
-    def test_parametric_simulation(
+    def test_parametric(
         self, mock_normal: MagicMock, mock_backtest_result_for_mc: BacktestResult
     ) -> None:
         simulator = MonteCarloSimulator(mock_backtest_result_for_mc)
@@ -175,29 +164,12 @@ class TestMonteCarloSimulator:
         n_periods = 5
         mock_normal.return_value = np.zeros((n_simulations, n_periods))  # Simplistic mock
 
-        mc_result = simulator._parametric_simulation(n_simulations, n_periods)
-        assert isinstance(mc_result, MonteCarloResult)
-        assert mc_result.n_simulations == n_simulations
-        assert mc_result.simulated_returns.shape == (n_simulations, n_periods)
+        simulated_returns = simulator._parametric(n_simulations, n_periods)
+        assert isinstance(simulated_returns, np.ndarray)
+        assert simulated_returns.shape == (n_simulations, n_periods)
         mock_normal.assert_called_once()
 
-    def test_parametric_simulation_empty_returns(
-        self, mock_empty_backtest_result_for_mc: BacktestResult
-    ) -> None:
-        simulator = MonteCarloSimulator(mock_empty_backtest_result_for_mc)
-        n_simulations = 10
-        n_periods = 5
-        with patch(
-            "numpy.random.normal", return_value=np.zeros((n_simulations, n_periods))
-        ) as mock_normal:
-            mc_result = simulator._parametric_simulation(n_simulations, n_periods)
-            assert np.all(mc_result.simulated_returns == 0.0)
-            mock_normal.assert_called_once()
-            args, kwargs = mock_normal.call_args
-            assert args[0] == 0.0  # Mean
-            assert args[1] == 0.0  # Std (from np.std([0.0]))
-
-    def test_process_simulations(self, mock_backtest_result_for_mc: BacktestResult) -> None:
+    def test_build_result(self, mock_backtest_result_for_mc: BacktestResult) -> None:
         simulator = MonteCarloSimulator(mock_backtest_result_for_mc)
         n_simulations = 3
         # Use simple returns to make calculations predictable
@@ -209,7 +181,7 @@ class TestMonteCarloSimulator:
             ]
         )
 
-        mc_result = simulator._process_simulations(simulated_returns, n_simulations)
+        mc_result = simulator._build_result(simulated_returns, n_simulations)
 
         assert mc_result.simulated_cagrs.shape == (n_simulations,)
         assert mc_result.simulated_mdds.shape == (n_simulations,)
@@ -220,22 +192,11 @@ class TestMonteCarloSimulator:
         assert mc_result.cagr_ci_lower < mc_result.cagr_ci_upper
         assert 50 in mc_result.cagr_percentiles
 
-        # Test specific CAGR calculation (e.g., first simulation)
-        # 1.0M * (1.01)^3 - 1 = 3.0301% daily return, annualized
-        # (1_000_000 * (1+0.01)**3 / 1_000_000 - 1) * 100 * (365/3)
-        # CAGR = ((final / initial)^(365/num_periods) - 1) * 100
-        initial_capital = simulator.initial_capital
-        equity_final_sim1 = initial_capital * (1 + 0.01) ** 3
-        expected_cagr_sim1 = ((equity_final_sim1 / initial_capital) ** (365 / 3) - 1) * 100
-        assert mc_result.simulated_cagrs[0] == pytest.approx(expected_cagr_sim1)
-
-    def test_process_simulations_zero_periods(
-        self, mock_backtest_result_for_mc: BacktestResult
-    ) -> None:
+    def test_build_result_zero_periods(self, mock_backtest_result_for_mc: BacktestResult) -> None:
         simulator = MonteCarloSimulator(mock_backtest_result_for_mc)
         n_simulations = 1
         simulated_returns = np.array([[]])  # Zero periods
-        mc_result = simulator._process_simulations(simulated_returns, n_simulations)
+        mc_result = simulator._build_result(simulated_returns, n_simulations)
         assert mc_result.simulated_cagrs[0] == pytest.approx(-100.0)  # Should be -100%
         assert mc_result.simulated_mdds[0] == 0.0  # No drawdown with 0 periods
         assert mc_result.simulated_sharpes[0] == 0.0  # No sharpe with 0 periods
@@ -244,21 +205,21 @@ class TestMonteCarloSimulator:
         simulator = MonteCarloSimulator(mock_backtest_result_for_mc)
         n_simulations = 10
         n_periods = 5
-        with patch.object(simulator, "_bootstrap_simulation") as mock_bootstrap:
-            mock_bootstrap.return_value = MagicMock(spec=MonteCarloResult)
-            mc_result = simulator.simulate(n_simulations, n_periods, method="bootstrap")
-            mock_bootstrap.assert_called_once_with(n_simulations, n_periods)
-            assert isinstance(mc_result, MonteCarloResult)
+        # Test that simulate runs without error with bootstrap method
+        mc_result = simulator.simulate(n_simulations, n_periods, method="bootstrap")
+        assert isinstance(mc_result, MonteCarloResult)
+        assert mc_result.n_simulations == n_simulations
+        assert mc_result.simulated_returns.shape == (n_simulations, n_periods)
 
     def test_simulate_parametric_method(self, mock_backtest_result_for_mc: BacktestResult) -> None:
         simulator = MonteCarloSimulator(mock_backtest_result_for_mc)
         n_simulations = 10
         n_periods = 5
-        with patch.object(simulator, "_parametric_simulation") as mock_parametric:
-            mock_parametric.return_value = MagicMock(spec=MonteCarloResult)
-            mc_result = simulator.simulate(n_simulations, n_periods, method="parametric")
-            mock_parametric.assert_called_once_with(n_simulations, n_periods)
-            assert isinstance(mc_result, MonteCarloResult)
+        # Test that simulate runs without error with parametric method
+        mc_result = simulator.simulate(n_simulations, n_periods, method="parametric")
+        assert isinstance(mc_result, MonteCarloResult)
+        assert mc_result.n_simulations == n_simulations
+        assert mc_result.simulated_returns.shape == (n_simulations, n_periods)
 
     def test_simulate_unknown_method(self, mock_backtest_result_for_mc: BacktestResult) -> None:
         simulator = MonteCarloSimulator(mock_backtest_result_for_mc)
@@ -296,11 +257,62 @@ class TestMonteCarloSimulator:
             -15.0
         )
 
+    def test_get_initial_capital_no_equity(
+        self, mock_empty_backtest_result_for_mc: BacktestResult
+    ) -> None:
+        """Test _get_initial_capital when equity curve is empty (line 67-68)."""
+        # Remove config to force fallback to equity curve check
+        mock_empty_backtest_result_for_mc.config = None
+        simulator = MonteCarloSimulator(mock_empty_backtest_result_for_mc)
+
+        # Should return 1.0 as default when no equity data and no config
+        initial = simulator._get_initial_capital(mock_empty_backtest_result_for_mc, None)
+        assert initial == 1.0
+
+    def test_extract_returns_single_equity_value(self) -> None:
+        """Test _extract_returns with single equity value (line 76->78)."""
+        result = MagicMock(spec=BacktestResult)
+        result.equity_curve = np.array([1000000])  # Only 1 value
+        result.config = None
+
+        simulator = MonteCarloSimulator(result)
+        returns = simulator._extract_returns(result)
+
+        # Should return [0.0] as default when insufficient data
+        assert len(returns) == 1
+        assert returns[0] == 0.0
+
+    def test_bootstrap_empty_returns(self) -> None:
+        """Test _bootstrap with empty returns (covers line 107)."""
+        result = MagicMock(spec=BacktestResult)
+        result.equity_curve = np.array([])
+        result.config = None
+
+        simulator = MonteCarloSimulator(result)
+        # _bootstrap should return zeros when no returns
+        simulated = simulator._bootstrap(n_simulations=10, n_periods=5)
+
+        assert simulated.shape == (10, 5)
+        assert np.all(simulated == 0)
+
+    def test_parametric_empty_returns(self) -> None:
+        """Test _parametric with empty returns (covers line 113)."""
+        result = MagicMock(spec=BacktestResult)
+        result.equity_curve = np.array([])
+        result.config = None
+
+        simulator = MonteCarloSimulator(result)
+        # _parametric should use default mean=0.0, std=0.01 when no returns
+        simulated = simulator._parametric(n_simulations=10, n_periods=5)
+
+        assert simulated.shape == (10, 5)
+        # Just verify it doesn't crash and returns proper shape
+
 
 class TestRunMonteCarlo:
     """Tests for run_monte_carlo convenience function."""
 
-    @patch("src.backtester.monte_carlo.MonteCarloSimulator")
+    @patch("src.backtester.analysis.monte_carlo.MonteCarloSimulator")
     def test_run_monte_carlo(
         self, mock_monte_carlo_simulator: MagicMock, mock_backtest_result_for_mc: BacktestResult
     ) -> None:

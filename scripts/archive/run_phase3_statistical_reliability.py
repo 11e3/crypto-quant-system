@@ -21,8 +21,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.backtester.bootstrap_analysis import BootstrapAnalyzer  # noqa: E402
+
+from src.backtester.analysis.monte_carlo import MonteCarloResult, MonteCarloSimulator  # noqa: E402
 from src.backtester.engine import BacktestConfig, BacktestResult, run_backtest  # noqa: E402
-from src.backtester.monte_carlo import MonteCarloResult, MonteCarloSimulator  # noqa: E402
 from src.strategies.volatility_breakout.vbo import VanillaVBO  # noqa: E402
 
 logging.basicConfig(

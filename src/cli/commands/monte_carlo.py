@@ -2,13 +2,15 @@
 CLI command for Monte Carlo simulation of backtest results.
 """
 
-from pathlib import Path
-
 import click
 
 from src.backtester import BacktestConfig, run_backtest
-from src.backtester.monte_carlo import run_monte_carlo
-from src.strategies.volatility_breakout import create_vbo_strategy
+from src.backtester.analysis.monte_carlo import run_monte_carlo
+from src.cli.commands.monte_carlo_output import (
+    print_monte_carlo_results,
+    save_monte_carlo_report,
+)
+from src.cli.commands.monte_carlo_utils import create_strategy_for_monte_carlo
 from src.utils.logger import get_logger, setup_logging
 
 setup_logging()
@@ -114,41 +116,8 @@ def monte_carlo(
     logger.info(f"Method: {method}")
 
     # Create strategy
-    if strategy == "vanilla":
-        strategy_obj = create_vbo_strategy(
-            name="VanillaVBO",
-            sma_period=4,
-            trend_sma_period=8,
-            short_noise_period=4,
-            long_noise_period=8,
-            exclude_current=False,
-            use_trend_filter=True,
-            use_noise_filter=True,
-        )
-    elif strategy == "minimal":
-        strategy_obj = create_vbo_strategy(
-            name="MinimalVBO",
-            sma_period=4,
-            trend_sma_period=8,
-            short_noise_period=4,
-            long_noise_period=8,
-            exclude_current=False,
-            use_trend_filter=False,
-            use_noise_filter=False,
-        )
-    elif strategy == "legacy":
-        strategy_obj = create_vbo_strategy(
-            name="LegacyBT",
-            sma_period=5,
-            trend_sma_period=10,
-            short_noise_period=5,
-            long_noise_period=10,
-            exclude_current=True,
-            use_trend_filter=True,
-            use_noise_filter=True,
-        )
-    else:
-        logger.error(f"Strategy {strategy} not yet supported for Monte Carlo")
+    strategy_obj = create_strategy_for_monte_carlo(strategy)
+    if strategy_obj is None:
         return
 
     # Create config
@@ -179,66 +148,8 @@ def monte_carlo(
     )
 
     # Print results
-    logger.info("\n=== Monte Carlo Simulation Results ===\n")
-    logger.info("Original Backtest:")
-    logger.info(f"  CAGR: {result.cagr:.2f}%")
-    logger.info(f"  MDD: {result.mdd:.2f}%")
-    logger.info(f"  Sharpe Ratio: {result.sharpe_ratio:.2f}")
-
-    logger.info(f"\nSimulation Statistics ({n_simulations} runs):")
-    logger.info(f"  Mean CAGR: {mc_result.mean_cagr:.2f}% (std: {mc_result.std_cagr:.2f}%)")
-    logger.info(f"  Mean MDD: {mc_result.mean_mdd:.2f}% (std: {mc_result.std_mdd:.2f}%)")
-    logger.info(f"  Mean Sharpe: {mc_result.mean_sharpe:.2f} (std: {mc_result.std_sharpe:.2f})")
-
-    logger.info("\n95% Confidence Intervals:")
-    logger.info(f"  CAGR: [{mc_result.cagr_ci_lower:.2f}%, {mc_result.cagr_ci_upper:.2f}%]")
-    logger.info(f"  MDD: [{mc_result.mdd_ci_lower:.2f}%, {mc_result.mdd_ci_upper:.2f}%]")
-    logger.info(f"  Sharpe: [{mc_result.sharpe_ci_lower:.2f}, {mc_result.sharpe_ci_upper:.2f}]")
-
-    logger.info("\nPercentiles:")
-    logger.info("  CAGR:")
-    for p, val in mc_result.cagr_percentiles.items():
-        logger.info(f"    {p}th: {val:.2f}%")
-    logger.info("  MDD:")
-    for p, val in mc_result.mdd_percentiles.items():
-        logger.info(f"    {p}th: {val:.2f}%")
-
-    # Risk metrics
-    from src.backtester.monte_carlo import MonteCarloSimulator
-
-    simulator = MonteCarloSimulator(result)
-    prob_loss = simulator.probability_of_loss(mc_result)
-    var_95 = simulator.value_at_risk(mc_result, confidence=0.95)
-    cvar_95 = simulator.conditional_value_at_risk(mc_result, confidence=0.95)
-
-    logger.info("\nRisk Metrics:")
-    logger.info(f"  Probability of Loss: {prob_loss * 100:.1f}%")
-    logger.info(f"  VaR (95%): {var_95:.2f}%")
-    logger.info(f"  CVaR (95%): {cvar_95:.2f}%")
+    print_monte_carlo_results(result, mc_result, n_simulations)
 
     # Generate report if output specified
     if output:
-        from datetime import datetime
-
-        from src.backtester.report import generate_report
-
-        output_path = Path(output)
-        if output_path.is_dir() or not output_path.suffix:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = output_path / f"monte_carlo_{timestamp}.html"
-        else:
-            output_path = Path(output)
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Generate report for original result (Monte Carlo visualization can be added later)
-        generate_report(
-            result,
-            save_path=output_path,
-            show=False,
-            format="html",
-            strategy_obj=strategy_obj,
-            config=config,
-            tickers=ticker_list,
-        )
-        logger.info(f"\nReport saved: {output_path}")
+        save_monte_carlo_report(result, output, strategy_obj, config, ticker_list)

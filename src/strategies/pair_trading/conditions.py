@@ -37,11 +37,12 @@ class SpreadZScoreCondition(Condition):
 
     def evaluate(
         self,
-        current: OHLCV,
-        history: pd.DataFrame,
-        indicators: dict[str, float],
+        current: pd.DataFrame | OHLCV,
+        history: pd.DataFrame | None = None,
+        indicators: dict[str, float] | None = None,
     ) -> bool:
         """Check if Z-score exceeds threshold."""
+        indicators = indicators or {}
         z_score = indicators.get(self.z_score_key)
 
         if z_score is None:
@@ -78,11 +79,12 @@ class SpreadMeanReversionCondition(Condition):
 
     def evaluate(
         self,
-        current: OHLCV,
-        history: pd.DataFrame,
-        indicators: dict[str, float],
+        current: pd.DataFrame | OHLCV,
+        history: pd.DataFrame | None = None,
+        indicators: dict[str, float] | None = None,
     ) -> bool:
         """Check if Z-score has reverted to mean."""
+        indicators = indicators or {}
         z_score = indicators.get(self.z_score_key)
 
         if z_score is None:
@@ -122,11 +124,12 @@ class SpreadDeviationCondition(Condition):
 
     def evaluate(
         self,
-        current: OHLCV,
-        history: pd.DataFrame,
-        indicators: dict[str, float],
+        current: pd.DataFrame | OHLCV,
+        history: pd.DataFrame | None = None,
+        indicators: dict[str, float] | None = None,
     ) -> bool:
         """Check if spread has deviated enough from mean."""
+        indicators = indicators or {}
         spread = indicators.get(self.spread_key)
         spread_mean = indicators.get(self.spread_mean_key)
 

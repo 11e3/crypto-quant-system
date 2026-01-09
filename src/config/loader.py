@@ -1,15 +1,4 @@
-"""
-Configuration loader following 12-Factor App principles.
-
-Priority order:
-1. Environment variables (highest priority) - via Pydantic Settings
-2. .env file (via pydantic-settings)
-3. YAML file (defaults only, optional)
-4. Hardcoded defaults (fallback)
-
-This module maintains backward compatibility while using Pydantic Settings
-for type-safe environment variable management.
-"""
+"""Configuration loader with environment variable and YAML support."""
 
 import os
 from pathlib import Path
@@ -17,181 +6,116 @@ from typing import Any
 
 import yaml
 
-from src.config.constants import PROJECT_ROOT
-from src.config.settings import get_settings
-from src.utils.logger import get_logger
-
-# Try to load python-dotenv if available
-try:
-    from dotenv import load_dotenv
-
-    # Load .env file from project root
-    env_path = PROJECT_ROOT / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
-        logger = get_logger(__name__)
-        logger.debug(f"Loaded .env file from {env_path}")
-    else:
-        # Try to load from current directory as fallback
-        load_dotenv()  # pragma: no cover (module-level code, difficult to test - .env file usually exists in project root)
-except ImportError:  # pragma: no cover (module-level code, difficult to test - python-dotenv is always installed in dev)
-    # python-dotenv is optional, but recommended
-    logger = get_logger(__name__)  # pragma: no cover (module-level code, difficult to test)
-    logger.warning(  # pragma: no cover (module-level code, difficult to test)
-        "python-dotenv not installed. Install it for .env file support: pip install python-dotenv"
-    )
-
-logger = get_logger(__name__)
+from src.config.loader_getters import (
+    get_bot_config as _get_bot_config,
+)
+from src.config.loader_getters import (
+    get_strategy_config as _get_strategy_config,
+)
+from src.config.loader_getters import (
+    get_telegram_config as _get_telegram_config,
+)
+from src.config.loader_getters import (
+    get_trading_config as _get_trading_config,
+)
+from src.config.loader_parsers import get_yaml_value, parse_env_value
+from src.config.settings import Settings
 
 
 class ConfigLoader:
     """
-    Configuration loader following 12-Factor App principles.
+    Configuration loader with support for Pydantic Settings and YAML.
 
-    Environment variables take precedence over file-based configuration.
-    Uses Pydantic Settings for type-safe environment variable management.
+    Priority: Environment Variables > YAML config > Default values
     """
 
     def __init__(self, config_path: Path | None = None) -> None:
         """
-        Initialize configuration loader.
+        Initialize config loader.
 
         Args:
-            config_path: Path to YAML config file (optional, defaults only)
+            config_path: Path to YAML config file (optional)
         """
-        if config_path is None:
-            config_path = PROJECT_ROOT / "config" / "settings.yaml"
-
-        self.config_path = config_path
-        self._config: dict[str, Any] = {}
-        # Use Pydantic Settings for type-safe environment variable management
-        self._settings = get_settings()
-
-        # Load YAML only if file exists (optional, for defaults)
-        if config_path.exists():
-            self.load()
+        self._config_path = config_path
+        self._yaml_config: dict[str, Any] = {}
+        self._settings = Settings()
+        self.load()
 
     def load(self) -> None:
-        """Load default configuration from YAML file (optional)."""
-        if not self.config_path.exists():
-            logger.debug(
-                f"Config file not found: {self.config_path} (using environment variables only)"
-            )
-            self._config = {}
-            return
+        """
+        Load configuration from YAML file.
 
-        try:
-            with open(self.config_path, encoding="utf-8") as f:
-                self._config = yaml.safe_load(f) or {}
-            logger.debug(f"Loaded default config from {self.config_path}")
-        except Exception as e:
-            logger.warning(
-                f"Error loading config file: {e}. Using environment variables only.", exc_info=True
+        Searches for config in these locations (in order):
+        1. Explicit path provided to constructor
+        2. config/settings.yaml (relative to project root)
+        3. settings.yaml (in current directory)
+        """
+        search_paths: list[Path] = []
+
+        if self._config_path:
+            search_paths.append(self._config_path)
+        else:
+            project_root = Path(__file__).parent.parent.parent
+            search_paths.extend(
+                [
+                    project_root / "config" / "settings.yaml",
+                    Path("settings.yaml"),
+                    Path("config/settings.yaml"),
+                ]
             )
-            self._config = {}
+
+        for path in search_paths:
+            if path.exists():
+                with path.open(encoding="utf-8") as f:
+                    self._yaml_config = yaml.safe_load(f) or {}
+                return
+
+        self._yaml_config = {}
 
     def get(self, key: str, default: Any = None) -> Any:
         """
-        Get configuration value with environment variable priority.
+        Get configuration value by dot-notation key.
 
-        Priority order:
-        1. Environment variable (e.g., UPBIT_ACCESS_KEY)
-        2. YAML file value
-        3. Default value
+        Priority: Environment Variables > YAML > Default
 
         Args:
-            key: Configuration key (e.g., "upbit.access_key")
+            key: Dot-notation key (e.g., "trading.fee_rate")
             default: Default value if key not found
 
         Returns:
             Configuration value
         """
-        # First, try environment variable (highest priority)
         env_key = key.upper().replace(".", "_")
-        env_value = os.getenv(env_key)
-
+        env_value = os.environ.get(env_key)
         if env_value is not None:
-            # Parse environment variable based on expected type
-            yaml_value = self._get_yaml_value(key)
-            return self._parse_env_value(
-                env_value, yaml_value if yaml_value is not None else default
-            )
+            return parse_env_value(env_value)
 
-        # Second, try YAML file
         yaml_value = self._get_yaml_value(key)
         if yaml_value is not None:
             return yaml_value
 
-        # Finally, return default
         return default
 
     def _get_yaml_value(self, key: str) -> Any:
         """Get value from YAML config using dot notation."""
-        keys = key.split(".")
-        value: Any = self._config
-
-        for k in keys:
-            if isinstance(value, dict):
-                value = value.get(k)
-                if value is None:
-                    return None
-            else:
-                return None
-
-        return value
-
-    def _parse_env_value(self, env_value: str, type_hint: Any) -> Any:
-        """
-        Parse environment variable value to appropriate type.
-
-        Args:
-            env_value: Environment variable value (string)
-            type_hint: Expected type (from YAML or default)
-
-        Returns:
-            Parsed value with appropriate type
-        """
-        # Boolean parsing
-        if isinstance(type_hint, bool) or (
-            isinstance(type_hint, str) and type_hint.lower() in ("true", "false")
-        ):
-            return env_value.lower() in ("true", "1", "yes", "on")
-
-        # Integer parsing
-        if isinstance(type_hint, int):
-            try:
-                return int(env_value)
-            except ValueError:
-                logger.warning(f"Could not parse {env_value} as int, using as string")
-                return env_value
-
-        # Float parsing
-        if isinstance(type_hint, float):
-            try:
-                return float(env_value)
-            except ValueError:
-                logger.warning(f"Could not parse {env_value} as float, using as string")
-                return env_value
-
-        # List parsing (comma-separated)
-        if isinstance(type_hint, list):
-            return [item.strip() for item in env_value.split(",") if item.strip()]
-
-        # Default: return as string
-        return env_value
+        return get_yaml_value(self._yaml_config, key)
 
     def get_exchange_name(self) -> str:
         """
         Get configured exchange name.
 
         Returns:
-            Exchange name (e.g., 'upbit')
+            Exchange name (default: "upbit")
         """
-        return self.get("exchange.name", self._settings.exchange_name) or "upbit"
+        exchange: str = self._settings.exchange_name
+        yaml_exchange = self.get("exchange")
+        if yaml_exchange:
+            exchange = str(yaml_exchange)
+        return exchange.lower()
 
     def get_upbit_keys(self) -> tuple[str, str]:
         """
-        Get Upbit API keys from Pydantic Settings or config.
+        Get Upbit API keys.
 
         Returns:
             Tuple of (access_key, secret_key)
@@ -199,11 +123,10 @@ class ConfigLoader:
         Raises:
             ValueError: If keys are not configured
         """
-        # Try Pydantic Settings first (type-safe, validated)
         try:
-            return self._settings.get_upbit_keys()
+            keys: tuple[str, str] = self._settings.get_upbit_keys()
+            return keys
         except ValueError as e:
-            # Fallback to YAML if Pydantic Settings doesn't have keys
             access_key = self._get_yaml_value("upbit.access_key") or ""
             secret_key = self._get_yaml_value("upbit.secret_key") or ""
 
@@ -242,95 +165,20 @@ class ConfigLoader:
             )
 
     def get_telegram_config(self) -> dict[str, Any]:
-        """
-        Get Telegram configuration.
-
-        Returns:
-            Dictionary with telegram config
-        """
-        # Use Pydantic Settings (type-safe, validated)
-        telegram_config = self._settings.get_telegram_config()
-        # Override with YAML if needed (YAML takes precedence for enabled flag)
-        yaml_enabled = self.get("telegram.enabled")
-        if yaml_enabled is not None:
-            telegram_config["enabled"] = yaml_enabled
-        return telegram_config
+        """Get Telegram configuration."""
+        return _get_telegram_config(self)
 
     def get_trading_config(self) -> dict[str, Any]:
-        """
-        Get trading configuration.
-
-        Returns:
-            Dictionary with trading config
-        """
-        # Use Pydantic Settings (type-safe, validated)
-        trading_config = self._settings.get_trading_config()
-        # Override with YAML if needed (YAML takes precedence)
-        yaml_tickers = self.get("trading.tickers")
-        if yaml_tickers:
-            trading_config["tickers"] = yaml_tickers
-        yaml_fee_rate = self.get("trading.fee_rate")
-        if yaml_fee_rate is not None:
-            trading_config["fee_rate"] = yaml_fee_rate
-        yaml_max_slots = self.get("trading.max_slots")
-        if yaml_max_slots is not None:
-            trading_config["max_slots"] = yaml_max_slots
-        yaml_min_order_amount = self.get("trading.min_order_amount")
-        if yaml_min_order_amount is not None:
-            trading_config["min_order_amount"] = yaml_min_order_amount
-        yaml_stop_loss_pct = self.get("trading.stop_loss_pct")
-        if yaml_stop_loss_pct is not None:
-            trading_config["stop_loss_pct"] = yaml_stop_loss_pct
-        yaml_take_profit_pct = self.get("trading.take_profit_pct")
-        if yaml_take_profit_pct is not None:
-            trading_config["take_profit_pct"] = yaml_take_profit_pct
-        yaml_trailing_stop_pct = self.get("trading.trailing_stop_pct")
-        if yaml_trailing_stop_pct is not None:
-            trading_config["trailing_stop_pct"] = yaml_trailing_stop_pct
-        return trading_config
+        """Get trading configuration."""
+        return _get_trading_config(self)
 
     def get_strategy_config(self) -> dict[str, Any]:
-        """
-        Get strategy configuration.
-
-        Returns:
-            Dictionary with strategy config
-        """
-        # Use Pydantic Settings (type-safe, validated)
-        strategy_config = self._settings.get_strategy_config()
-        # Override with YAML if needed (YAML takes precedence)
-        for key in [
-            "name",
-            "sma_period",
-            "trend_sma_period",
-            "short_noise_period",
-            "long_noise_period",
-        ]:
-            yaml_value = self.get(f"strategy.{key}")
-            if yaml_value is not None:
-                strategy_config[key] = yaml_value
-        return strategy_config
+        """Get strategy configuration."""
+        return _get_strategy_config(self)
 
     def get_bot_config(self) -> dict[str, Any]:
-        """
-        Get bot configuration.
-
-        Returns:
-            Dictionary with bot config
-        """
-        # Use Pydantic Settings (type-safe, validated)
-        bot_config = self._settings.get_bot_config()
-        # Override with YAML if needed (YAML takes precedence)
-        for key in [
-            "daily_reset_hour",
-            "daily_reset_minute",
-            "websocket_reconnect_delay",
-            "api_retry_delay",
-        ]:
-            yaml_value = self.get(f"bot.{key}")
-            if yaml_value is not None:
-                bot_config[key] = yaml_value
-        return bot_config
+        """Get bot configuration."""
+        return _get_bot_config(self)
 
 
 # Global config instance

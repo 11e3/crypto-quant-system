@@ -56,6 +56,21 @@ class TestStrategyConfigurationError:
         assert error.details["strategy_name"] == "TestStrategy"
         assert error.details["parameter"] == "sma_period"
 
+    def test_configuration_error_with_existing_details(self) -> None:
+        """Test StrategyConfigurationError with pre-existing details dict (line 35->37)."""
+        existing_details = {"severity": "high", "suggestion": "use default"}
+        error = StrategyConfigurationError(
+            "Configuration error",
+            strategy_name="TestStrategy",
+            parameter="sma_period",
+            details=existing_details,
+        )
+
+        assert error.details["severity"] == "high"
+        assert error.details["suggestion"] == "use default"
+        assert error.details["strategy_name"] == "TestStrategy"
+        assert error.details["parameter"] == "sma_period"
+
 
 class TestStrategyExecutionError:
     """Test cases for StrategyExecutionError exception."""
@@ -84,3 +99,18 @@ class TestStrategyExecutionError:
         assert error.ticker == "KRW-BTC"
         assert error.details["strategy_name"] == "TestStrategy"
         assert error.details["ticker"] == "KRW-BTC"
+
+    def test_execution_error_with_existing_details(self) -> None:
+        """Test StrategyExecutionError with pre-existing details dict (line 66->68)."""
+        existing_details = {"error_code": "E001", "retry_count": 3}
+        error = StrategyExecutionError(
+            "Execution failed",
+            strategy_name="TestStrategy",
+            ticker="KRW-ETH",
+            details=existing_details,
+        )
+
+        assert error.details["error_code"] == "E001"
+        assert error.details["retry_count"] == 3
+        assert error.details["strategy_name"] == "TestStrategy"
+        assert error.details["ticker"] == "KRW-ETH"

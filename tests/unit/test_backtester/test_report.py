@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from src.backtester.engine import BacktestConfig, BacktestResult, Trade
-from src.backtester.report import (
+from src.backtester.report_pkg.report import (
     BacktestReport,
     PerformanceMetrics,
     calculate_metrics,
@@ -64,7 +64,7 @@ def sample_performance_metrics(sample_backtest_result: BacktestResult) -> Perfor
     """Create sample PerformanceMetrics for testing."""
     import pandas as pd
 
-    from src.backtester.report import calculate_metrics
+    from src.backtester.report_pkg.report import calculate_metrics
 
     # Create trades DataFrame
     trades_df = pd.DataFrame(
@@ -217,8 +217,8 @@ class TestBacktestReport:
         assert report.equity_curve is not None
         assert report.metrics is not None
 
-    @patch("src.backtester.report.plt.savefig")
-    @patch("src.backtester.report.plt.close")
+    @patch("src.backtester.report_pkg.report.plt.savefig")
+    @patch("src.backtester.report_pkg.report.plt.close")
     def test_generate_report(
         self,
         mock_close: MagicMock,
@@ -243,11 +243,11 @@ class TestBacktestReport:
         # Check that savefig was called
         assert mock_savefig.called
 
-    @patch("src.backtester.report.plt.show")
-    @patch("src.backtester.report.plt.savefig")
-    @patch("src.backtester.report.plt.close")
-    @patch("src.backtester.report.plt.subplots")
-    @patch("src.backtester.report.plt.colorbar")
+    @patch("src.backtester.report_pkg.report.plt.show")
+    @patch("src.backtester.report_pkg.report.plt.savefig")
+    @patch("src.backtester.report_pkg.report.plt.close")
+    @patch("src.backtester.report_pkg.report.plt.subplots")
+    @patch("src.backtester.report_pkg.report.plt.colorbar")
     def test_plot_full_report_show(
         self,
         mock_colorbar: MagicMock,
@@ -278,10 +278,10 @@ class TestBacktestReport:
         # Check that show was called (line 584)
         mock_show.assert_called_once()
 
-    @patch("src.backtester.report.plt.tight_layout")
-    @patch("src.backtester.report.plt.subplots")
-    @patch("src.backtester.report.plt.colorbar")
-    @patch("src.backtester.report.plt.imshow")
+    @patch("src.backtester.report_pkg.report.plt.tight_layout")
+    @patch("src.backtester.report_pkg.report.plt.subplots")
+    @patch("src.backtester.report_pkg.report.plt.colorbar")
+    @patch("src.backtester.report_pkg.report.plt.imshow")
     def test_plot_monthly_heatmap_no_ax(
         self,
         mock_imshow: MagicMock,
@@ -376,7 +376,7 @@ class TestBacktestReport:
         assert report.trades_df is not None
         assert len(report.trades_df) == 0
 
-    @patch("src.backtester.report.logger.info")
+    @patch("src.backtester.report_pkg.report_summary.logger.info")
     def test_print_summary(
         self, mock_logger_info: MagicMock, sample_backtest_result: BacktestResult
     ) -> None:
@@ -418,7 +418,7 @@ class TestBacktestReport:
         assert len(df) > 0
         assert "Metric" in df.columns
 
-    @patch("src.backtester.report.plt.show")
+    @patch("src.backtester.report_pkg.report.plt.show")
     def test_plot_equity_curve(
         self,
         mock_show: MagicMock,
@@ -440,8 +440,8 @@ class TestBacktestReport:
         # Just verify the method runs without error
         assert fig is None or hasattr(fig, "savefig")
 
-    @patch("src.backtester.report.plt.tight_layout")
-    @patch("src.backtester.report.plt.show")
+    @patch("src.backtester.report_pkg.report.plt.tight_layout")
+    @patch("src.backtester.report_pkg.report.plt.show")
     def test_plot_equity_curve_with_fig_tight_layout(
         self,
         mock_show: MagicMock,
@@ -465,8 +465,8 @@ class TestBacktestReport:
         if fig is not None:
             mock_tight_layout.assert_called_once()
 
-    @patch("src.backtester.report.plt.tight_layout")
-    @patch("src.backtester.report.plt.show")
+    @patch("src.backtester.report_pkg.report.plt.tight_layout")
+    @patch("src.backtester.report_pkg.report.plt.show")
     def test_plot_drawdown_with_fig_tight_layout(
         self,
         mock_show: MagicMock,
@@ -490,7 +490,7 @@ class TestBacktestReport:
         if fig is not None:
             mock_tight_layout.assert_called_once()
 
-    @patch("src.backtester.report.plt.show")
+    @patch("src.backtester.report_pkg.report.plt.show")
     def test_plot_drawdown(
         self,
         mock_show: MagicMock,
@@ -516,8 +516,8 @@ class TestBacktestReport:
 class TestGenerateReport:
     """Test cases for generate_report convenience function."""
 
-    @patch("src.backtester.report.BacktestReport.plot_full_report")
-    @patch("src.backtester.report.BacktestReport.print_summary")
+    @patch("src.backtester.report_pkg.report.BacktestReport.plot_full_report")
+    @patch("src.backtester.report_pkg.report.BacktestReport.print_summary")
     def test_generate_report_function(
         self,
         mock_print: MagicMock,

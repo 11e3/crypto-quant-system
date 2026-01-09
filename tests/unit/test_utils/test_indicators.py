@@ -281,3 +281,25 @@ class TestAddVBOIndicators:
 
         assert isinstance(result, pd.DataFrame)
         assert "target" in result.columns
+
+
+class TestCalculateSMA:
+    """Test cases for calculate_sma function."""
+
+    def test_calculate_sma_with_dataframe(self, sample_ohlcv_data: pd.DataFrame) -> None:
+        """Test calculate_sma with DataFrame input - covers line 262."""
+        from src.utils.indicators import calculate_sma
+
+        result = calculate_sma(sample_ohlcv_data, window=5)
+
+        assert isinstance(result, pd.Series)
+        assert len(result) == len(sample_ohlcv_data)
+
+    def test_calculate_sma_with_series(self, sample_ohlcv_data: pd.DataFrame) -> None:
+        """Test calculate_sma with Series input."""
+        from src.utils.indicators import calculate_sma
+
+        result = calculate_sma(sample_ohlcv_data["close"], window=5)
+
+        assert isinstance(result, pd.Series)
+        assert len(result) == len(sample_ohlcv_data)

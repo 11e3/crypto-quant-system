@@ -11,7 +11,7 @@ It shows configuration, risk management, and monitoring setup.
 import os
 from pathlib import Path
 
-from src.execution.bot_facade import TradingBotFacade
+from src.execution.bot.bot_facade import TradingBotFacade
 from src.utils.logger import get_logger, setup_logging
 
 # Setup logging

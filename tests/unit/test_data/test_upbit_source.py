@@ -454,3 +454,38 @@ class TestUpbitDataSource:
         result = data_source.update_ohlcv("KRW-BTC", "day")
 
         assert result is None
+
+    @patch("src.data.upbit_source.pyupbit.get_ohlcv")
+    def test_get_ohlcv_date_range_empty_result(
+        self, mock_get_ohlcv: MagicMock, data_source: UpbitDataSource
+    ) -> None:
+        """Test get_ohlcv with date range returning empty result (covers line 89->97)."""
+        # Mock returns empty DataFrame
+        mock_get_ohlcv.return_value = pd.DataFrame()
+
+        start_date = datetime(2024, 1, 1)
+        end_date = datetime(2024, 1, 5)
+        result = data_source.get_ohlcv(
+            "KRW-BTC", "day", start_date=start_date, end_date=end_date, count=10
+        )
+
+        # Should return None when API returns empty data
+        assert result is None
+
+    def test_update_ohlcv_no_existing_data_and_fetch_fails(
+        self, data_source: UpbitDataSource
+    ) -> None:
+        """Test update_ohlcv when no existing data and fetch returns None (covers line 223->225)."""
+        # Ensure no existing file
+        filepath = data_source._get_filepath("KRW-BTC", "day")
+        if filepath.exists():
+            filepath.unlink()
+
+        with patch("src.data.upbit_source.UpbitDataSource.get_ohlcv") as mock_get:
+            # get_ohlcv returns None
+            mock_get.return_value = None
+
+            result = data_source.update_ohlcv("KRW-BTC", "day")
+
+            # Should return None when fetch fails
+            assert result is None

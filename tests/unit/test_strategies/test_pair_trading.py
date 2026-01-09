@@ -246,3 +246,96 @@ class TestPairTradingStrategy:
                 check_names=False,
                 rtol=1e-5,
             )
+
+    def test_calculate_indicators_with_two_close_columns(self) -> None:
+        """Test calculate_indicators with two close columns (lines 130-136)."""
+        strategy = PairTradingStrategy(lookback_period=20, spread_type="ratio")
+        dates = pd.date_range("2020-01-01", periods=100, freq="D")
+        df = pd.DataFrame(
+            {
+                "close_A": 100.0 + np.arange(100) * 0.1,
+                "close_B": 50.0 + np.arange(100) * 0.05,
+            },
+            index=dates,
+        )
+        result = strategy.calculate_indicators(df)
+        assert "spread" in result.columns
+        assert "z_score" in result.columns
+
+    def test_calculate_indicators_single_asset_fallback(self) -> None:
+        """Test calculate_indicators with single asset fallback (lines 141-148)."""
+        strategy = PairTradingStrategy(lookback_period=20)
+        dates = pd.date_range("2020-01-01", periods=100, freq="D")
+        df = pd.DataFrame(
+            {
+                "close": 100.0 + np.arange(100) * 0.1,
+                "volume": 1000.0,
+            },
+            index=dates,
+        )
+        result = strategy.calculate_indicators(df)
+        assert "spread" in result.columns
+        assert result["spread"].iloc[0] == 0.0
+        assert result["z_score"].iloc[0] == 0.0
+
+    def test_calculate_indicators_no_close_columns(self) -> None:
+        """Test calculate_indicators with no close columns (lines 150-154)."""
+        strategy = PairTradingStrategy(lookback_period=20)
+        dates = pd.date_range("2020-01-01", periods=100, freq="D")
+        df = pd.DataFrame(
+            {
+                "volume": 1000.0,
+            },
+            index=dates,
+        )
+        try:
+            strategy.calculate_indicators(df)
+            raise AssertionError("Expected ValueError")
+        except ValueError as e:
+            assert "Pair trading requires data from two assets" in str(e)
+
+    def test_calculate_indicators_difference_spread(self) -> None:
+        """Test calculate_indicators with difference spread (lines 162-164)."""
+        strategy = PairTradingStrategy(lookback_period=20, spread_type="difference")
+        dates = pd.date_range("2020-01-01", periods=100, freq="D")
+        df = pd.DataFrame(
+            {
+                "close_asset1": 100.0 + np.arange(100) * 0.1,
+                "close_asset2": 50.0 + np.arange(100) * 0.05,
+            },
+            index=dates,
+        )
+        result = strategy.calculate_indicators(df)
+        assert "spread" in result.columns
+        # Difference spread: close_asset1 - close_asset2
+        expected_spread = 100.0 + np.arange(100) * 0.1 - (50.0 + np.arange(100) * 0.05)
+        assert result["spread"].iloc[0] == expected_spread[0]
+
+    def test_generate_signals_with_conditions(self) -> None:
+        """Test generate_signals with entry and exit conditions (lines 186-201)."""
+        strategy = PairTradingStrategy(lookback_period=20, entry_z_score=1.5, exit_z_score=0.3)
+        dates = pd.date_range("2020-01-01", periods=100, freq="D")
+        df = pd.DataFrame(
+            {
+                "close": 100.0,
+                "z_score": [2.0, 1.0, 0.2, -2.5, 0.1] * 20,
+            },
+            index=dates,
+        )
+        result = strategy.generate_signals(df)
+        assert "entry_signal" in result.columns
+        assert "exit_signal" in result.columns
+        # Entry signal should be True when |z_score| >= 1.5
+        assert result["entry_signal"].iloc[0]  # z_score=2.0
+        assert not result["entry_signal"].iloc[1]  # z_score=1.0
+        # Exit signal should be True when |z_score| <= 0.3
+        assert result["exit_signal"].iloc[2]  # z_score=0.2
+        assert not result["exit_signal"].iloc[0]  # z_score=2.0
+
+    def test_is_pair_trading_property(self) -> None:
+        """Test is_pair_trading property."""
+        strategy = PairTradingStrategy()
+        assert strategy.is_pair_trading is True
+
+
+__all__ = ["TestPairTradingStrategy"]

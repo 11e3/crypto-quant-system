@@ -1,5 +1,7 @@
 """
 Unit tests for data collector module.
+
+Tests both the UpbitDataCollector class and module-level fetch functions.
 """
 
 from datetime import datetime
@@ -10,6 +12,7 @@ import pandas as pd
 import pytest
 
 from src.data.collector import UpbitDataCollector
+from src.data.collector_fetch import fetch_all_candles, fetch_candles
 
 
 @pytest.fixture
@@ -87,49 +90,46 @@ class TestUpbitDataCollector:
 
         assert result is None
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
+
+class TestFetchFunctions:
+    """Test cases for module-level fetch functions."""
+
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
     def test_fetch_candles(
         self,
         mock_get_ohlcv: MagicMock,
-        collector: UpbitDataCollector,
         sample_ohlcv_data: pd.DataFrame,
     ) -> None:
         """Test fetching candles from API."""
         mock_get_ohlcv.return_value = sample_ohlcv_data
 
-        result = collector._fetch_candles("KRW-BTC", "day", count=5)
+        result = fetch_candles("KRW-BTC", "day", count=5)
 
         assert result is not None
         assert len(result) == len(sample_ohlcv_data)
         mock_get_ohlcv.assert_called_once()
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    def test_fetch_candles_error(
-        self, mock_get_ohlcv: MagicMock, collector: UpbitDataCollector
-    ) -> None:
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    def test_fetch_candles_error(self, mock_get_ohlcv: MagicMock) -> None:
         """Test fetching candles when API returns error."""
         mock_get_ohlcv.side_effect = Exception("API Error")
 
-        result = collector._fetch_candles("KRW-BTC", "day")
+        result = fetch_candles("KRW-BTC", "day")
 
         assert result is None
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    def test_fetch_candles_none(
-        self, mock_get_ohlcv: MagicMock, collector: UpbitDataCollector
-    ) -> None:
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    def test_fetch_candles_none(self, mock_get_ohlcv: MagicMock) -> None:
         """Test fetching candles when API returns None."""
         mock_get_ohlcv.return_value = None
 
-        result = collector._fetch_candles("KRW-BTC", "day")
+        result = fetch_candles("KRW-BTC", "day")
 
         assert result is None
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")  # Mock sleep to speed up tests
-    def test_fetch_all_candles(
-        self, mock_sleep: MagicMock, mock_get_ohlcv: MagicMock, collector: UpbitDataCollector
-    ) -> None:
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")  # Mock sleep to speed up tests
+    def test_fetch_all_candles(self, mock_sleep: MagicMock, mock_get_ohlcv: MagicMock) -> None:
         """Test fetching all candles with pagination."""
         from src.config.constants import UPBIT_MAX_CANDLES_PER_REQUEST
 
@@ -160,15 +160,15 @@ class TestUpbitDataCollector:
         # First call returns df1 (max candles), second call returns df2 (fewer, stops loop)
         mock_get_ohlcv.side_effect = [df1, df2]
 
-        result = collector._fetch_all_candles("KRW-BTC", "day")
+        result = fetch_all_candles("KRW-BTC", "day")
 
         assert result is not None
         assert len(result) == UPBIT_MAX_CANDLES_PER_REQUEST + 3  # Combined data
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_fetch_all_candles_with_since(
-        self, mock_sleep: MagicMock, mock_get_ohlcv: MagicMock, collector: UpbitDataCollector
+        self, mock_sleep: MagicMock, mock_get_ohlcv: MagicMock
     ) -> None:
         """Test fetching all candles with since parameter."""
         since = datetime(2024, 1, 3)
@@ -185,18 +185,18 @@ class TestUpbitDataCollector:
         )
         mock_get_ohlcv.return_value = df
 
-        result = collector._fetch_all_candles("KRW-BTC", "day", since=since)
+        result = fetch_all_candles("KRW-BTC", "day", since=since)
 
         assert result is not None
         # Only rows after 'since' should be included
         assert all(result.index > since)
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_fetch_all_candles_with_since_empty_after_filter(
-        self, mock_sleep: MagicMock, mock_get_ohlcv: MagicMock, collector: UpbitDataCollector
+        self, mock_sleep: MagicMock, mock_get_ohlcv: MagicMock
     ) -> None:
-        """Test fetching all candles with since parameter when filtered result is empty (covers line 149)."""
+        """Test fetching all candles with since parameter when filtered result is empty."""
         since = datetime(2024, 1, 10)  # Future date, so all data will be filtered out
         dates = pd.date_range("2024-01-01", periods=5, freq="D")
         df = pd.DataFrame(
@@ -211,13 +211,17 @@ class TestUpbitDataCollector:
         )
         mock_get_ohlcv.return_value = df
 
-        result = collector._fetch_all_candles("KRW-BTC", "day", since=since)
+        result = fetch_all_candles("KRW-BTC", "day", since=since)
 
         # Result should be None since all data is filtered out (df.empty triggers break)
         assert result is None
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")
+
+class TestUpbitDataCollectorCollect:
+    """Test cases for UpbitDataCollector.collect methods."""
+
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_collect_new_data(
         self,
         mock_sleep: MagicMock,
@@ -234,8 +238,8 @@ class TestUpbitDataCollector:
         filepath = collector._get_parquet_path("KRW-BTC", "day")
         assert filepath.exists()
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_collect_incremental_update(
         self,
         mock_sleep: MagicMock,
@@ -270,8 +274,8 @@ class TestUpbitDataCollector:
         loaded_df = pd.read_parquet(filepath)
         assert len(loaded_df) == 5  # 3 existing + 2 new
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_collect_full_refresh(
         self,
         mock_sleep: MagicMock,
@@ -292,8 +296,8 @@ class TestUpbitDataCollector:
 
         assert count == len(new_df)
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_collect_no_new_data(
         self, mock_sleep: MagicMock, mock_get_ohlcv: MagicMock, collector: UpbitDataCollector
     ) -> None:
@@ -304,8 +308,8 @@ class TestUpbitDataCollector:
 
         assert count == 0
 
-    @patch("src.data.collector.pyupbit.get_ohlcv")
-    @patch("src.data.collector.time.sleep")
+    @patch("src.data.collector_fetch.pyupbit.get_ohlcv")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_collect_multiple(
         self,
         mock_sleep: MagicMock,
@@ -324,11 +328,11 @@ class TestUpbitDataCollector:
         assert results["KRW-BTC_day"] == len(sample_ohlcv_data)
         assert results["KRW-ETH_day"] == len(sample_ohlcv_data)
 
-    @patch("src.data.collector.time.sleep")
+    @patch("src.data.collector_fetch.time.sleep")
     def test_collect_multiple_error(
         self, mock_sleep: MagicMock, collector: UpbitDataCollector
     ) -> None:
-        """Test collect_multiple with exception during collect (covers lines 262-264)."""
+        """Test collect_multiple with exception during collect."""
         # Mock collect to raise an exception
         with patch.object(collector, "collect", side_effect=Exception("Collection error")):
             results = collector.collect_multiple(["KRW-BTC"], ["day"])

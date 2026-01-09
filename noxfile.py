@@ -30,7 +30,7 @@ def lint(session: nox.Session) -> None:
     session.install(".[dev]")
 
     # 1. Check all rules including import sorting (I)
-    session.run("ruff", "check", ".", "--fix")
+    session.run("ruff", "check", ".", "--fix", "--unsafe-fixes")
 
     # 2. Verify formatting consistency
     session.run("ruff", "format", ".", "--check", f"--line-length={LINE_LENGTH}")
@@ -42,7 +42,9 @@ def lint(session: nox.Session) -> None:
 def tests(session: nox.Session) -> None:
     """Run test suite with coverage."""
     session.install(".[test]")
-    session.run("pytest", "--cov=src", "-q", "--tb=line")
+    session.run(
+        "pytest", "--cov=src", "--cov-branch", "--cov-report=term-missing", "-q", "--tb=line"
+    )
     session.log("✓ Tests complete")
 
 

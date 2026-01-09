@@ -102,6 +102,18 @@ class TestNotificationHandler:
         assert call_args[0][1] == "KRW-BTC"
         assert call_args[0][2] == 49000.0
 
+    def test_handle_exit_signal_wrong_event_type(
+        self, mock_telegram: MagicMock, event_bus: EventBus
+    ) -> None:
+        """Test handling exit signal with wrong event type (line 70->exit)."""
+        handler = NotificationHandler(telegram_notifier=mock_telegram)
+        from src.execution.events import Event
+
+        event = Event(event_type=EventType.EXIT_SIGNAL)
+
+        handler._handle_exit_signal(event)
+        mock_telegram.send_trade_signal.assert_not_called()
+
     def test_handle_order_placed(self, mock_telegram: MagicMock, event_bus: EventBus) -> None:
         """Test handling order placed event."""
         handler = NotificationHandler(telegram_notifier=mock_telegram)
@@ -347,6 +359,55 @@ class TestNotificationHandler:
             mock_logger.error.assert_called_once()
             assert "Error sending daily reset notification" in mock_logger.error.call_args[0][0]
 
+    def test_handle_position_opened_wrong_event_type(
+        self, mock_telegram: MagicMock, event_bus: EventBus
+    ) -> None:
+        """Test handling position opened with wrong event type (line 126->exit)."""
+        handler = NotificationHandler(telegram_notifier=mock_telegram)
+        from src.execution.events import Event
+
+        event = Event(event_type=EventType.POSITION_OPENED)
+
+        # Should not call telegram when event is not PositionEvent
+        handler._handle_position_opened(event)
+        mock_telegram.send_trade_signal.assert_not_called()
+
+    def test_handle_position_closed_wrong_event_type(
+        self, mock_telegram: MagicMock, event_bus: EventBus
+    ) -> None:
+        """Test handling position closed with wrong event type (line 139->exit)."""
+        handler = NotificationHandler(telegram_notifier=mock_telegram)
+        from src.execution.events import Event
+
+        event = Event(event_type=EventType.POSITION_CLOSED)
+
+        handler._handle_position_closed(event)
+        mock_telegram.send.assert_not_called()
+
+    def test_handle_error_wrong_event_type(
+        self, mock_telegram: MagicMock, event_bus: EventBus
+    ) -> None:
+        """Test handling error with wrong event type (line 151->exit)."""
+        handler = NotificationHandler(telegram_notifier=mock_telegram)
+        from src.execution.events import Event
+
+        event = Event(event_type=EventType.ERROR)
+
+        handler._handle_error(event)
+        mock_telegram.send.assert_not_called()
+
+    def test_handle_daily_reset_wrong_event_type(
+        self, mock_telegram: MagicMock, event_bus: EventBus
+    ) -> None:
+        """Test handling daily reset with wrong event type (line 160->exit)."""
+        handler = NotificationHandler(telegram_notifier=mock_telegram)
+        from src.execution.events import Event
+
+        event = Event(event_type=EventType.DAILY_RESET)
+
+        handler._handle_daily_reset(event)
+        mock_telegram.send.assert_not_called()
+
 
 class TestTradeHandler:
     """Test cases for TradeHandler."""
@@ -426,6 +487,17 @@ class TestTradeHandler:
             assert "ORDER FILLED" in log_message.upper()
             assert "order-123" in log_message
 
+    def test_handle_order_filled_wrong_event_type(self, event_bus: EventBus) -> None:
+        """Test handling order filled with wrong event type (line 44->exit)."""
+        handler = TradeHandler()
+        from src.execution.events import Event
+
+        event = Event(event_type=EventType.ORDER_FILLED)  # Base Event, not OrderEvent
+
+        with patch("src.execution.handlers.trade_handler.logger") as mock_logger:
+            handler._handle_order_filled(event)
+            mock_logger.info.assert_not_called()
+
     def test_handle_order_failed(self, event_bus: EventBus) -> None:
         """Test handling order failed event."""
         handler = TradeHandler()
@@ -444,6 +516,17 @@ class TestTradeHandler:
             mock_logger.error.assert_called_once()
             log_message = mock_logger.error.call_args[0][0]
             assert "ORDER FAILED" in log_message.upper()
+
+    def test_handle_order_failed_wrong_event_type(self, event_bus: EventBus) -> None:
+        """Test handling order failed with wrong event type (line 52->exit)."""
+        handler = TradeHandler()
+        from src.execution.events import Event
+
+        event = Event(event_type=EventType.ORDER_FAILED)  # Base Event, not OrderEvent
+
+        with patch("src.execution.handlers.trade_handler.logger") as mock_logger:
+            handler._handle_order_failed(event)
+            mock_logger.error.assert_not_called()
 
     def test_handle_position_opened(self, event_bus: EventBus) -> None:
         """Test handling position opened event."""

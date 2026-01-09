@@ -133,6 +133,51 @@ class TestGetNotifier:
         # TelegramNotifier.__init__ sets enabled = enabled and bool(token) and bool(chat_id)
         assert notifier.enabled is True
 
+    def test_get_notifier_update_existing_token(self) -> None:
+        """Test get_notifier updates existing notifier's token - covers line 167->169."""
+        import src.utils.telegram
+
+        src.utils.telegram._notifier = None
+
+        # Create initial notifier
+        notifier1 = get_notifier(token="old_token", chat_id="chat_id", enabled=True)
+        assert notifier1.token == "old_token"
+
+        # Update token on existing notifier
+        notifier2 = get_notifier(token="new_token")
+        assert notifier2.token == "new_token"
+        assert notifier1 is notifier2
+
+    def test_get_notifier_update_existing_chat_id(self) -> None:
+        """Test get_notifier updates existing notifier's chat_id - covers line 169->171."""
+        import src.utils.telegram
+
+        src.utils.telegram._notifier = None
+
+        # Create initial notifier
+        notifier1 = get_notifier(token="token", chat_id="old_chat_id", enabled=True)
+        assert notifier1.chat_id == "old_chat_id"
+
+        # Update chat_id on existing notifier
+        notifier2 = get_notifier(chat_id="new_chat_id")
+        assert notifier2.chat_id == "new_chat_id"
+        assert notifier1 is notifier2
+
+    def test_get_notifier_update_existing_enabled(self) -> None:
+        """Test get_notifier updates existing notifier's enabled - covers line 171->174."""
+        import src.utils.telegram
+
+        src.utils.telegram._notifier = None
+
+        # Create initial notifier
+        notifier1 = get_notifier(token="token", chat_id="chat_id", enabled=True)
+        assert notifier1.enabled is True
+
+        # Update enabled on existing notifier (disable)
+        notifier2 = get_notifier(enabled=False)
+        assert notifier2.enabled is False
+        assert notifier1 is notifier2
+
 
 class TestSendMessage:
     """Test cases for send_message function."""

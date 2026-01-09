@@ -1,7 +1,7 @@
 """Data management package."""
 
 from src.data.base import DataSource
-from src.data.cache import IndicatorCache, get_cache
+from src.data.cache.cache import IndicatorCache, get_cache
 from src.data.collector import Interval, UpbitDataCollector
 from src.data.collector_factory import DataCollectorFactory
 from src.data.converters import (

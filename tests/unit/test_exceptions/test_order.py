@@ -46,6 +46,19 @@ class TestOrderNotFoundError:
         assert error.order_id == "order-123"
         assert error.details["order_id"] == "order-123"
 
+    def test_not_found_error_with_existing_details(self) -> None:
+        """Test OrderNotFoundError with pre-existing details dict (line 33->35)."""
+        existing_details = {"exchange": "upbit", "timestamp": "2024-01-01"}
+        error = OrderNotFoundError(
+            "Order not found",
+            order_id="order-456",
+            details=existing_details,
+        )
+
+        assert error.details["exchange"] == "upbit"
+        assert error.details["timestamp"] == "2024-01-01"
+        assert error.details["order_id"] == "order-456"
+
 
 class TestOrderExecutionError:
     """Test cases for OrderExecutionError exception."""
@@ -74,3 +87,18 @@ class TestOrderExecutionError:
         assert error.reason == "Insufficient liquidity"
         assert error.details["order_id"] == "order-123"
         assert error.details["reason"] == "Insufficient liquidity"
+
+    def test_execution_error_with_existing_details(self) -> None:
+        """Test OrderExecutionError with pre-existing details dict (line 61->63)."""
+        existing_details = {"exchange": "binance", "retry_count": 2}
+        error = OrderExecutionError(
+            "Execution failed",
+            order_id="order-789",
+            reason="Timeout",
+            details=existing_details,
+        )
+
+        assert error.details["exchange"] == "binance"
+        assert error.details["retry_count"] == 2
+        assert error.details["order_id"] == "order-789"
+        assert error.details["reason"] == "Timeout"

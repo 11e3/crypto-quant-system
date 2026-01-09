@@ -3,164 +3,34 @@ Base classes for strategy abstraction.
 
 Provides modular interfaces for building trading strategies with
 composable conditions and filters.
+
+This module re-exports all base components for backward compatibility:
+- SignalType, Signal, Position, OHLCV from base_models
+- Condition, Filter, CompositeCondition from base_conditions
+- Strategy ABC (defined here)
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import date
-from enum import Enum, auto
-from typing import Any
 
 import pandas as pd
 
+# Re-export models for backward compatibility
+from src.strategies.base_conditions import CompositeCondition, Condition, Filter
+from src.strategies.base_models import OHLCV, Position, Signal, SignalType
 
-class SignalType(Enum):
-    """Trading signal types."""
-
-    BUY = auto()
-    SELL = auto()
-    HOLD = auto()
-
-
-@dataclass
-class Signal:
-    """Trading signal with metadata."""
-
-    signal_type: SignalType
-    ticker: str
-    price: float
-    date: date
-    strength: float = 1.0  # Signal strength/confidence (0-1)
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class Position:
-    """Represents a trading position."""
-
-    ticker: str
-    amount: float
-    entry_price: float
-    entry_date: date
-
-
-@dataclass
-class OHLCV:
-    """Single OHLCV bar data."""
-
-    date: date
-    open: float
-    high: float
-    low: float
-    close: float
-    volume: float
-
-    @property
-    def range(self) -> float:
-        """Price range (high - low)."""
-        return self.high - self.low
-
-    @property
-    def body(self) -> float:
-        """Candle body size."""
-        return abs(self.close - self.open)
-
-
-class Condition(ABC):
-    """
-    Abstract base class for entry/exit conditions.
-
-    Conditions are atomic logic units that evaluate market data
-    and return True/False for signal generation.
-    """
-
-    def __init__(self, name: str | None = None) -> None:
-        """
-        Initialize condition.
-
-        Args:
-            name: Human-readable condition name
-        """
-        self.name = name or self.__class__.__name__
-
-    @abstractmethod
-    def evaluate(
-        self,
-        current: OHLCV,
-        history: pd.DataFrame,
-        indicators: dict[str, float],
-    ) -> bool:
-        """
-        Evaluate condition against market data.
-
-        Args:
-            current: Current bar OHLCV data
-            history: Historical DataFrame with OHLCV + indicators
-            indicators: Pre-calculated indicator values for current bar
-
-        Returns:
-            True if condition is met
-        """
-        pass
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name={self.name!r})"
-
-
-# Alias for backward compatibility
-# Filters are now treated as Conditions in the unified architecture
-Filter = Condition
-
-
-class CompositeCondition(Condition):
-    """Combines multiple conditions with AND/OR logic."""
-
-    def __init__(
-        self,
-        conditions: list[Condition],
-        operator: str = "AND",
-        name: str | None = None,
-    ) -> None:
-        """
-        Initialize composite condition.
-
-        Args:
-            conditions: List of conditions to combine
-            operator: "AND" or "OR"
-            name: Human-readable name
-        """
-        super().__init__(name)
-        self.conditions = conditions
-        self.operator = operator.upper()
-
-    def evaluate(
-        self,
-        current: OHLCV,
-        history: pd.DataFrame,
-        indicators: dict[str, float],
-    ) -> bool:
-        """Evaluate all conditions with specified operator."""
-        if not self.conditions:
-            return True
-
-        results = [c.evaluate(current, history, indicators) for c in self.conditions]
-
-        if self.operator == "AND":
-            return all(results)
-        elif self.operator == "OR":
-            return any(results)
-        else:
-            raise ValueError(f"Unknown operator: {self.operator}")
-
-    def add(self, condition: Condition) -> "CompositeCondition":
-        """Add a condition and return self for chaining."""
-        self.conditions.append(condition)
-        return self
-
-    def remove(self, condition: Condition) -> "CompositeCondition":
-        """Remove a condition and return self for chaining."""
-        self.conditions.remove(condition)
-        return self
+__all__ = [
+    # Models
+    "SignalType",
+    "Signal",
+    "Position",
+    "OHLCV",
+    # Conditions
+    "Condition",
+    "Filter",
+    "CompositeCondition",
+    # Strategy
+    "Strategy",
+]
 
 
 class Strategy(ABC):
@@ -171,12 +41,23 @@ class Strategy(ABC):
     - 진입 조건(entry_conditions): 매수 신호 생성 위한 기술적 조건들의 AND 조합
     - 퇴출 조건(exit_conditions): 매도 신호 생성 위한 조건들의 AND 조합
 
-    모든 조건(마켓 필터 포함)은 entry/exit conditions로 처리됨.
+    VBO(Volatility Breakout) 전략의 핵심 아이디어:
+    1. 변동성 돌파: 전일 변동폭(고가-저가)의 k배만큼 상승시 매수
+    2. 추세 필터: SMA 위에서만 매수 (상승추세 확인)
+    3. 익일 매도: 다음날 종가에 자동 매도 (오버나이트 리스크 관리)
 
-    수익 메커니즘:
-    1. entry_conditions 모두 만족 → BUY 신호 발생 → 진입가격 = target(VBO) or close
-    2. exit_conditions 만족 → SELL 신호 발생 → 퇴출가격 = close price
-    3. 수익률(PnL%) = ((exit_price - entry_price) / entry_price - fee) * 100
+    수익률 계산의 정확성이 전략 성능의 핵심:
+    - 슬리피지/수수료 포함 시 실제 수익률 반영
+    - 진입가: 목표가(target) = 시가 + (전일 변동폭 * k)
+    - 청산가: 다음날 종가
+
+    Subclasses must implement:
+    - name property: 전략 식별자 (예: "VBO_K0.5", "MomentumSMA20")
+    - required_indicators(): 전략에 필요한 지표 목록
+    - calculate_indicators(): 지표 계산 로직
+
+    The default generate_signals() provides standard VBO signal generation,
+    which can be overridden for custom signal logic.
     """
 
     def __init__(
@@ -189,46 +70,44 @@ class Strategy(ABC):
         Initialize strategy with conditions.
 
         Args:
-            name: Strategy name (defaults to class name)
-            entry_conditions: 진입 신호 생성 조건들 (기술적 지표 기반, AND 결합)
-                            예: [고가>목표가, 목표가>SMA(20), 노이즈필터]
-            exit_conditions: 퇴출 신호 생성 조건들 (AND 결합)
-                            예: [종가<SMA(20)]
-
-        Note:
-            - 조건들은 AND 연산으로 결합됨 (모두 만족해야 신호 발생)
-            - entry_conditions의 강도가 수익성에 직결: 엄격할수록 거래수 감소, 승률 상승
-            - exit_conditions의 엄격도가 리스크 관리에 영향: 느슨할수록 손실 확대 가능
+            name: Strategy name (optional, uses class name if not provided)
+            entry_conditions: List of entry conditions (default empty)
+            exit_conditions: List of exit conditions (default empty)
         """
-        self.name = name or self.__class__.__name__
-        # entry_conditions: AND로 결합된 진입 조건들
-        # 모든 조건이 동시에 만족되어야만 BUY 신호 발생
-        self.entry_conditions = CompositeCondition(
-            entry_conditions or [], operator="AND", name="EntryConditions"
+        self._name = name
+        self.entry_conditions: CompositeCondition = CompositeCondition(
+            entry_conditions or [], "AND"
         )
-        # exit_conditions: AND로 결합된 퇴출 조건들
-        # 모든 조건이 동시에 만족되어야만 SELL 신호 발생
-        self.exit_conditions = CompositeCondition(
-            exit_conditions or [], operator="AND", name="ExitConditions"
-        )
+        self.exit_conditions: CompositeCondition = CompositeCondition(exit_conditions or [], "AND")
+
+    @property
+    def name(self) -> str:
+        """
+        Strategy name identifier.
+
+        Returns:
+            Unique name for the strategy (e.g., "VBO_K0.5", "MomentumSMA20")
+        """
+        return self._name or self.__class__.__name__
 
     @property
     def is_pair_trading(self) -> bool:
-        """Return True if this is a pair trading strategy."""
+        """Return True if this is a pair trading strategy.
+
+        Subclasses that implement pair trading should override this property.
+
+        Returns:
+            False by default; True for pair trading strategies.
+        """
         return False
 
     @abstractmethod
     def required_indicators(self) -> list[str]:
         """
-        Return list of required indicator names for this strategy.
+        List of indicator names required by this strategy.
 
-        수익 계산에 필수적인 지표들의 이름 반환.
-        이 지표들이 calculate_indicators()에서 계산되어야 함.
-
-        예시:
-        - ['sma', 'target', 'short_noise', 'long_noise'] (VBO 전략)
-        - ['momentum', 'rsi'] (모멘텀 전략)
-        - ['atr', 'high_20', 'low_20'] (변동성 돌파 전략)
+        이 메서드가 반환하는 지표 목록은 calculate_indicators()에서 생성해야 함.
+        예: ["sma", "target", "noise"] → df["sma"], df["target"], df["noise"] 필요
 
         Returns:
             List of indicator names required for signal generation

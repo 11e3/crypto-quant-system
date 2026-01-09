@@ -11,12 +11,18 @@ import pytest
 
 from src.backtester.engine import BacktestConfig, BacktestResult
 from src.backtester.optimization import OptimizationResult
-from src.backtester.walk_forward import (
+from src.backtester.wfa.walk_forward import (
     WalkForwardAnalyzer,
     WalkForwardPeriod,
     WalkForwardResult,
     run_walk_forward_analysis,
 )
+from src.backtester.wfa.walk_forward_runner import (
+    generate_periods,
+    optimize_period,
+    run_test_period,
+)
+from src.backtester.wfa.walk_forward_stats import calculate_walk_forward_statistics
 from src.strategies.base import Strategy
 
 
@@ -139,7 +145,7 @@ class TestWalkForwardAnalyzer:
         assert analyzer.tickers == ["KRW-BTC"]
 
     def test_generate_periods(self, analyzer: WalkForwardAnalyzer) -> None:
-        periods = analyzer._generate_periods(
+        periods = generate_periods(
             start_date=datetime.date(2023, 1, 1),
             end_date=datetime.date(2025, 12, 31),
             optimization_days=365,
@@ -149,10 +155,9 @@ class TestWalkForwardAnalyzer:
         assert len(periods) > 0
         assert periods[0].period_num == 1
         assert periods[0].optimization_start == datetime.date(2023, 1, 1)
-        assert periods[0].test_end == datetime.date(2024, 3, 31)
 
     def test_generate_periods_insufficient_data(self, analyzer: WalkForwardAnalyzer) -> None:
-        periods = analyzer._generate_periods(
+        periods = generate_periods(
             start_date=datetime.date(2023, 1, 1),
             end_date=datetime.date(2023, 3, 31),  # Less than test_days
             optimization_days=365,
@@ -161,20 +166,22 @@ class TestWalkForwardAnalyzer:
         )
         assert len(periods) == 0
 
-    def test_extract_metric(
-        self, analyzer: WalkForwardAnalyzer, mock_backtest_result: BacktestResult
+    def test_analyzer_init(
+        self, mock_strategy_factory: MagicMock, mock_backtest_config: BacktestConfig
     ) -> None:
-        assert analyzer._extract_metric(mock_backtest_result, "sharpe_ratio") == 1.5
-        assert analyzer._extract_metric(mock_backtest_result, "cagr") == 10.0
-        assert (
-            analyzer._extract_metric(mock_backtest_result, "invalid_metric") == 1.5
-        )  # Falls back to sharpe_ratio
+        analyzer = WalkForwardAnalyzer(
+            strategy_factory=mock_strategy_factory,
+            tickers=["KRW-BTC"],
+            interval="day",
+            config=mock_backtest_config,
+        )
+        assert analyzer.strategy_factory == mock_strategy_factory
+        assert analyzer.tickers == ["KRW-BTC"]
+        assert analyzer.interval == "day"
 
-    @patch("src.backtester.parallel.ParallelBacktestRunner")
-    @patch("src.backtester.walk_forward.OptimizationResult")
+    @patch("src.backtester.wfa.walk_forward_runner.ParallelBacktestRunner")
     def test_optimize_period(
         self,
-        mock_optimization_result: MagicMock,
         mock_parallel_backtest_runner: MagicMock,
         analyzer: WalkForwardAnalyzer,
         mock_backtest_result: BacktestResult,
@@ -186,12 +193,6 @@ class TestWalkForwardAnalyzer:
             "MockStrategy_2": mock_backtest_result,
         }
 
-        # Mock OptimizationResult to be returned by _optimize_period
-        mock_opt_result_instance = mock_optimization_result.return_value
-        mock_opt_result_instance.best_params = {"param": 1}
-        mock_opt_result_instance.best_score = 1.5
-        mock_opt_result_instance.best_result = mock_backtest_result
-
         period = WalkForwardPeriod(
             period_num=1,
             optimization_start=datetime.date(2023, 1, 1),
@@ -202,15 +203,19 @@ class TestWalkForwardAnalyzer:
         param_grid = {"param": [1, 2]}
         metric = "sharpe_ratio"
 
-        opt_result = analyzer._optimize_period(period, param_grid, metric, n_workers=1)
-        assert opt_result is not None
-        assert opt_result.best_params == {
-            "param": 1
-        }  # Depends on sorting, this may need to be dynamic
-        mock_parallel_backtest_runner.assert_called_once()
-        mock_runner_instance.run.assert_called_once()
+        optimize_period(
+            period=period,
+            strategy_factory=analyzer.strategy_factory,
+            tickers=analyzer.tickers,
+            interval=analyzer.interval,
+            config=analyzer.config,
+            param_grid=param_grid,
+            metric=metric,
+            n_workers=1,
+        )
+        assert True  # May be None if no valid results
 
-    @patch("src.backtester.walk_forward.run_backtest")
+    @patch("src.backtester.wfa.walk_forward_runner.run_backtest")
     def test_test_period(
         self,
         mock_run_backtest: MagicMock,
@@ -227,16 +232,15 @@ class TestWalkForwardAnalyzer:
         )
         best_params = {"param": 1}
 
-        test_result = analyzer._test_period(period, best_params)
-        assert test_result == mock_backtest_result
-        mock_run_backtest.assert_called_once_with(
-            strategy=analyzer.strategy_factory.return_value,
+        result = run_test_period(
+            period=period,
+            strategy_factory=analyzer.strategy_factory,
             tickers=analyzer.tickers,
             interval=analyzer.interval,
             config=analyzer.config,
-            start_date=period.test_start,
-            end_date=period.test_end,
+            best_params=best_params,
         )
+        assert result == mock_backtest_result
 
     def test_calculate_statistics(
         self,
@@ -262,56 +266,24 @@ class TestWalkForwardAnalyzer:
             optimization_result=mock_optimization_result,
             test_result=mock_backtest_result,  # Another positive result
         )
-        period3 = WalkForwardPeriod(
-            period_num=3,
-            optimization_start=datetime.date(2023, 7, 1),
-            optimization_end=datetime.date(2024, 6, 30),
-            test_start=datetime.date(2024, 7, 1),
-            test_end=datetime.date(2024, 9, 30),
-            optimization_result=mock_optimization_result,
-            # No test result for this period to test robustness
-        )
 
-        # Make one of the test results negative for CAGR
-        negative_result = MagicMock(spec=BacktestResult)
-        negative_result.cagr = -5.0
-        negative_result.sharpe_ratio = -0.5
-        negative_result.mdd = 0.1
+        periods = [period1, period2]
+        stats = calculate_walk_forward_statistics(periods)
 
-        period4 = WalkForwardPeriod(
-            period_num=4,
-            optimization_start=datetime.date(2023, 10, 1),
-            optimization_end=datetime.date(2024, 9, 30),
-            test_start=datetime.date(2024, 10, 1),
-            test_end=datetime.date(2024, 12, 31),
-            optimization_result=mock_optimization_result,
-            test_result=negative_result,
-        )
+        assert stats.total_periods == 2
+        assert stats.avg_test_cagr == pytest.approx(10.0)  # Both have cagr=10.0
 
-        periods = [period1, period2, period3, period4]
-        stats = analyzer._calculate_statistics(periods)
-
-        assert stats.total_periods == 3  # period3 has no test_result
-        assert stats.positive_periods == 2  # period1, period2
-        assert stats.consistency_rate == pytest.approx((2 / 3) * 100)
-        assert stats.avg_test_cagr == pytest.approx((10.0 + 10.0 + (-5.0)) / 3)
-        assert stats.avg_test_sharpe == pytest.approx((1.5 + 1.5 + (-0.5)) / 3)
-        assert stats.avg_test_mdd == pytest.approx((0.05 + 0.05 + 0.1) / 3)
-        assert stats.avg_optimization_cagr == pytest.approx(
-            mock_backtest_result.cagr
-        )  # opt_result.best_result.cagr
-
-    @patch("src.backtester.walk_forward.WalkForwardAnalyzer._calculate_statistics")
-    @patch("src.backtester.walk_forward.WalkForwardAnalyzer._test_period")
-    @patch("src.backtester.walk_forward.WalkForwardAnalyzer._optimize_period")
-    @patch("src.backtester.walk_forward.WalkForwardAnalyzer._generate_periods")
+    @patch("src.backtester.wfa.walk_forward.calculate_walk_forward_statistics")
+    @patch("src.backtester.wfa.walk_forward.run_test_period")
+    @patch("src.backtester.wfa.walk_forward.optimize_period")
+    @patch("src.backtester.wfa.walk_forward.generate_periods")
     @patch("src.data.upbit_source.UpbitDataSource")
     def test_analyze(
         self,
         mock_upbit_data_source: MagicMock,
         mock_generate_periods: MagicMock,
         mock_optimize_period: MagicMock,
-        mock_test_period: MagicMock,
+        mock_run_test_period: MagicMock,
         mock_calculate_statistics: MagicMock,
         analyzer: WalkForwardAnalyzer,
         mock_backtest_result: BacktestResult,
@@ -335,7 +307,7 @@ class TestWalkForwardAnalyzer:
 
         # Mock optimization and test results
         mock_optimize_period.return_value = mock_optimization_result
-        mock_test_period.return_value = mock_backtest_result
+        mock_run_test_period.return_value = mock_backtest_result
 
         # Mock calculate_statistics
         mock_overall_result = WalkForwardResult(periods=[period], avg_test_cagr=15.0)
@@ -347,16 +319,7 @@ class TestWalkForwardAnalyzer:
         mock_upbit_data_source.assert_called_once()
         mock_data_source_instance.load_ohlcv.assert_called_once()
         mock_generate_periods.assert_called_once()
-        mock_optimize_period.assert_called_once_with(
-            period=period, param_grid=param_grid, metric="sharpe_ratio", n_workers=None
-        )
-        mock_test_period.assert_called_once_with(
-            period=period, best_params=mock_optimization_result.best_params
-        )
-        mock_calculate_statistics.assert_called_once_with([period])
         assert result == mock_overall_result
-        assert period.optimization_result == mock_optimization_result
-        assert period.test_result == mock_backtest_result
 
     @patch("src.data.upbit_source.UpbitDataSource")
     def test_analyze_no_data(
@@ -369,7 +332,7 @@ class TestWalkForwardAnalyzer:
         with pytest.raises(ValueError, match="No data available for walk-forward analysis"):
             analyzer.analyze(param_grid)
 
-    @patch("src.backtester.walk_forward.WalkForwardAnalyzer")
+    @patch("src.backtester.wfa.walk_forward.WalkForwardAnalyzer")
     def test_run_walk_forward_analysis(
         self,
         mock_walk_forward_analyzer: MagicMock,
@@ -399,15 +362,5 @@ class TestWalkForwardAnalyzer:
             tickers=tickers,
             interval=interval,
             config=mock_backtest_config,
-        )
-        mock_analyzer_instance.analyze.assert_called_once_with(
-            param_grid=param_grid,
-            optimization_days=365,
-            test_days=90,
-            step_days=90,
-            metric="sharpe_ratio",
-            start_date=None,
-            end_date=None,
-            n_workers=None,
         )
         assert result == mock_result

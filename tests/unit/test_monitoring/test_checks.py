@@ -80,3 +80,24 @@ class TestThresholdEvaluation:
 
         assert len(issues) == 1
         assert issues[0][0] == "max_max_drawdown"
+
+    def test_exact_match_threshold_pass(self):
+        """Test exact match threshold (no prefix) - line 45-46 eq case."""
+        metrics = {"target_value": 100}
+        thresholds = {"target_value": 100}  # No min_/max_ prefix = exact match
+
+        issues = evaluate_thresholds(metrics, thresholds)
+
+        assert len(issues) == 0
+
+    def test_exact_match_threshold_fail(self):
+        """Test exact match threshold failure (no prefix) - line 45-46 eq case."""
+        metrics = {"target_value": 100}
+        thresholds = {"target_value": 200}  # Exact match required
+
+        issues = evaluate_thresholds(metrics, thresholds)
+
+        assert len(issues) == 1
+        assert issues[0][0] == "target_value"
+        assert issues[0][1] == 100  # actual value
+        assert issues[0][2] == 200  # threshold

@@ -11,6 +11,7 @@ import pyupbit
 
 from src.config.constants import RAW_DATA_DIR
 from src.data.base import DataSource
+from src.data.upbit_source_utils import calculate_update_count, merge_ohlcv_data
 from src.exceptions.data import (
     DataSourceConnectionError,
     DataSourceError,
@@ -223,24 +224,9 @@ class UpbitDataSource(DataSource):
                     self.save_ohlcv(symbol, interval, df, filepath)
                 return df
 
-            # Get latest timestamp from existing data
+            # Get latest timestamp and calculate fetch count
             latest_timestamp = existing_df.index.max()
-
-            # Calculate how many candles to fetch
-            # Add buffer to ensure we get all new data
-            if interval == "day":
-                days_since = (datetime.now() - latest_timestamp).days
-                count = min(days_since + 10, 200)
-            elif interval.startswith("minute"):
-                # Parse minute interval (e.g., "minute240" -> 240)
-                try:
-                    minutes = int(interval.replace("minute", ""))
-                    minutes_since = (datetime.now() - latest_timestamp).total_seconds() / 60
-                    count = min(int(minutes_since / minutes) + 10, 200)
-                except ValueError:
-                    count = 200
-            else:
-                count = 200
+            count = calculate_update_count(latest_timestamp, interval)
 
             # Fetch new data
             logger.info(f"Fetching new data for {symbol} {interval} (since {latest_timestamp})")
@@ -250,25 +236,16 @@ class UpbitDataSource(DataSource):
                 logger.warning(f"No new data for {symbol} {interval}")
                 return existing_df
 
-            # Filter to only new data (after latest_timestamp)
-            new_df = new_df[new_df.index > latest_timestamp]
+            # Merge data
+            updated_df, new_count = merge_ohlcv_data(existing_df, new_df, latest_timestamp)
 
-            if len(new_df) == 0:
+            if new_count == 0:
                 logger.info(f"No new data to add for {symbol} {interval}")
                 return existing_df
 
-            # Merge with existing data
-            updated_df = pd.concat([existing_df, new_df])
-            updated_df = updated_df[~updated_df.index.duplicated(keep="last")]
-            updated_df = updated_df.sort_index()
-
             # Save updated data
             self.save_ohlcv(symbol, interval, updated_df, filepath)
-
-            logger.info(
-                f"Updated {symbol} {interval}: added {len(new_df)} new candles, "
-                f"total {len(updated_df)} candles"
-            )
+            logger.info(f"Updated {symbol} {interval}: +{new_count} new, {len(updated_df)} total")
 
             return updated_df
         except Exception as e:

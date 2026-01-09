@@ -65,6 +65,50 @@ class TestMomentumConditions:
         indicators = {"sma": 100.0}
         assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
 
+    def test_price_below_sma_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test PriceBelowSMACondition with missing SMA indicator (line 84)."""
+        from src.strategies.momentum.conditions import PriceBelowSMACondition
+
+        condition = PriceBelowSMACondition()
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+    def test_momentum_strength_short_history(self, sample_ohlcv: OHLCV) -> None:
+        """Test MomentumStrengthCondition with insufficient history (line 122)."""
+        import pandas as pd
+
+        from src.strategies.momentum.conditions import MomentumStrengthCondition
+
+        condition = MomentumStrengthCondition(lookback=10)
+        # Only 5 rows, need 10
+        short_history = pd.DataFrame(
+            {"close": [100.0, 101.0, 102.0, 103.0, 104.0]},
+            index=pd.date_range("2024-01-01", periods=5),
+        )
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, short_history, indicators) is False
+
+    def test_momentum_strength_zero_past_close(self, sample_ohlcv: OHLCV) -> None:
+        """Test MomentumStrengthCondition with zero past close (line 127)."""
+        import pandas as pd
+
+        from src.strategies.momentum.conditions import MomentumStrengthCondition
+
+        condition = MomentumStrengthCondition(lookback=5)
+        # past_close at index -5 (iloc[-5]) should be 0
+        # With 10 items, iloc[-5] = iloc[5], so put 0.0 at index 5
+        history = pd.DataFrame(
+            {"close": [100.0, 101.0, 102.0, 103.0, 104.0, 0.0, 106.0, 107.0, 108.0, 109.0]},
+            index=pd.date_range("2024-01-01", periods=10),
+        )
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, history, indicators) is False
+
     def test_rsi_oversold_entry(self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame) -> None:
         """Test RSI oversold entry condition."""
         from src.strategies.momentum.conditions import RSIOversoldCondition
@@ -91,6 +135,17 @@ class TestMomentumConditions:
 
         # RSI neutral - should not exit
         indicators = {"rsi": 50.0}
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+    def test_rsi_overbought_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test RSI overbought with missing RSI indicator (line 85)."""
+        from src.strategies.momentum.conditions_rsi import RSIOverboughtCondition
+
+        condition = RSIOverboughtCondition(overbought_threshold=70.0)
+        indicators: dict[str, float] = {}
+
         assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
 
     def test_macd_bullish(self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame) -> None:
@@ -247,6 +302,72 @@ class TestMeanReversionConditions:
         indicators = {"sma": 101.0}  # 102.0 is ~1% above 101.0
         assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
 
+    def test_bollinger_upper_band_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test BollingerUpperBandCondition with missing indicator (line 100)."""
+        from src.strategies.mean_reversion.conditions import BollingerUpperBandCondition
+
+        condition = BollingerUpperBandCondition()
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+    def test_price_below_sma_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test PriceBelowSMACondition with missing indicator (line 134)."""
+        from src.strategies.mean_reversion.conditions import PriceBelowSMACondition
+
+        condition = PriceBelowSMACondition()
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+    def test_price_above_sma_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test PriceAboveSMACondition with missing indicator (line 167)."""
+        from src.strategies.mean_reversion.conditions import PriceAboveSMACondition
+
+        condition = PriceAboveSMACondition()
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+    def test_rsi_oversold_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test RSIOversoldCondition with missing RSI indicator (line 53)."""
+        from src.strategies.mean_reversion.conditions_rsi import RSIOversoldCondition
+
+        condition = RSIOversoldCondition(oversold_threshold=30.0)
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+    def test_rsi_overbought_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test RSIOverboughtCondition with missing RSI indicator (line 93)."""
+        from src.strategies.mean_reversion.conditions_rsi import RSIOverboughtCondition
+
+        condition = RSIOverboughtCondition(overbought_threshold=70.0)
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+    def test_mean_reversion_strength_missing_indicator(
+        self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame
+    ) -> None:
+        """Test MeanReversionStrengthCondition with missing SMA indicator (line 133)."""
+        from src.strategies.mean_reversion.conditions_rsi import MeanReversionStrengthCondition
+
+        condition = MeanReversionStrengthCondition(min_deviation_pct=0.02)
+        indicators: dict[str, float] = {}
+
+        assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
 
 class TestPairTradingConditions:
     """Test pair trading strategy conditions."""
@@ -289,15 +410,20 @@ class TestPairTradingConditions:
 
         condition = SpreadMeanReversionCondition()
 
-        # Spread above mean
-        indicators = {"spread": 2.0, "spread_mean": 1.0}
+        # Z-score near zero - exit signal
+        indicators = {"z_score": 0.3}
         result = condition.evaluate(sample_ohlcv, sample_history, indicators)
-        assert isinstance(result, bool)
+        assert result is True
 
-        # Spread below mean
-        indicators = {"spread": 0.5, "spread_mean": 1.0}
+        # Z-score far from zero - no exit
+        indicators = {"z_score": 1.5}
         result = condition.evaluate(sample_ohlcv, sample_history, indicators)
-        assert isinstance(result, bool)
+        assert result is False
+
+        # Test with missing z_score (line 90-91)
+        indicators_no_zscore: dict[str, float] = {}
+        result_none = condition.evaluate(sample_ohlcv, sample_history, indicators_no_zscore)
+        assert result_none is False
 
     def test_spread_deviation(self, sample_ohlcv: OHLCV, sample_history: pd.DataFrame) -> None:
         """Test spread deviation condition."""
@@ -317,6 +443,16 @@ class TestPairTradingConditions:
         # Small deviation (1%)
         indicators = {"spread": 1.01, "spread_mean": 1.0}
         assert condition.evaluate(sample_ohlcv, sample_history, indicators) is False
+
+        # Test with missing spread values (line 137)
+        indicators_missing: dict[str, float] = {}
+        result = condition.evaluate(sample_ohlcv, sample_history, indicators_missing)
+        assert result is False
+
+        # Test with spread_mean == 0 (line 137)
+        indicators_zero_mean = {"spread": 1.0, "spread_mean": 0.0}
+        result = condition.evaluate(sample_ohlcv, sample_history, indicators_zero_mean)
+        assert result is False
 
 
 class TestConditionsWithMissingIndicators:

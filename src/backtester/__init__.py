@@ -1,17 +1,21 @@
 """Backtester package."""
 
-from src.backtester.engine import (
-    BacktestConfig,
-    BacktestEngine,
-    BacktestResult,
-    Trade,
-    VectorizedBacktestEngine,
-    run_backtest,
-)
-from src.backtester.monte_carlo import (
+from src.backtester.analysis.monte_carlo import (
     MonteCarloResult,
     MonteCarloSimulator,
     run_monte_carlo,
+)
+from src.backtester.engine import (
+    BacktestEngine,
+    EventDrivenBacktestEngine,
+    SimpleBacktestEngine,  # Deprecated alias
+    VectorizedBacktestEngine,
+    run_backtest,
+)
+from src.backtester.models import (
+    BacktestConfig,
+    BacktestResult,
+    Trade,
 )
 from src.backtester.optimization import (
     OptimizationResult,
@@ -24,12 +28,12 @@ from src.backtester.parallel import (
     compare_strategies,
     optimize_parameters,
 )
-from src.backtester.report import (
+from src.backtester.report_pkg.report import (
     BacktestReport,
     PerformanceMetrics,
     generate_report,
 )
-from src.backtester.walk_forward import (
+from src.backtester.wfa.walk_forward import (
     WalkForwardAnalyzer,
     WalkForwardPeriod,
     WalkForwardResult,
@@ -44,6 +48,7 @@ __all__ = [
     "PerformanceMetrics",
     "Trade",
     "VectorizedBacktestEngine",
+    "SimpleBacktestEngine",
     "generate_report",
     "run_backtest",
     "ParallelBacktestRunner",

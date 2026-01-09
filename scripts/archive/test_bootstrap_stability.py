@@ -14,8 +14,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 from src.backtester.bootstrap_analysis import BootstrapAnalyzer
+
 from src.backtester.engine import BacktestConfig
 from src.strategies.volatility_breakout.vbo import VanillaVBO
 

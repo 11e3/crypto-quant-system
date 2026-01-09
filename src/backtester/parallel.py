@@ -10,10 +10,13 @@ Enables concurrent execution of multiple backtests for:
 import multiprocessing as mp
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date  # <-- 추가 필요
+from datetime import date
 from typing import Any
 
-from src.backtester.engine import BacktestConfig, BacktestResult, run_backtest
+from src.backtester.engine import run_backtest
+from src.backtester.models import BacktestConfig, BacktestResult
+from src.backtester.parallel_utils import compare_strategies as compare_strategies
+from src.backtester.parallel_utils import optimize_parameters as optimize_parameters
 from src.strategies.base import Strategy
 from src.utils.logger import get_logger
 
@@ -154,132 +157,9 @@ class ParallelBacktestRunner:
         return results_dict
 
 
-def compare_strategies(
-    strategies: list[Strategy],
-    tickers: list[str],
-    interval: str,
-    config: BacktestConfig,
-    n_workers: int | None = None,
-) -> dict[str, BacktestResult]:
-    """
-    Compare multiple strategies using parallel backtesting.
-
-    Args:
-        strategies: List of strategies to compare
-        tickers: List of tickers to backtest
-        interval: Data interval
-        config: Backtest configuration
-        n_workers: Number of parallel workers
-
-    Returns:
-        Dictionary mapping strategy names to BacktestResult objects
-
-    Example:
-        Compare VBO variants::
-
-            from src.strategies.volatility_breakout import VanillaVBO, MinimalVBO
-            from src.backtester import BacktestConfig
-
-            strategies = [
-                VanillaVBO(name="Vanilla"),
-                MinimalVBO(name="Minimal"),
-            ]
-            config = BacktestConfig(initial_capital=1_000_000)
-
-            results = compare_strategies(
-                strategies=strategies,
-                tickers=["KRW-BTC", "KRW-ETH"],
-                interval="day",
-                config=config,
-            )
-    """
-    tasks = [
-        ParallelBacktestTask(
-            name=strategy.name,
-            strategy=strategy,
-            tickers=tickers,
-            interval=interval,
-            config=config,
-        )
-        for strategy in strategies
-    ]
-
-    runner = ParallelBacktestRunner(n_workers=n_workers)
-    return runner.run(tasks)
-
-
-def optimize_parameters(
-    strategy_factory: Callable[[dict[str, Any]], Strategy],
-    param_grid: dict[str, list[Any]],
-    tickers: list[str],
-    interval: str,
-    config: BacktestConfig,
-    n_workers: int | None = None,
-) -> dict[str, BacktestResult]:
-    """
-    Optimize strategy parameters using grid search with parallel backtesting.
-
-    Args:
-        strategy_factory: Function that creates a strategy from parameters
-                         Signature: (params: dict) -> Strategy
-        param_grid: Dictionary mapping parameter names to lists of values to test
-        tickers: List of tickers to backtest
-        interval: Data interval
-        config: Backtest configuration
-        n_workers: Number of parallel workers
-
-    Returns:
-        Dictionary mapping parameter combination names to BacktestResult objects
-
-    Example:
-        Optimize VBO parameters::
-
-            from src.strategies.volatility_breakout import create_vbo_strategy
-            from src.backtester import BacktestConfig
-
-            def create_strategy(params):
-                return create_vbo_strategy(
-                    name=f"VBO_{params['sma']}_{params['trend']}",
-                    sma_period=params['sma'],
-                    trend_sma_period=params['trend'],
-                )
-
-            param_grid = {
-                'sma': [4, 5, 6],
-                'trend': [8, 10, 12],
-            }
-
-            results = optimize_parameters(
-                strategy_factory=create_strategy,
-                param_grid=param_grid,
-                tickers=["KRW-BTC"],
-                interval="day",
-                config=BacktestConfig(),
-            )
-    """
-    from itertools import product
-
-    # Generate all parameter combinations
-    param_names = list(param_grid.keys())
-    param_values = list(param_grid.values())
-    combinations = list(product(*param_values))
-
-    tasks: list[ParallelBacktestTask] = []
-    for combo in combinations:
-        params = dict(zip(param_names, combo, strict=False))
-        strategy = strategy_factory(params)
-        task_name = f"{strategy.name}_{'_'.join(str(v) for v in combo)}"
-        tasks.append(
-            ParallelBacktestTask(
-                name=task_name,
-                strategy=strategy,
-                tickers=tickers,
-                interval=interval,
-                config=config,
-            )
-        )
-
-    logger.info(f"Generated {len(tasks)} parameter combinations for optimization")
-
-    runner = ParallelBacktestRunner(n_workers=n_workers)
-    return runner.run(tasks)
+__all__ = [
+    "ParallelBacktestTask",
+    "ParallelBacktestRunner",
+    "compare_strategies",
+    "optimize_parameters",
+]

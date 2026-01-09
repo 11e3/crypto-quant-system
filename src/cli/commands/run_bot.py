@@ -6,7 +6,7 @@ Starts the live trading bot.
 
 import click
 
-from src.execution.bot_facade import create_bot
+from src.execution.bot.bot_facade import create_bot
 from src.utils.logger import get_logger, setup_logging
 
 setup_logging()

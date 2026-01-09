@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.backtester.bootstrap_analysis import BootstrapAnalyzer
+from src.backtester.analysis.bootstrap_analysis import BootstrapAnalyzer
 from src.backtester.engine import BacktestConfig
 from src.strategies.volatility_breakout.vbo import VanillaVBO
 

@@ -108,3 +108,20 @@ class TestInsufficientBalanceError:
         assert error.details["currency"] == "KRW"
         assert error.details["required"] == 100000.0
         assert error.details["available"] == 50000.0
+
+    def test_insufficient_balance_error_with_existing_details(self) -> None:
+        """Test InsufficientBalanceError with pre-existing details dict (line 64->66)."""
+        existing_details = {"order_id": "12345", "timestamp": "2024-01-01"}
+        error = InsufficientBalanceError(
+            "Insufficient balance",
+            currency="BTC",
+            required=1.5,
+            available=0.5,
+            details=existing_details,
+        )
+
+        assert error.details["order_id"] == "12345"
+        assert error.details["timestamp"] == "2024-01-01"
+        assert error.details["currency"] == "BTC"
+        assert error.details["required"] == 1.5
+        assert error.details["available"] == 0.5

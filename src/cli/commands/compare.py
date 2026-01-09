@@ -7,15 +7,8 @@ from pathlib import Path
 import click
 
 from src.backtester import BacktestConfig, compare_strategies
+from src.cli.commands.compare_utils import create_strategy_for_compare
 from src.strategies.base import Strategy
-from src.strategies.mean_reversion import (
-    MeanReversionStrategy,
-    SimpleMeanReversionStrategy,
-)
-from src.strategies.momentum import MomentumStrategy, SimpleMomentumStrategy
-from src.strategies.volatility_breakout import (
-    create_vbo_strategy,
-)
 from src.utils.logger import get_logger, setup_logging
 
 setup_logging()
@@ -120,53 +113,9 @@ def compare(
     # Create strategies
     strategy_objects: list[Strategy] = []
     for strategy_name in strategy_list:
-        if strategy_name == "vanilla":
-            strategy_objects.append(
-                create_vbo_strategy(
-                    name="VanillaVBO",
-                    sma_period=4,
-                    trend_sma_period=8,
-                    short_noise_period=4,
-                    long_noise_period=8,
-                    exclude_current=False,
-                    use_trend_filter=True,
-                    use_noise_filter=True,
-                )
-            )
-        elif strategy_name == "minimal":
-            strategy_objects.append(
-                create_vbo_strategy(
-                    name="MinimalVBO",
-                    sma_period=4,
-                    trend_sma_period=8,
-                    short_noise_period=4,
-                    long_noise_period=8,
-                    exclude_current=False,
-                    use_trend_filter=False,
-                    use_noise_filter=False,
-                )
-            )
-        elif strategy_name == "legacy":
-            strategy_objects.append(
-                create_vbo_strategy(
-                    name="LegacyBT",
-                    sma_period=5,
-                    trend_sma_period=10,
-                    short_noise_period=5,
-                    long_noise_period=10,
-                    exclude_current=True,
-                    use_trend_filter=True,
-                    use_noise_filter=True,
-                )
-            )
-        elif strategy_name == "momentum":
-            strategy_objects.append(MomentumStrategy(name="MomentumStrategy"))
-        elif strategy_name == "simple-momentum":
-            strategy_objects.append(SimpleMomentumStrategy(name="SimpleMomentum"))
-        elif strategy_name == "mean-reversion":
-            strategy_objects.append(MeanReversionStrategy(name="MeanReversionStrategy"))
-        elif strategy_name == "simple-mean-reversion":
-            strategy_objects.append(SimpleMeanReversionStrategy(name="SimpleMeanReversion"))
+        strategy_obj = create_strategy_for_compare(strategy_name)
+        if strategy_obj is not None:
+            strategy_objects.append(strategy_obj)
 
     # Create config
     config = BacktestConfig(
@@ -204,7 +153,7 @@ def compare(
         output_dir = Path(output)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        from src.backtester.report import generate_report
+        from src.backtester.report_pkg.report import generate_report
 
         for strategy_name, result in results.items():
             report_path = output_dir / f"{strategy_name}_comparison.html"

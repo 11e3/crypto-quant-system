@@ -199,6 +199,29 @@ class TestParallelBacktestRunner:
         mock_pool_class.assert_not_called()
 
     @patch("src.backtester.parallel._run_single_backtest")
+    @patch("multiprocessing.Pool")
+    def test_run_without_progress_callback(
+        self,
+        mock_pool_class: MagicMock,
+        mock_run: MagicMock,
+        sample_task: ParallelBacktestTask,
+        mock_result: BacktestResult,
+    ) -> None:
+        """Test parallel run without progress callback (covers line 122->120)."""
+        mock_run.return_value = ("TestTask", mock_result)
+        runner = ParallelBacktestRunner(n_workers=1)
+
+        mock_pool = MagicMock()
+        mock_pool_class.return_value.__enter__.return_value = mock_pool
+        mock_pool.map.return_value = [("TestTask", mock_result)]
+
+        # Call run without progress_callback
+        result = runner.run([sample_task])
+
+        assert "TestTask" in result
+        assert result["TestTask"] == mock_result
+
+    @patch("src.backtester.parallel._run_single_backtest")
     def test_run_sequential_empty_tasks(
         self, mock_run: MagicMock, mock_config: BacktestConfig, mock_strategy: MagicMock
     ) -> None:

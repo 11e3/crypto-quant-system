@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.config.loader import ConfigLoader
-from src.execution.bot import TradingBot
+from src.execution.bot.bot_facade import TradingBotFacade as TradingBot
 from tests.fixtures.mock_exchange import MockExchange
 
 
@@ -32,8 +32,8 @@ class TestTradingBot:
     def test_initialization(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
         """Test TradingBot initialization."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = MagicMock(spec=ConfigLoader)
             mock_config.get_trading_config.return_value = {
@@ -75,19 +75,25 @@ class TestTradingBot:
 
     def test_initialization_missing_api_keys(self, test_config_path: Path) -> None:
         """Test TradingBot initialization with missing API keys."""
-        with patch("src.execution.bot.get_config") as mock_get_config:
+        with (
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
+            patch("src.exchange.factory.get_config") as mock_factory_config,
+        ):
             mock_config = MagicMock(spec=ConfigLoader)
-            mock_config.get_upbit_keys.return_value = (None, None)
+            mock_config.get_upbit_keys.return_value = ("", "")
+            mock_config.get.return_value = ""  # For config.get("upbit.access_key")
+            mock_config.get_exchange_name.return_value = "upbit"
             mock_get_config.return_value = mock_config
+            mock_factory_config.return_value = mock_config
 
-            with pytest.raises(ValueError, match="Upbit API keys not found"):
+            with pytest.raises(ValueError, match="Upbit API keys not configured"):
                 TradingBot(config_path=test_config_path)
 
     def test_get_krw_balance(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
         """Test getting KRW balance."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -103,8 +109,8 @@ class TestTradingBot:
     ) -> None:
         """Test getting KRW balance with error."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -118,8 +124,8 @@ class TestTradingBot:
     def test_sell_all(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
         """Test selling all holdings."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -128,14 +134,14 @@ class TestTradingBot:
             # First buy some BTC
             mock_exchange.buy_market_order("KRW-BTC", 50000.0)
 
-            result = bot.sell_all("KRW-BTC")
+            result = bot._sell_all("KRW-BTC")
             assert isinstance(result, bool)
 
     def test_sell_all_error(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
         """Test selling all with error."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -143,31 +149,31 @@ class TestTradingBot:
             bot = TradingBot(config_path=test_config_path)
             bot.order_manager.place_buy_order = MagicMock(return_value=None)
 
-            result = bot.sell_all("KRW-BTC")
+            result = bot._sell_all("KRW-BTC")
             assert result is False
 
     def test_check_exit_conditions(
         self, mock_exchange: MockExchange, test_config_path: Path
     ) -> None:
-        """Test checking exit conditions."""
+        """Test checking exit conditions via signal_handler."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
 
             bot = TradingBot(config_path=test_config_path)
-            result = bot.check_exit_conditions("KRW-BTC")
+            result = bot.signal_handler.check_exit_signal("KRW-BTC")
             assert isinstance(result, bool)
 
     def test_check_entry_conditions(
         self, mock_exchange: MockExchange, test_config_path: Path
     ) -> None:
-        """Test checking entry conditions."""
+        """Test checking entry conditions via signal_handler."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -175,7 +181,7 @@ class TestTradingBot:
             bot = TradingBot(config_path=test_config_path)
             bot.target_info["KRW-BTC"] = {"target": 50000.0}
 
-            result = bot.check_entry_conditions("KRW-BTC", current_price=51000.0)
+            result = bot.signal_handler.check_entry_signal("KRW-BTC", current_price=51000.0)
             assert isinstance(result, bool)
 
     def test_check_entry_conditions_no_target(
@@ -183,55 +189,48 @@ class TestTradingBot:
     ) -> None:
         """Test checking entry conditions when no target info."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
 
             bot = TradingBot(config_path=test_config_path)
-            result = bot.check_entry_conditions("KRW-BTC", current_price=51000.0)
+            result = bot.signal_handler.check_entry_signal("KRW-BTC", current_price=51000.0)
             assert isinstance(result, bool)
 
     def test_calculate_sma_exit(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
-        """Test calculating SMA for exit condition (covers lines 154-162)."""
+        """Test calculating SMA for exit condition using bot_reset module."""
         import pandas as pd
 
-        with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
-        ):
-            mock_config = self._create_mock_config()
-            mock_get_config.return_value = mock_config
+        from src.execution.bot.bot_reset import calculate_sma_exit
 
-            bot = TradingBot(config_path=test_config_path)
+        # Test with sufficient data
+        dates = pd.date_range("2024-01-01", periods=10, freq="D")
+        df = pd.DataFrame(
+            {
+                "close": [100.0 + i * 10 for i in range(10)],
+            },
+            index=dates,
+        )
+        sma = calculate_sma_exit(df)
+        assert sma is not None
+        assert isinstance(sma, float)
 
-            # Test with sufficient data
-            dates = pd.date_range("2024-01-01", periods=10, freq="D")
-            df = pd.DataFrame(
-                {
-                    "close": [100.0 + i * 10 for i in range(10)],
-                },
-                index=dates,
-            )
-            sma = bot._calculate_sma_exit(df)
-            assert sma is not None
-            assert isinstance(sma, float)
+        # Test with insufficient data
+        df_short = pd.DataFrame({"close": [100.0, 110.0]}, index=dates[:2])
+        sma_short = calculate_sma_exit(df_short)
+        assert sma_short is None
 
-            # Test with insufficient data
-            df_short = pd.DataFrame({"close": [100.0, 110.0]}, index=dates[:2])
-            sma_short = bot._calculate_sma_exit(df_short)
-            assert sma_short is None
-
-            # Test with None
-            sma_none = bot._calculate_sma_exit(None)
-            assert sma_none is None
+        # Test with None
+        sma_none = calculate_sma_exit(None)
+        assert sma_none is None
 
     def test_initialize_targets(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
         """Test initializing targets."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_config.get_strategy_config.return_value = {
@@ -270,8 +269,8 @@ class TestTradingBot:
     ) -> None:
         """Test checking existing holdings."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -289,8 +288,8 @@ class TestTradingBot:
     ) -> None:
         """Test checking existing holdings with error."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -306,8 +305,8 @@ class TestTradingBot:
     ) -> None:
         """Test calculating buy amount with insufficient balance."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -323,8 +322,8 @@ class TestTradingBot:
     ) -> None:
         """Test calculating buy amount when max slots reached."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -346,8 +345,8 @@ class TestTradingBot:
     ) -> None:
         """Test processing ticker update."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -363,8 +362,8 @@ class TestTradingBot:
     ) -> None:
         """Test processing ticker update when already holding."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -384,8 +383,8 @@ class TestTradingBot:
     ) -> None:
         """Test processing ticker update when no entry signal."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -393,7 +392,7 @@ class TestTradingBot:
             bot = TradingBot(config_path=test_config_path)
             bot.target_info["KRW-BTC"] = {"target": 50000.0}
 
-            with patch.object(bot, "check_entry_conditions", return_value=False):
+            with patch.object(bot.signal_handler, "check_entry_signal", return_value=False):
                 bot.process_ticker_update("KRW-BTC", current_price=49000.0)
                 # Should not raise error
 
@@ -402,8 +401,8 @@ class TestTradingBot:
     ) -> None:
         """Test processing ticker update when buy amount is insufficient."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -412,7 +411,7 @@ class TestTradingBot:
             bot.target_info["KRW-BTC"] = {"target": 50000.0}
             mock_exchange.set_balance("KRW", 1000.0)
 
-            with patch.object(bot, "check_entry_conditions", return_value=True):
+            with patch.object(bot.signal_handler, "check_entry_signal", return_value=True):
                 bot.process_ticker_update("KRW-BTC", current_price=51000.0)
                 # Should not raise error
 
@@ -445,6 +444,7 @@ class TestTradingBot:
             "chat_id": "test_chat_id",
             "enabled": False,
         }
+        mock_config.get_exchange_name.return_value = "upbit"
         return mock_config
 
     def test_calculate_buy_amount(
@@ -452,8 +452,8 @@ class TestTradingBot:
     ) -> None:
         """Test calculating buy amount (covers lines 289-312)."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -489,9 +489,11 @@ class TestTradingBot:
         """Test processing exits (covers lines 238-262)."""
         import pandas as pd
 
+        from src.execution.bot.bot_reset import process_exits
+
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -515,22 +517,24 @@ class TestTradingBot:
             )
             mock_exchange.set_ohlcv_data("KRW-BTC", "day", sample_data)
 
-            # Mock exit signal
+            # Mock exit signal and _sell_all
             bot.signal_handler.check_exit_signal = MagicMock(return_value=True)
-            bot.sell_all = MagicMock(return_value=True)
+            bot._sell_all = MagicMock(return_value=True)
 
-            bot._process_exits()
+            process_exits(bot)
 
-            # Verify sell_all was called
-            bot.sell_all.assert_called_once_with("KRW-BTC")
+            # Verify _sell_all was called
+            bot._sell_all.assert_called_once_with("KRW-BTC")
 
     def test_recalculate_targets(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
-        """Test recalculating targets (covers lines 264-281)."""
+        """Test recalculating targets using bot_reset module."""
         import pandas as pd
 
+        from src.execution.bot.bot_reset import recalculate_targets
+
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
@@ -551,28 +555,27 @@ class TestTradingBot:
             )
             mock_exchange.set_ohlcv_data("KRW-BTC", "day", sample_data)
 
-            bot._recalculate_targets()
+            target_info = recalculate_targets(bot)
 
             # Verify targets were recalculated
-            assert "KRW-BTC" in bot.target_info or len(bot.target_info) == 0
+            assert "KRW-BTC" in target_info or len(target_info) == 0
 
     def test_daily_reset(self, mock_exchange: MockExchange, test_config_path: Path) -> None:
-        """Test daily reset (covers lines 283-287)."""
+        """Test daily reset using bot_reset module functions."""
         with (
-            patch("src.execution.bot.UpbitExchange", return_value=mock_exchange),
-            patch("src.execution.bot.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_init.ExchangeFactory.create", return_value=mock_exchange),
+            patch("src.execution.bot.bot_init.get_config") as mock_get_config,
+            patch("src.execution.bot.bot_reset.process_exits") as mock_process_exits,
+            patch("src.execution.bot.bot_reset.recalculate_targets") as mock_recalculate_targets,
         ):
             mock_config = self._create_mock_config()
             mock_get_config.return_value = mock_config
+            mock_recalculate_targets.return_value = {"KRW-BTC": {"target": 50000.0}}
 
             bot = TradingBot(config_path=test_config_path)
 
-            # Mock the methods called by daily_reset
-            bot._process_exits = MagicMock()
-            bot._recalculate_targets = MagicMock()
-
             bot.daily_reset()
 
-            # Verify both methods were called
-            bot._process_exits.assert_called_once()
-            bot._recalculate_targets.assert_called_once()
+            # Verify both functions were called
+            mock_process_exits.assert_called_once()
+            mock_recalculate_targets.assert_called_once()

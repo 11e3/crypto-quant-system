@@ -198,3 +198,14 @@ class TestLogPerformance:
         assert mock_debug.call_count == 2
         start_call = mock_debug.call_args_list[0][0][0]
         assert "[PERF] Starting test_operation" in start_call
+
+    def test_performance_logger_exit_without_enter(self) -> None:
+        """Test PerformanceLogger __exit__ when start_time is None - covers line 82->exit."""
+        logger = get_logger("test_module_perf")
+        perf_logger = PerformanceLogger(logger, "test_operation")
+
+        # Don't call __enter__, just call __exit__ directly
+        # start_time will be None
+        perf_logger.__exit__(None, None, None)
+
+        # Should not raise error, just do nothing

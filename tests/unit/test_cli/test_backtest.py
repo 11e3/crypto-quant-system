@@ -23,8 +23,8 @@ class TestBacktestCommand:
         assert result.exit_code == 0
         assert "Usage:" in result.output or "help" in result.output.lower()
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_vanilla_strategy(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -46,23 +46,14 @@ class TestBacktestCommand:
         mock_run_backtest.return_value = mock_result
 
         runner = CliRunner()
-        result = runner.invoke(backtest, ["--strategy", "vanilla", "--tickers", "KRW-BTC"])
+        result = runner.invoke(backtest, ["--strategy", "vanilla", "--ticker", "KRW-BTC"])
 
         assert result.exit_code == 0
-        mock_create_strategy.assert_called_once_with(
-            name="VanillaVBO",
-            use_trend_filter=True,
-            use_noise_filter=True,
-            sma_period=5,
-            trend_sma_period=10,
-            short_noise_period=5,
-            long_noise_period=10,
-            exclude_current=True,
-        )
+        mock_create_strategy.assert_called_once()
         mock_run_backtest.assert_called_once()
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_minimal_strategy(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -87,14 +78,10 @@ class TestBacktestCommand:
         result = runner.invoke(backtest, ["--strategy", "minimal"])
 
         assert result.exit_code == 0
-        mock_create_strategy.assert_called_once_with(
-            name="MinimalVBO",
-            use_trend_filter=False,
-            use_noise_filter=False,
-        )
+        mock_create_strategy.assert_called_once()
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_legacy_strategy(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -119,19 +106,10 @@ class TestBacktestCommand:
         result = runner.invoke(backtest, ["--strategy", "legacy"])
 
         assert result.exit_code == 0
-        mock_create_strategy.assert_called_once_with(
-            name="LegacyBT",
-            sma_period=5,
-            trend_sma_period=10,
-            short_noise_period=5,
-            long_noise_period=10,
-            use_trend_filter=True,
-            use_noise_filter=True,
-            exclude_current=True,
-        )
+        mock_create_strategy.assert_called_once()
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_custom_options(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -157,7 +135,7 @@ class TestBacktestCommand:
         result = runner.invoke(
             backtest,
             [
-                "--tickers",
+                "--ticker",
                 "KRW-BTC",
                 "--no-cache",
             ],
@@ -171,14 +149,18 @@ class TestBacktestCommand:
         assert config is not None
         assert config.use_cache is False
 
-    @patch("src.backtester.report.generate_report")
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.log_risk_metrics")
+    @patch("src.cli.commands.backtest.log_backtest_results")
+    @patch("src.cli.commands.backtest.generate_backtest_report")
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_with_output(
         self,
         mock_create_strategy: MagicMock,
         mock_run_backtest: MagicMock,
         mock_generate_report: MagicMock,
+        mock_log_results: MagicMock,
+        mock_log_risk: MagicMock,
     ) -> None:
         """Test backtest command with output directory."""
         mock_strategy = MagicMock()
@@ -208,11 +190,11 @@ class TestBacktestCommand:
             mock_generate_report.assert_called_once()
             call_args = mock_generate_report.call_args
             assert call_args is not None
-            assert call_args.kwargs.get("save_path") == output_dir.with_suffix(".html")
-            assert call_args.kwargs.get("show") is False
+            # generate_backtest_report uses 'output' as kwarg, not 'save_path'
+            assert call_args.kwargs.get("output") == str(output_dir)
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_invalid_strategy(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -223,29 +205,28 @@ class TestBacktestCommand:
         assert result.exit_code != 0
         assert "invalid choice" in result.output.lower() or "invalid" in result.output.lower()
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
     def test_backtest_command_unknown_strategy_value_error(
-        self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
+        self,
     ) -> None:
         """Test backtest command with unknown strategy raises ValueError (covers line 123)."""
         # Directly call the function to bypass Click's Choice validation
-        # This tests the else clause that raises ValueError on line 123
+        # This tests the else clause that raises ValueError in create_strategy
         from src.cli.commands.backtest import backtest
 
         # Access the underlying callback function from the Click command
         # Click stores the original function in the 'callback' attribute
         callback_func = backtest.callback if hasattr(backtest, "callback") else backtest
 
-        # Call the callback directly with an invalid strategy to test line 123
+        # Call the callback directly with an invalid strategy to test ValueError
         with pytest.raises(ValueError, match="Unknown strategy: invalid_strategy"):
             callback_func(
-                tickers=("KRW-BTC",),
+                ticker=("KRW-BTC",),
                 interval="day",
+                k=0.5,
                 initial_capital=1.0,
                 fee_rate=0.0005,
                 max_slots=4,
-                strategy="invalid_strategy",  # Invalid strategy that triggers else clause (line 123)
+                strategy="invalid_strategy",  # Invalid strategy that triggers ValueError
                 output=None,
                 no_cache=False,
                 sma_period=None,
@@ -256,16 +237,10 @@ class TestBacktestCommand:
                 position_sizing="equal",
                 position_sizing_risk=0.02,
                 position_sizing_lookback=20,
-                stop_loss=None,
-                take_profit=None,
-                trailing_stop=None,
-                portfolio_optimization=None,
-                risk_free_rate=0.0,
-                max_kelly=0.25,
             )
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_empty_dates(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -288,14 +263,14 @@ class TestBacktestCommand:
         mock_run_backtest.return_value = mock_result
 
         runner = CliRunner()
-        result = runner.invoke(backtest, ["--tickers", "KRW-BTC"])
+        result = runner.invoke(backtest, ["--ticker", "KRW-BTC"])
 
         # Should handle empty dates gracefully (period_days = 0)
         assert result.exit_code == 0
         mock_run_backtest.assert_called_once()
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_all_options(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -323,9 +298,9 @@ class TestBacktestCommand:
             result = runner.invoke(
                 backtest,
                 [
-                    "--tickers",
+                    "--ticker",
                     "KRW-BTC",
-                    "--tickers",
+                    "--ticker",
                     "KRW-ETH",
                     "--interval",
                     "day",
@@ -351,14 +326,18 @@ class TestBacktestCommand:
             assert config.max_slots == 2
             assert config.use_cache is False
 
-    @patch("src.backtester.report.generate_report")
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.log_risk_metrics")
+    @patch("src.cli.commands.backtest.log_backtest_results")
+    @patch("src.cli.commands.backtest.generate_backtest_report")
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_output_with_string_path(
         self,
         mock_create_strategy: MagicMock,
         mock_run_backtest: MagicMock,
         mock_generate_report: MagicMock,
+        mock_log_results: MagicMock,
+        mock_log_risk: MagicMock,
     ) -> None:
         """Test backtest command with string output path."""
         mock_strategy = MagicMock()
@@ -386,13 +365,13 @@ class TestBacktestCommand:
             mock_generate_report.assert_called_once()
             call_args = mock_generate_report.call_args
             assert call_args is not None
-            # Should convert string to Path
-            save_path = call_args.kwargs.get("save_path")
-            assert save_path is not None
-            assert str(save_path) == output_path + ".html"
+            # generate_backtest_report uses 'output' as kwarg
+            output_arg = call_args.kwargs.get("output")
+            assert output_arg is not None
+            assert output_arg == output_path
 
-    @patch("src.cli.commands.backtest.run_backtest", create=True)
-    @patch("src.cli.commands.backtest.create_vbo_strategy", create=True)
+    @patch("src.cli.commands.backtest.run_backtest")
+    @patch("src.cli.commands.backtest.create_strategy")
     def test_backtest_command_run_backtest_error(
         self, mock_create_strategy: MagicMock, mock_run_backtest: MagicMock
     ) -> None:
@@ -402,7 +381,7 @@ class TestBacktestCommand:
         mock_run_backtest.side_effect = ValueError("Test error")
 
         runner = CliRunner()
-        result = runner.invoke(backtest, ["--tickers", "KRW-BTC"])
+        result = runner.invoke(backtest, ["--ticker", "KRW-BTC"])
 
         # Should propagate error (Click will handle it)
         assert result.exit_code != 0

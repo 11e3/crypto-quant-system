@@ -8,34 +8,17 @@ Supports incremental updates by fetching only new data since last update.
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
 
 import pandas as pd
-import pyupbit
 
-from src.config import (
-    RAW_DATA_DIR,
-    UPBIT_API_RATE_LIMIT_DELAY,
-    UPBIT_MAX_CANDLES_PER_REQUEST,
-)
+from src.config import RAW_DATA_DIR, UPBIT_API_RATE_LIMIT_DELAY
+from src.data.collector_fetch import Interval, fetch_all_candles
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Type aliases
-Interval = Literal[
-    "minute1",
-    "minute3",
-    "minute5",
-    "minute10",
-    "minute15",
-    "minute30",
-    "minute60",
-    "minute240",
-    "day",
-    "week",
-    "month",
-]
+# Re-export Interval for backward compatibility
+__all__ = ["UpbitDataCollector", "Interval"]
 
 
 class UpbitDataCollector:
@@ -80,117 +63,6 @@ class UpbitDataCollector:
             return df
         return None
 
-    def _fetch_candles(
-        self,
-        ticker: str,
-        interval: Interval,
-        count: int = UPBIT_MAX_CANDLES_PER_REQUEST,
-        to: datetime | None = None,
-    ) -> pd.DataFrame | None:
-        """
-        Fetch candle data from Upbit API.
-
-        Args:
-            ticker: Upbit ticker (e.g., 'KRW-BTC')
-            interval: Candle interval
-            count: Number of candles to fetch (max 200)
-            to: End datetime for fetching (exclusive)
-
-        Returns:
-            DataFrame with OHLCV data or None if error
-        """
-        max_retries = 3
-        retry_delay = 1.0
-
-        for attempt in range(max_retries):
-            try:
-                result = pyupbit.get_ohlcv(
-                    ticker=ticker,
-                    interval=interval,
-                    count=min(count, UPBIT_MAX_CANDLES_PER_REQUEST),
-                    to=to,
-                )
-                if result is None:
-                    return None
-                # Explicit conversion from Any to DataFrame
-                return pd.DataFrame(result)
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    sleep_time = retry_delay * (2**attempt)
-                    logger.warning(
-                        f"Error fetching candles for {ticker} (attempt {attempt + 1}/{max_retries}): {e}. "
-                        f"Retrying in {sleep_time}s..."
-                    )
-                    time.sleep(sleep_time)
-                else:
-                    logger.error(
-                        f"Error fetching candles for {ticker} after {max_retries} attempts: {e}",
-                        exc_info=True,
-                    )
-                    return None
-        return None
-
-    def _fetch_all_candles(
-        self,
-        ticker: str,
-        interval: Interval,
-        since: datetime | None = None,
-        max_candles: int = 50000,
-    ) -> pd.DataFrame | None:
-        """
-        Fetch all candles with pagination support.
-
-        Args:
-            ticker: Upbit ticker
-            interval: Candle interval
-            since: Only fetch candles after this datetime
-            max_candles: Maximum number of candles to fetch
-
-        Returns:
-            DataFrame with all fetched OHLCV data
-        """
-        all_data: list[pd.DataFrame] = []
-        to_datetime: datetime | None = None
-        total_fetched = 0
-
-        while total_fetched < max_candles:
-            df = self._fetch_candles(ticker, interval, to=to_datetime)
-
-            if df is None or df.empty:
-                break
-
-            # Filter data if we have a since datetime
-            if since is not None:
-                # Keep only rows after 'since' datetime
-                df = df[df.index > since]
-
-                if df.empty:
-                    break
-
-            all_data.append(df)
-            total_fetched += len(df)
-
-            # Get earliest datetime for next pagination
-            to_datetime = df.index.min()
-
-            # If we got less than max, we've reached the end
-            if len(df) < UPBIT_MAX_CANDLES_PER_REQUEST:
-                break
-
-            # Rate limiting
-            time.sleep(UPBIT_API_RATE_LIMIT_DELAY)
-            logger.debug(f"Fetched {total_fetched} candles for {ticker}...")
-
-        if not all_data:
-            return None
-
-        # Combine all dataframes and sort by datetime
-        combined = pd.concat(all_data)
-        combined = combined[~combined.index.duplicated(keep="first")]
-        combined = combined.sort_index()
-
-        return combined
-
     def collect(
         self,
         ticker: str,
@@ -224,7 +96,7 @@ class UpbitDataCollector:
             logger.info(f"Full collection for {ticker} ({interval})")
 
         # Fetch new candles
-        new_df = self._fetch_all_candles(ticker, interval, since=since)
+        new_df = fetch_all_candles(ticker, interval, since=since)
 
         if new_df is None or new_df.empty:
             logger.info(f"No new data for {ticker} ({interval})")

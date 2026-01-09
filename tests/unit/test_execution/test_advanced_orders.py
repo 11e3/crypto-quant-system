@@ -6,11 +6,12 @@ from datetime import date
 
 import pytest
 
-from src.execution.advanced_orders import (
+from src.execution.orders.advanced_orders import (
     AdvancedOrder,
     AdvancedOrderManager,
     OrderType,
 )
+from src.execution.orders.advanced_orders_check import update_trailing_stop
 
 # -------------------------------------------------------------------------
 # Fixtures
@@ -721,3 +722,27 @@ class TestAdvancedOrdersIntegration:
         active = manager.get_active_orders(ticker="KRW-BTC")
         assert len(active) == 1
         assert active[0].order_type == OrderType.TAKE_PROFIT
+
+
+class TestUpdateTrailingStopHigh:
+    """Test update_trailing_stop function edge cases."""
+
+    def test_trailing_stop_pct_none(self, sample_date: date) -> None:
+        """Test trailing stop update when trailing_stop_pct is None (line 97->exit)."""
+        order = AdvancedOrder(
+            order_id="test-123",
+            ticker="KRW-BTC",
+            entry_price=50000.0,
+            entry_date=sample_date,
+            amount=1.0,
+            order_type=OrderType.TRAILING_STOP,
+            trailing_stop_pct=None,  # Key: trailing_stop_pct is None
+            highest_price=None,
+        )
+
+        # Call with a new high price
+        update_trailing_stop(order, check_high=55000.0)
+
+        # highest_price should be updated, but stop_loss_price shouldn't change
+        assert order.highest_price == 55000.0
+        assert order.stop_loss_price is None  # Not updated due to None trailing_stop_pct

@@ -14,6 +14,9 @@ from src.strategies.pair_trading.conditions import (
     SpreadMeanReversionCondition,
     SpreadZScoreCondition,
 )
+from src.strategies.pair_trading.spread_utils import (
+    calculate_spread_for_pair as _calculate_spread_for_pair,
+)
 from src.utils.indicators import sma
 
 
@@ -215,38 +218,4 @@ class PairTradingStrategy(Strategy):
         Returns:
             DataFrame with merged data and spread indicators
         """
-        # Align indices (use intersection of dates)
-        common_dates = df1.index.intersection(df2.index)
-        df1_aligned = df1.loc[common_dates].copy()
-        df2_aligned = df2.loc[common_dates].copy()
-
-        # Create merged dataframe
-        merged_df = pd.DataFrame(index=common_dates)
-        merged_df["close_asset1"] = df1_aligned["close"]
-        merged_df["close_asset2"] = df2_aligned["close"]
-
-        # Add other columns for reference (if available)
-        if "open" in df1_aligned.columns:
-            merged_df["open_asset1"] = df1_aligned["open"]
-        if "high" in df1_aligned.columns:
-            merged_df["high_asset1"] = df1_aligned["high"]
-        if "low" in df1_aligned.columns:
-            merged_df["low_asset1"] = df1_aligned["low"]
-        if "volume" in df1_aligned.columns:
-            merged_df["volume_asset1"] = df1_aligned["volume"]
-        else:
-            merged_df["volume_asset1"] = 0
-
-        if "open" in df2_aligned.columns:
-            merged_df["open_asset2"] = df2_aligned["open"]
-        if "high" in df2_aligned.columns:
-            merged_df["high_asset2"] = df2_aligned["high"]
-        if "low" in df2_aligned.columns:
-            merged_df["low_asset2"] = df2_aligned["low"]
-        if "volume" in df2_aligned.columns:
-            merged_df["volume_asset2"] = df2_aligned["volume"]
-        else:
-            merged_df["volume_asset2"] = 0
-
-        # Calculate indicators
-        return self.calculate_indicators(merged_df)
+        return _calculate_spread_for_pair(df1, df2, self.spread_type, self.lookback_period)

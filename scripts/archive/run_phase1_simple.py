@@ -16,11 +16,11 @@ sys.path.insert(0, str(project_root))
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-
-from src.backtester.engine import BacktestConfig  # noqa: E402
 from src.backtester.permutation_test import PermutationTester  # noqa: E402
 from src.backtester.robustness_analysis import RobustnessAnalyzer  # noqa: E402
 from src.backtester.walk_forward_auto import WalkForwardAnalyzer  # noqa: E402
+
+from src.backtester.engine import BacktestConfig  # noqa: E402
 from src.strategies.volatility_breakout.vbo import VanillaVBO  # noqa: E402
 from src.utils.logger import get_logger  # noqa: E402
 

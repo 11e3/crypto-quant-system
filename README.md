@@ -21,7 +21,7 @@
 
 **변동성 돌파 전략 기반 암호화폐 자동 거래 시스템**
 
-[기능](#-features) • [빠른 시작](#-quick-start) • [아키텍처](#-architecture) • [전략](#-전략-상세-설명) • [문서](#-documentation) • [기여하기](#-contributing)
+[기능](#기능) • [빠른 시작](#빠른-시작) • [프로젝트 구조](#프로젝트-구조) • [문서](#문서) • [테스트](#테스트-및-코드-품질) • [기여하기](#기여하기)
 
 </div>
 
@@ -52,7 +52,9 @@ Crypto Quant System은 엄격한 타입 안전성과 높은 테스트 커버리�
 ### 핵심 기능
 
 - 🔄 **변동성 돌파 전략**: Larry Williams 변동성 돌파 기반 자동 매매
-- 📊 **벡터화 백테스팅**: 빠른 과거 성능 분석 (8년+ 데이터)
+- 📊 **이중 백테스팅 엔진**: 
+  - VectorizedBacktestEngine: 고속 벡터화 처리 (VBO 전용)
+  - SimpleBacktestEngine: 명확한 Event-driven 방식 (모든 전략)
 - 🤖 **실시간 거래 봇**: WebSocket 실시간 시장 데이터 연동
 - 📈 **성능 분석**: 포괄적인 지표 계산 (CAGR, Sharpe, MDD, Calmar 등)
 - 🎨 **시각적 리포트**: 자산 곡선, 낙폭 차트, 월별/연도별 히트맵
@@ -220,7 +222,8 @@ crypto-quant run-bot
 crypto-quant-system/
 ├── src/                        # 메인 소스 코드
 │   ├── backtester/            # 백테스팅 엔진
-│   │   ├── engine.py          # 벡터화 백테스트 엔진
+│   │   ├── engine.py          # 벡터화 백테스트 엔진 (VBO 전용)
+│   │   ├── simple_engine.py   # Event-driven 백테스트 엔진 (범용)
 │   │   ├── report.py          # 성능 리포트 생성 (HTML/JSON)
 │   │   ├── optimization.py     # 파라미터 최적화 (Grid/Random)
 │   │   ├── bootstrap_analysis.py   # Bootstrap 신뢰구간
@@ -352,7 +355,7 @@ crypto-quant-system/
 make test
 
 # 커버리지 리포트 생성
-uv run pytest --cov=src --cov-report=html
+uv run pytest --cov=src --cov-branch --cov-report=html
 # 결과: htmlcov/index.html
 
 # 특정 모듈만 테스트
@@ -360,7 +363,7 @@ uv run pytest tests/unit/test_backtester/
 
 # nox를 통한 자동화 테스트
 nox  # 전체 세션 (lint, type, test)
-nox -s test  # 테스트만
+nox -s tests  # 테스트만
 nox -s lint  # 린트만
 ```
 

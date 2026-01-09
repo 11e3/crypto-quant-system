@@ -440,3 +440,58 @@ class TestIntegrationScenarios:
 
         # But still profitable
         assert result["net_pnl_pct"] > 0
+
+    def test_calculate_net_pnl_with_explicit_slippage(self) -> None:
+        """Test calculate_net_pnl with explicit slippage values (covers lines 62->64, 64->67)."""
+        calc = TradeCostCalculator(vip_tier=0, volatility_regime="medium")
+
+        result = calc.calculate_net_pnl(
+            entry_price=50_000,
+            exit_price=51_000,
+            entry_slippage=0.03,  # Explicit entry slippage
+            exit_slippage=0.04,  # Explicit exit slippage
+        )
+
+        # Should use explicit slippage values
+        assert result["entry_slippage_pct"] == 0.03
+        assert result["exit_slippage_pct"] == 0.04
+
+
+class TestCostBreakdownAnalysis:
+    """Tests for CostBreakdownAnalysis.analyze_loss_breakdown method - covers lines 153-155."""
+
+    def test_analyze_loss_breakdown_normal(self) -> None:
+        """Test loss breakdown with normal costs."""
+        from src.backtester.trade_cost_calculator import CostBreakdownAnalysis
+
+        result = CostBreakdownAnalysis.analyze_loss_breakdown(
+            gross_pnl_pct=2.0,
+            entry_slippage=0.02,
+            exit_slippage=0.02,
+            taker_fee=0.05,
+        )
+
+        assert result["gross_pnl_pct"] == 2.0
+        assert result["total_slippage_pct"] == 0.04
+        assert result["total_fee_pct"] == 0.10
+        assert result["total_cost_pct"] == 0.14
+        assert result["net_pnl_pct"] == pytest.approx(2.0 - 0.14)
+        assert result["slippage_pct_of_cost"] > 0
+        assert result["fee_pct_of_cost"] > 0
+
+    def test_analyze_loss_breakdown_zero_costs(self) -> None:
+        """Test loss breakdown with zero costs - covers line 153-155 else branch."""
+        from src.backtester.trade_cost_calculator import CostBreakdownAnalysis
+
+        result = CostBreakdownAnalysis.analyze_loss_breakdown(
+            gross_pnl_pct=1.0,
+            entry_slippage=0.0,
+            exit_slippage=0.0,
+            taker_fee=0.0,
+        )
+
+        assert result["total_cost_pct"] == 0.0
+        assert result["net_pnl_pct"] == 1.0
+        # When total_cost is 0, slippage/fee pct of cost should be 0
+        assert result["slippage_pct_of_cost"] == 0
+        assert result["fee_pct_of_cost"] == 0
