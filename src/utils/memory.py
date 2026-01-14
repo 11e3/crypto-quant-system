@@ -156,7 +156,7 @@ class MemoryProfiler:
             self.start_memory = None
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, _exc_type: Any, _exc_val: Any, _exc_tb: Any) -> None:
         """End profiling and log results."""
         if self.start_memory is None:
             return

@@ -77,7 +77,7 @@ class PerformanceLogger:
             self.logger.debug(f"[PERF] Starting {self.operation}")
         return self
 
-    def __exit__(self, exc_type: type | None, exc_val: Exception | None, exc_tb: Any) -> None:
+    def __exit__(self, _exc_type: type | None, _exc_val: Exception | None, _exc_tb: Any) -> None:
         """Log elapsed time."""
         if self.start_time is not None:
             elapsed = time.perf_counter() - self.start_time

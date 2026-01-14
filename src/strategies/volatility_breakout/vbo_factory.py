@@ -4,7 +4,13 @@ VBO strategy factory functions.
 Provides functions to create customized VBO strategies.
 """
 
+from __future__ import annotations
+
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.strategies.volatility_breakout.vbo import VanillaVBO
 
 from src.strategies.base import Condition
 from src.strategies.volatility_breakout.conditions import (
@@ -30,7 +36,7 @@ def create_vbo_strategy(
     extra_entry_conditions: Sequence[Condition] | None = None,
     extra_exit_conditions: Sequence[Condition] | None = None,
     exclude_current: bool = False,
-) -> "VanillaVBO":
+) -> VanillaVBO:
     """
     Factory function to create customized VBO strategy.
 
@@ -109,7 +115,7 @@ def create_vbo_strategy(
 def quick_vbo(
     sma: int = 4,
     n: int = 2,
-) -> "VanillaVBO":
+) -> VanillaVBO:
     """
     Create VBO with simplified parameters matching original bt.py.
 
@@ -129,8 +135,3 @@ def quick_vbo(
         short_noise_period=sma,
         long_noise_period=sma * n,
     )
-
-
-# Import for type hints
-if True:  # TYPE_CHECKING workaround for circular imports
-    from src.strategies.volatility_breakout.vbo import VanillaVBO  # noqa: F811
