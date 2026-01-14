@@ -650,7 +650,7 @@ class TestDeprecatedAliases:
         """Test TrendFilter deprecated alias - covers lines 49-54."""
         import warnings
 
-        from src.strategies.volatility_breakout.conditions_deprecated import TrendFilter
+        from src.strategies.volatility_breakout.conditions import TrendFilter
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -665,7 +665,7 @@ class TestDeprecatedAliases:
         """Test NoiseFilter deprecated alias - covers lines 49-54."""
         import warnings
 
-        from src.strategies.volatility_breakout.conditions_deprecated import NoiseFilter
+        from src.strategies.volatility_breakout.conditions import NoiseFilter
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
