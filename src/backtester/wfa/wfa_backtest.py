@@ -74,7 +74,7 @@ def _simulate_positions(
         elif signal * position < 0:
             # 엑싯 (반대 신호)
             if position != 0:
-                pnl = (close - entry_price) * position / entry_price
+                pnl = (close - entry_price) * position / entry_price if entry_price > 0 else 0.0
                 trades.append(pnl)
                 equity.append(equity[-1] * (1 + pnl))
                 position = int(signal)
@@ -88,7 +88,7 @@ def _simulate_positions(
     # 보유 중인 포지션 정리
     if position != 0 and len(df) > 0:
         last_close = float(df.iloc[-1].get("close", entry_price))
-        pnl = (last_close - entry_price) * position / entry_price
+        pnl = (last_close - entry_price) * position / entry_price if entry_price > 0 else 0.0
         trades.append(pnl)
         equity.append(equity[-1] * (1 + pnl))
 
@@ -130,7 +130,9 @@ def _calculate_sharpe(equity: list[float]) -> float:
     if len(equity) <= 1:
         return 0.0
 
-    returns = np.diff(equity) / np.array(equity[:-1])
+    equity_prev = np.array(equity[:-1])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        returns = np.diff(equity) / np.where(equity_prev == 0, np.nan, equity_prev)
     std = float(np.std(returns))
 
     if std > 0:
@@ -145,7 +147,8 @@ def _calculate_max_drawdown(equity: list[float]) -> float:
 
     equity_arr = np.array(equity)
     cummax = np.maximum.accumulate(equity_arr)
-    dd = (equity_arr - cummax) / cummax
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dd = (equity_arr - cummax) / np.where(cummax == 0, np.nan, cummax)
 
     return float(np.min(dd)) if len(dd) > 0 else 0.0
 

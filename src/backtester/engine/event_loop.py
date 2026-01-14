@@ -188,7 +188,7 @@ def close_remaining_positions(
         revenue = position.amount * exit_price * (1 - config.fee_rate)
         cost = position.amount * position.entry_price
         pnl = revenue - cost
-        pnl_pct = (exit_price / position.entry_price - 1) * 100
+        pnl_pct = (exit_price / position.entry_price - 1) * 100 if position.entry_price > 0 else 0.0
 
         trade = Trade(
             ticker=ticker,

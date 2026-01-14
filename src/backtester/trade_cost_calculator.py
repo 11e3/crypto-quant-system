@@ -64,7 +64,7 @@ class TradeCostCalculator:
         if exit_slippage is None:
             exit_slippage = self.slippage_base[self.volatility_regime]
 
-        gross_pnl_pct = ((exit_price - entry_price) / entry_price) * 100
+        gross_pnl_pct = ((exit_price - entry_price) / entry_price) * 100 if entry_price > 0 else 0.0
         total_slippage = entry_slippage + exit_slippage
         entry_fee = self.fees["taker"]
         exit_fee = self.fees["taker"]

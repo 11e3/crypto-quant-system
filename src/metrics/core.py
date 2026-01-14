@@ -25,7 +25,11 @@ def calculate_returns(equity: np.ndarray) -> np.ndarray:
     """
     if len(equity) < 2:
         return np.array([], dtype=np.float64)
-    return np.diff(equity) / equity[:-1]
+    prev_equity = equity[:-1]
+    # Handle division by zero: replace 0 with nan to avoid inf
+    with np.errstate(divide="ignore", invalid="ignore"):
+        returns = np.diff(equity) / np.where(prev_equity == 0, np.nan, prev_equity)
+    return returns
 
 
 def calculate_total_return(
@@ -83,7 +87,8 @@ def calculate_max_drawdown(equity: np.ndarray) -> float:
         return 0.0
 
     cummax = np.maximum.accumulate(equity)
-    drawdown = (cummax - equity) / cummax
+    with np.errstate(divide="ignore", invalid="ignore"):
+        drawdown = (cummax - equity) / np.where(cummax == 0, np.nan, cummax)
     return float(np.nanmax(drawdown)) * 100
 
 

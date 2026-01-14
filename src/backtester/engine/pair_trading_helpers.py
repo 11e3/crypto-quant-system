@@ -92,7 +92,7 @@ def process_pair_exits(
 
         entry_price = position_entry_prices[t_idx]
         pnl = revenue - (amount * entry_price)
-        pnl_pct = (exit_price / entry_price - 1) * 100
+        pnl_pct = (exit_price / entry_price - 1) * 100 if entry_price > 0 else 0.0
 
         for trade in trades_list:
             if (

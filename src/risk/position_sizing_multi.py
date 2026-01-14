@@ -38,6 +38,10 @@ def calculate_multi_asset_position_sizes(
     Returns:
         Dictionary mapping ticker to position size
     """
+    # Handle empty tickers list
+    if not tickers:
+        return {}
+
     if method == "equal":
         size_per_ticker = available_cash / len(tickers)
         return dict.fromkeys(tickers, size_per_ticker)

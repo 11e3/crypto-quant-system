@@ -36,7 +36,7 @@ def execute_exit(
     state.cash += revenue
 
     pnl = revenue - (amount * entry_price)
-    pnl_pct = (exit_price / entry_price - 1) * 100
+    pnl_pct = (exit_price / entry_price - 1) * 100 if entry_price > 0 else 0.0
     commission = amount * entry_price * config.fee_rate + amount * exit_price * config.fee_rate
     slippage = amount * (entry_price + exit_price) * config.slippage_rate
 
@@ -84,7 +84,7 @@ def handle_whipsaw(
     state.cash = state.cash - invest_amount + return_money
 
     pnl = return_money - invest_amount
-    pnl_pct = (sell_price / buy_price - 1) * 100
+    pnl_pct = (sell_price / buy_price - 1) * 100 if buy_price > 0 else 0.0
     commission = amount * (buy_price + sell_price) * fee_rate
     slippage = amount * (buy_price + sell_price) * slippage_rate
 

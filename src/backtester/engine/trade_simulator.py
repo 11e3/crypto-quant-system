@@ -61,7 +61,7 @@ def process_stop_loss_take_profit(
 
         current_price = closes[t_idx, d_idx]
         entry_price = state.position_entry_prices[t_idx]
-        pnl_pct = current_price / entry_price - 1.0
+        pnl_pct = current_price / entry_price - 1.0 if entry_price > 0 else 0.0
 
         should_exit, is_stop_loss, is_take_profit = _check_exit_conditions(pnl_pct, config)
 
