@@ -173,7 +173,7 @@ def render_backtest_page() -> None:
 
 def _display_results(result) -> None:
     """백테스트 결과 표시.
-    
+
     Args:
         result: BacktestResult 객체
     """

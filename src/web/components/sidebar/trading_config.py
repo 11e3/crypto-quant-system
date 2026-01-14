@@ -38,7 +38,7 @@ class TradingConfig:
 
 def render_trading_config() -> TradingConfig:
     """거래 설정 UI 렌더링.
-    
+
     Returns:
         TradingConfig 객체
     """

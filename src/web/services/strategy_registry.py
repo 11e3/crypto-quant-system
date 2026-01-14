@@ -18,16 +18,16 @@ __all__ = ["StrategyRegistry"]
 
 class StrategyRegistry:
     """전략 자동 감지 및 레지스트리.
-    
+
     모든 전략 모듈을 스캔하여 Strategy 서브클래스를 탐색하고,
     __init__ 시그니처에서 파라미터를 추출하여 메타데이터를 생성합니다.
-    
+
     Example:
         >>> registry = StrategyRegistry()
         >>> strategies = registry.list_strategies()
         >>> for info in strategies:
         ...     print(f"{info.name}: {info.description}")
-        >>> 
+        >>>
         >>> params = registry.get_parameters("VanillaVBO")
         >>> strategy_class = registry.get_strategy_class("VanillaVBO")
     """
@@ -151,11 +151,11 @@ class StrategyRegistry:
         """타입 힌트와 기본값에서 파라미터 타입 추론."""
         # 타입 힌트 체크
         if annotation != inspect.Parameter.empty:
-            if annotation == int or annotation == "int":
+            if annotation is int or annotation == "int":
                 return "int"
-            elif annotation == float or annotation == "float":
+            elif annotation is float or annotation == "float":
                 return "float"
-            elif annotation == bool or annotation == "bool":
+            elif annotation is bool or annotation == "bool":
                 return "bool"
 
         # 기본값으로 추론
