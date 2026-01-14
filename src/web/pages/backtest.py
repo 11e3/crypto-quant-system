@@ -3,7 +3,10 @@
 백테스트 실행 및 결과 표시 페이지.
 """
 
+import json
+
 import numpy as np
+import pandas as pd
 import streamlit as st
 
 from src.backtester.models import BacktestConfig
@@ -31,11 +34,17 @@ __all__ = ["render_backtest_page"]
 
 def render_backtest_page() -> None:
     """백테스트 페이지 렌더링."""
-    st.header("📈 백테스트")
+    # 헤더
+    st.markdown("""
+    <div class="main-header">
+        <h1>📈 백테스트</h1>
+        <p>이벤트 드리븐 엔진으로 전략을 테스트하세요</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # ===== 사이드바 설정 =====
     with st.sidebar:
-        st.title("📊 백테스트 설정")
+        st.markdown("### ⚙️ 백테스트 설정")
         st.markdown("---")
 
         # 1. 날짜 설정
@@ -66,10 +75,12 @@ def render_backtest_page() -> None:
     # 검증
     if not strategy_name:
         st.warning("⚠️ 전략을 선택하세요.")
+        _show_empty_state(start_date, end_date, trading_config, strategy_name, strategy_params, selected_tickers)
         return
 
     if not selected_tickers:
         st.warning("⚠️ 최소 1개 이상의 자산을 선택하세요.")
+        _show_empty_state(start_date, end_date, trading_config, strategy_name, strategy_params, selected_tickers)
         return
 
     # 데이터 가용성 체크
@@ -134,56 +145,107 @@ def render_backtest_page() -> None:
     # 결과 표시
     if "backtest_result" in st.session_state:
         result = st.session_state.backtest_result
-        _display_results(result)
+        _display_results(result, strategy_name)
     else:
-        # 안내 메시지
-        st.info(
-            "👈 왼쪽 사이드바에서 설정을 완료하고 **🚀 백테스트 실행** 버튼을 클릭하세요."
-        )
-
-        # 설정 요약 표시
-        with st.expander("📋 현재 설정 요약", expanded=True):
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown(f"""
-                **📅 기간**
-                - 시작: {start_date}
-                - 종료: {end_date}
-                - 기간: {(end_date - start_date).days}일
-
-                **⏱️ 거래 설정**
-                - 인터벌: {trading_config.interval}
-                - 수수료: {trading_config.fee_rate:.2%}
-                - 슬리피지: {trading_config.slippage_rate:.2%}
-                """)
-
-            with col2:
-                st.markdown(f"""
-                **📈 전략**
-                - 이름: {strategy_name or '미선택'}
-                - 파라미터: {len(strategy_params)}개
-
-                **⚙️ 포트폴리오**
-                - 초기자본: {trading_config.initial_capital:,.0f} KRW
-                - 최대슬롯: {trading_config.max_slots}개
-                - 자산: {len(selected_tickers)}개
-                """)
+        _show_empty_state(start_date, end_date, trading_config, strategy_name, strategy_params, selected_tickers)
 
 
-def _display_results(result) -> None:
+def _show_empty_state(start_date, end_date, trading_config, strategy_name, strategy_params, selected_tickers) -> None:
+    """백테스트 실행 전 빈 상태 표시."""
+    st.markdown("""
+    <div class="summary-box" style="text-align: center;">
+        <h3>📋 설정을 완료하고 백테스트를 실행하세요</h3>
+        <p style="color: #94a3b8;">
+            왼쪽 사이드바에서 기간, 전략, 자산을 선택한 후<br>
+            <strong>🚀 백테스트 실행</strong> 버튼을 클릭하세요.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 설정 요약 표시
+    st.markdown("### 📋 현재 설정")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(f"""
+        <div class="feature-card">
+            <h4>📅 기간</h4>
+            <p><strong>시작:</strong> {start_date}</p>
+            <p><strong>종료:</strong> {end_date}</p>
+            <p><strong>기간:</strong> {(end_date - start_date).days}일</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"""
+        <div class="feature-card">
+            <h4>⚙️ 거래 설정</h4>
+            <p><strong>인터벌:</strong> {trading_config.interval}</p>
+            <p><strong>수수료:</strong> {trading_config.fee_rate:.2%}</p>
+            <p><strong>슬리피지:</strong> {trading_config.slippage_rate:.2%}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown(f"""
+        <div class="feature-card">
+            <h4>📈 전략 & 자산</h4>
+            <p><strong>전략:</strong> {strategy_name or '미선택'}</p>
+            <p><strong>파라미터:</strong> {len(strategy_params)}개</p>
+            <p><strong>자산:</strong> {len(selected_tickers) if selected_tickers else 0}개</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def _display_results(result, strategy_name: str) -> None:
     """백테스트 결과 표시.
 
     Args:
         result: BacktestResult 객체
+        strategy_name: 전략 이름
     """
-    st.subheader("📊 백테스트 결과")
+    # 요약 카드
+    equity = np.array(result.equity_curve)
+    initial = equity[0]
+    final = equity[-1]
+    total_return = (final / initial - 1) * 100
+
+    daily_returns = np.diff(equity) / equity[:-1]
+    sharpe = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(365) if np.std(daily_returns) > 0 else 0
+
+    cummax = np.maximum.accumulate(equity)
+    drawdown = (cummax - equity) / cummax
+    mdd = np.max(drawdown) * 100
+
+    # 핵심 메트릭 상단 표시
+    st.markdown("### 🎯 핵심 성과")
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    metrics_data = [
+        ("전략", strategy_name, "neutral"),
+        ("총 수익률", f"{total_return:.2f}%", "positive" if total_return > 0 else "negative"),
+        ("Sharpe Ratio", f"{sharpe:.2f}", "positive" if sharpe > 1 else "neutral"),
+        ("MDD", f"-{mdd:.2f}%", "negative" if mdd > 20 else "neutral"),
+        ("거래수", str(len(result.trades)), "neutral"),
+    ]
+
+    for col, (label, value, vtype) in zip([col1, col2, col3, col4, col5], metrics_data):
+        with col:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">{label}</div>
+                <div class="value {vtype}">{value}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # 거래 수익률 추출
     trade_returns = [t.pnl_pct / 100 for t in result.trades if t.pnl_pct is not None]
 
     # 확장 메트릭 계산
-    equity = np.array(result.equity_curve)
     dates = np.array(result.dates) if hasattr(result, "dates") else np.arange(len(equity))
 
     extended_metrics = calculate_extended_metrics(
@@ -207,8 +269,6 @@ def _display_results(result) -> None:
         # 거래 내역
         if result.trades:
             with st.expander(f"📜 거래 내역 ({len(result.trades)}건)", expanded=False):
-                import pandas as pd
-
                 trades_df = pd.DataFrame(
                     [
                         {
@@ -241,3 +301,69 @@ def _display_results(result) -> None:
 
     with tab6:
         render_statistical_significance(extended_metrics)
+
+    # 결과 다운로드
+    st.markdown("---")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        # 에쿼티 CSV
+        equity_df = pd.DataFrame({
+            "date": dates,
+            "equity": equity,
+        })
+        csv_equity = equity_df.to_csv(index=False)
+        st.download_button(
+            "📥 에쿼티 곡선 (CSV)",
+            csv_equity,
+            "equity_curve.csv",
+            "text/csv",
+            use_container_width=True,
+        )
+
+    with col2:
+        # 거래 내역 CSV
+        if result.trades:
+            trades_export = pd.DataFrame([
+                {
+                    "ticker": t.ticker,
+                    "entry_date": t.entry_date,
+                    "entry_price": t.entry_price,
+                    "exit_date": t.exit_date,
+                    "exit_price": t.exit_price,
+                    "amount": t.amount,
+                    "pnl": t.pnl,
+                    "pnl_pct": t.pnl_pct,
+                }
+                for t in result.trades
+            ])
+            csv_trades = trades_export.to_csv(index=False)
+            st.download_button(
+                "📥 거래 내역 (CSV)",
+                csv_trades,
+                "trades.csv",
+                "text/csv",
+                use_container_width=True,
+            )
+
+    with col3:
+        # 메트릭 JSON
+        metrics_dict = {
+            "total_return_pct": extended_metrics.total_return_pct,
+            "cagr_pct": extended_metrics.cagr_pct,
+            "sharpe_ratio": extended_metrics.sharpe_ratio,
+            "sortino_ratio": extended_metrics.sortino_ratio,
+            "max_drawdown_pct": extended_metrics.max_drawdown_pct,
+            "win_rate_pct": extended_metrics.win_rate_pct,
+            "profit_factor": extended_metrics.profit_factor,
+            "num_trades": extended_metrics.num_trades,
+        }
+        json_metrics = json.dumps(metrics_dict, indent=2)
+        st.download_button(
+            "📥 메트릭 (JSON)",
+            json_metrics,
+            "metrics.json",
+            "application/json",
+            use_container_width=True,
+        )
