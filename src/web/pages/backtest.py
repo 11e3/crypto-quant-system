@@ -3,10 +3,12 @@
 백테스트 실행 및 결과 표시 페이지.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import streamlit as st
 
-from src.backtester.models import BacktestConfig
+from src.backtester.models import BacktestConfig, BacktestResult
 from src.utils.logger import get_logger
 from src.web.components.charts.equity_curve import render_equity_curve
 from src.web.components.charts.monthly_heatmap import render_monthly_heatmap
@@ -169,7 +171,7 @@ def render_backtest_page() -> None:
                 """)
 
 
-def _display_results(result: "BacktestResult") -> None:  # type: ignore[name-defined]
+def _display_results(result: BacktestResult) -> None:
     """백테스트 결과 표시.
 
     Args:
@@ -180,14 +182,21 @@ def _display_results(result: "BacktestResult") -> None:  # type: ignore[name-def
     # 거래 수익률 추출
     trade_returns = [t.pnl_pct / 100 for t in result.trades if t.pnl_pct is not None]
 
-    # 확장 메트릭 계산
+    # 확장 메트릭 계산 (세션 스테이트에 캐싱)
     equity = np.array(result.equity_curve)
     dates = np.array(result.dates) if hasattr(result, "dates") else np.arange(len(equity))
 
-    extended_metrics = calculate_extended_metrics(
-        equity=equity,
-        trade_returns=trade_returns,
-    )
+    # 캐시 키 생성 (equity의 해시로 메트릭 캐싱)
+    cache_key = f"metrics_{hash(equity.tobytes())}"
+
+    if cache_key not in st.session_state:
+        # 메트릭 계산 (처음 한 번만)
+        st.session_state[cache_key] = calculate_extended_metrics(
+            equity=equity,
+            trade_returns=trade_returns,
+        )
+
+    extended_metrics = st.session_state[cache_key]
 
     # 탭 구성
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(

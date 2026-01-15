@@ -3,9 +3,13 @@
 Plotly 기반 인터랙티브 수익률 곡선 차트.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+
+from src.web.utils.chart_utils import downsample_timeseries
 
 __all__ = ["render_equity_curve"]
 
@@ -16,8 +20,11 @@ def render_equity_curve(
     initial_capital: float = 1.0,
     benchmark: np.ndarray | None = None,
     benchmark_name: str = "Benchmark",
+    max_points: int = 2000,
 ) -> None:
     """인터랙티브 수익률 곡선 렌더링.
+
+    대량 데이터의 경우 자동으로 다운샘플링하여 렌더링 성능 향상.
 
     Args:
         dates: 날짜 배열
@@ -25,10 +32,24 @@ def render_equity_curve(
         initial_capital: 초기 자본
         benchmark: 벤치마크 가치 배열 (선택)
         benchmark_name: 벤치마크 이름
+        max_points: 최대 차트 포인트 수 (기본: 2000, 성능 최적화)
     """
     if len(dates) == 0 or len(equity) == 0:
         st.warning("📊 표시할 데이터가 없습니다.")
         return
+
+    # 데이터 다운샘플링 (대량 데이터 시 성능 향상)
+    if len(dates) > max_points:
+        downsampled_dates, downsampled_equity = downsample_timeseries(
+            dates, equity, max_points=max_points
+        )
+        dates = downsampled_dates  # type: ignore[assignment]
+        equity = downsampled_equity
+        if benchmark is not None:
+            _, downsampled_benchmark = downsample_timeseries(
+                dates, benchmark, max_points=max_points
+            )
+            benchmark = downsampled_benchmark
 
     # 수익률로 변환 (%)
     returns_pct = (equity / initial_capital - 1) * 100

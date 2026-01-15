@@ -3,12 +3,14 @@
 백테스트 실행 및 결과 관리 서비스.
 """
 
+from __future__ import annotations
+
 from datetime import date
 from pathlib import Path
 
 import streamlit as st
 
-from src.backtester.engine import BacktestEngine, EventDrivenBacktestEngine
+from src.backtester.engine import BacktestEngine, VectorizedBacktestEngine
 from src.backtester.models import BacktestConfig, BacktestResult
 from src.strategies.base import Strategy
 from src.utils.logger import get_logger
@@ -29,15 +31,21 @@ class BacktestService:
         self,
         config: BacktestConfig,
         engine: BacktestEngine | None = None,
+        use_vectorized: bool = True,
     ) -> None:
         """백테스트 서비스 초기화.
 
         Args:
             config: 백테스트 설정
-            engine: Optional BacktestEngine (uses EventDrivenBacktestEngine if not provided)
+            engine: Optional BacktestEngine (uses VectorizedBacktestEngine if not provided)
+            use_vectorized: VectorizedBacktestEngine 사용 여부 (기본: True, 성능 향상)
         """
         self.config = config
-        self.engine = engine if engine else EventDrivenBacktestEngine(config)
+        if engine:
+            self.engine = engine
+        else:
+            # 기본적으로 VectorizedBacktestEngine 사용 (10-100배 빠름)
+            self.engine = VectorizedBacktestEngine(config)
 
     def run(
         self,

@@ -3,6 +3,9 @@
 OHLCV 데이터 로딩 및 캐싱 서비스.
 """
 
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from pathlib import Path
 
@@ -15,7 +18,7 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-__all__ = ["load_ticker_data", "get_data_files"]
+__all__ = ["load_ticker_data", "get_data_files", "load_multiple_tickers_parallel"]
 
 
 @st.cache_data(ttl=3600, show_spinner="데이터 로딩 중...")
@@ -111,3 +114,48 @@ def validate_data_availability(
             missing.append(ticker)
 
     return available, missing
+
+
+def load_multiple_tickers_parallel(
+    tickers: list[str],
+    interval: Interval,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    max_workers: int = 4,
+) -> dict[str, pd.DataFrame]:
+    """병렬로 여러 티커 데이터 로딩.
+
+    ThreadPoolExecutor를 사용하여 I/O 바운드 작업을 병렬 처리.
+
+    Args:
+        tickers: 티커 리스트
+        interval: 캔들 인터벌
+        start_date: 시작일 (선택)
+        end_date: 종료일 (선택)
+        max_workers: 최대 워커 수 (기본: 4)
+
+    Returns:
+        {ticker: DataFrame} 딕셔너리
+    """
+    ticker_data: dict[str, pd.DataFrame] = {}
+
+    def load_single_ticker(ticker: str) -> tuple[str, pd.DataFrame | None]:
+        """단일 티커 로딩."""
+        try:
+            df = load_ticker_data(ticker, interval, start_date, end_date)
+            return ticker, df
+        except Exception as e:
+            logger.warning(f"Failed to load {ticker}: {e}")
+            return ticker, None
+
+    # 병렬 로딩
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(load_single_ticker, ticker): ticker for ticker in tickers}
+
+        for future in as_completed(futures):
+            ticker, df = future.result()
+            if df is not None:
+                ticker_data[ticker] = df
+
+    logger.info(f"Loaded {len(ticker_data)}/{len(tickers)} tickers in parallel")
+    return ticker_data

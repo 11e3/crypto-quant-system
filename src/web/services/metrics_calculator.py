@@ -6,6 +6,8 @@ Sortino, Calmar, VaR, CVaR, 상방/하방 변동성, z-score, p-value 등
 Uses focused metric calculators for each domain (SRP).
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -128,9 +130,7 @@ def calculate_extended_metrics(
     # 거래 메트릭
     trade_returns = trade_returns or []
     num_trades = len(trade_returns)
-    win_rate, avg_win, avg_loss, profit_factor, expectancy = TradeMetrics.calculate(
-        trade_returns
-    )
+    win_rate, avg_win, avg_loss, profit_factor, expectancy = TradeMetrics.calculate(trade_returns)
 
     return ExtendedMetrics(
         total_return_pct=total_return,
