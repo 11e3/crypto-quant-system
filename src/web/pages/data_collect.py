@@ -200,17 +200,12 @@ def _run_collection(
                 status_text.text(f"수집 중: {ticker} ({interval})...")
 
                 try:
-                    # 개별 수집 (collect_multiple 대신 직접 호출)
-                    if full_refresh:
-                        df = collector.data_source.get_ohlcv(ticker, interval, count=200)
-                        if df is not None:
-                            collector.data_source.save_ohlcv(ticker, interval, df)
-                            count = len(df)
-                        else:
-                            count = -1
-                    else:
-                        df = collector.data_source.update_ohlcv(ticker, interval)
-                        count = len(df) if df is not None else -1
+                    # collect 메서드 사용 (full_refresh 지원)
+                    count = collector.collect(
+                        ticker=ticker,
+                        interval=interval,  # type: ignore[arg-type]
+                        full_refresh=full_refresh,
+                    )
 
                     key = f"{ticker}_{interval}"
                     results[key] = count

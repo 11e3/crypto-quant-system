@@ -169,7 +169,7 @@ def render_backtest_page() -> None:
                 """)
 
 
-def _display_results(result) -> None:
+def _display_results(result: "BacktestResult") -> None:  # type: ignore[name-defined]
     """백테스트 결과 표시.
 
     Args:

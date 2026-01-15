@@ -3,6 +3,8 @@
 전략 파라미터 최적화 페이지.
 """
 
+from typing import Any
+
 import streamlit as st
 
 from src.backtester import BacktestConfig, optimize_strategy_parameters
@@ -337,7 +339,7 @@ def _run_optimization(
 
     try:
         # 전략 팩토리 생성
-        def create_strategy(**kwargs):
+        def create_strategy(**kwargs: Any) -> Any:
             if strategy_type == "vanilla":
                 return create_vbo_strategy(
                     name="VanillaVBO",

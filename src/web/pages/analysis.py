@@ -3,6 +3,8 @@
 고급 분석 (Monte Carlo, Walk-Forward) 페이지.
 """
 
+from typing import Any
+
 import streamlit as st
 
 from src.backtester import BacktestConfig, run_backtest, run_walk_forward_analysis
@@ -585,7 +587,7 @@ def _run_walk_forward(
 
     try:
         # 전략 팩토리
-        def create_strategy(**kwargs):
+        def create_strategy(**kwargs: Any) -> Any:
             if strategy_type == "vanilla":
                 return create_vbo_strategy(
                     name="VanillaVBO",
@@ -724,7 +726,7 @@ def _display_walk_forward_results() -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def _create_strategy(strategy_type: str):
+def _create_strategy(strategy_type: str) -> Any:
     """전략 객체 생성."""
     from src.strategies.mean_reversion import MeanReversionStrategy
     from src.strategies.momentum import MomentumStrategy

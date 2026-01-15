@@ -15,7 +15,10 @@ __all__ = [
 ]
 
 
-def __getattr__(name):
+from typing import Any
+
+
+def __getattr__(name: str) -> Any:
     """Lazy import to avoid loading pyupbit unless needed."""
     if name == "TradingBotFacade":
         from src.execution.bot.bot_facade import TradingBotFacade

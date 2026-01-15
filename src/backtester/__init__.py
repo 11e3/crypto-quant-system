@@ -31,8 +31,10 @@ __all__ = [
     "run_walk_forward_analysis",
 ]
 
+from typing import Any
 
-def __getattr__(name):
+
+def __getattr__(name: str) -> Any:
     """Lazy import to avoid loading pyupbit unless needed."""
     # Models
     if name == "BacktestConfig":
