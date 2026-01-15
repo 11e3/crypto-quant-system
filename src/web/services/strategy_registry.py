@@ -36,7 +36,6 @@ class StrategyRegistry:
         "src.strategies.volatility_breakout",
         "src.strategies.momentum",
         "src.strategies.mean_reversion",
-        "src.strategies.pair_trading",
         "src.strategies.opening_range_breakout",
     ]
 
