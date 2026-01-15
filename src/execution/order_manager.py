@@ -2,16 +2,11 @@
 Order manager for handling order execution and tracking.
 """
 
-from typing import TYPE_CHECKING
-
-from src.exchange import ExchangeOrderError, InsufficientBalanceError
+from src.exchange import ExchangeOrderError, InsufficientBalanceError, OrderExecutionService
 from src.exchange.types import Order
 from src.execution.event_bus import EventBus, get_event_bus
 from src.execution.events import EventType, OrderEvent
 from src.utils.logger import get_logger
-
-if TYPE_CHECKING:
-    from src.exchange import Exchange
 
 logger = get_logger(__name__)
 
@@ -25,7 +20,7 @@ class OrderManager:
 
     def __init__(
         self,
-        exchange: "Exchange",
+        exchange: OrderExecutionService,
         publish_events: bool = True,
         event_bus: EventBus | None = None,
     ) -> None:
@@ -33,7 +28,7 @@ class OrderManager:
         Initialize order manager.
 
         Args:
-            exchange: Exchange instance for order execution
+            exchange: Service implementing OrderExecutionService protocol
             publish_events: Whether to publish events (default: True)
             event_bus: Optional EventBus instance (uses global if not provided)
         """

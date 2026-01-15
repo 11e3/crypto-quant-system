@@ -2,15 +2,11 @@
 Position manager for tracking and managing trading positions.
 """
 
-from typing import TYPE_CHECKING
-
+from src.exchange import PriceService
 from src.execution.event_bus import EventBus, get_event_bus
 from src.execution.events import EventType, PositionEvent
 from src.execution.position import Position
 from src.utils.logger import get_logger
-
-if TYPE_CHECKING:
-    from src.exchange import Exchange
 
 logger = get_logger(__name__)
 
@@ -27,7 +23,7 @@ class PositionManager:
 
     def __init__(
         self,
-        exchange: "Exchange",
+        exchange: PriceService,
         publish_events: bool = True,
         event_bus: EventBus | None = None,
     ) -> None:
@@ -35,7 +31,7 @@ class PositionManager:
         Initialize position manager.
 
         Args:
-            exchange: Exchange instance for price queries
+            exchange: Service implementing PriceService protocol
             publish_events: Whether to publish events (default: True)
             event_bus: Optional EventBus instance (uses global if not provided)
         """

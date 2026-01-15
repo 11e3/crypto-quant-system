@@ -2,17 +2,13 @@
 Signal handler for processing trading signals from strategies.
 """
 
-from typing import TYPE_CHECKING
-
 import pandas as pd
 
+from src.exchange import MarketDataService
 from src.execution.event_bus import EventBus, get_event_bus
 from src.execution.events import EventType, SignalEvent
 from src.strategies.base import Strategy
 from src.utils.logger import get_logger
-
-if TYPE_CHECKING:
-    from src.exchange import Exchange
 
 logger = get_logger(__name__)
 
@@ -27,7 +23,7 @@ class SignalHandler:
     def __init__(
         self,
         strategy: Strategy,
-        exchange: "Exchange",
+        exchange: MarketDataService,
         min_data_points: int = 10,
         publish_events: bool = True,
         event_bus: EventBus | None = None,
@@ -37,7 +33,7 @@ class SignalHandler:
 
         Args:
             strategy: Trading strategy instance
-            exchange: Exchange instance for data fetching
+            exchange: Service implementing MarketDataService protocol
             min_data_points: Minimum data points required for signal generation
             publish_events: Whether to publish events (default: True)
             event_bus: Optional EventBus instance (uses global if not provided)
