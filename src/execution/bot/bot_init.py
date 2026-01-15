@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 
 from src.config.loader import get_config
 from src.exchange import Exchange, ExchangeFactory
-from src.execution.bot.bot_components import BotComponents
 from src.execution.event_bus import get_event_bus
 from src.execution.handlers.notification_handler import NotificationHandler
 from src.execution.handlers.trade_handler import TradeHandler
@@ -18,10 +17,10 @@ from src.execution.position_manager import PositionManager
 from src.execution.signal_handler import SignalHandler
 from src.strategies.volatility_breakout import VanillaVBO
 from src.utils.logger import get_logger
-from src.utils.telegram import get_notifier
+from src.utils.telegram import TelegramNotifier, get_notifier
 
 if TYPE_CHECKING:
-    pass
+    from src.execution.event_bus import EventBus
 
 logger = get_logger(__name__)
 
@@ -29,13 +28,41 @@ logger = get_logger(__name__)
 MIN_DATA_POINTS = 10
 API_RETRY_ATTEMPTS = 3
 
-# Re-export for backward compatibility
 __all__ = [
     "BotComponents",
     "create_bot_components",
     "initialize_targets",
     "check_existing_holdings",
 ]
+
+
+class BotComponents:
+    """Container for bot components."""
+
+    def __init__(
+        self,
+        exchange: Exchange,
+        position_manager: PositionManager,
+        order_manager: OrderManager,
+        signal_handler: SignalHandler,
+        strategy: VanillaVBO,
+        advanced_order_manager: AdvancedOrderManager,
+        telegram: TelegramNotifier,
+        trade_handler: TradeHandler,
+        notification_handler: NotificationHandler,
+        event_bus: EventBus,
+    ) -> None:
+        """Initialize bot components."""
+        self.exchange = exchange
+        self.position_manager = position_manager
+        self.order_manager = order_manager
+        self.signal_handler = signal_handler
+        self.strategy = strategy
+        self.advanced_order_manager = advanced_order_manager
+        self.telegram = telegram
+        self.trade_handler = trade_handler
+        self.notification_handler = notification_handler
+        self.event_bus = event_bus
 
 
 def create_bot_components(
