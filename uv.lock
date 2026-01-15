@@ -397,7 +397,6 @@ name = "crypto-quant-system"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "click" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "psutil" },
@@ -461,7 +460,6 @@ web = [
 
 [package.metadata]
 requires-dist = [
-    { name = "click", specifier = ">=8.1.0" },
     { name = "ipykernel", marker = "extra == 'notebooks'", specifier = ">=6.25.0" },
     { name = "ipywidgets", marker = "extra == 'notebooks'", specifier = ">=8.1.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.12.0" },
