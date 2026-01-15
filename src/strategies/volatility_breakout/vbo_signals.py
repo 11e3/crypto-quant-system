@@ -56,17 +56,17 @@ def _apply_entry_condition(
     if name == "SMABreakout":
         return signal & (df["target"] > df["sma"])
 
-    if name in ("TrendCondition", "TrendFilter"):
+    if name == "TrendCondition":
         return signal & (df["target"] > df["sma_trend"])
 
-    if name in ("NoiseCondition", "NoiseFilter"):
+    if name == "NoiseCondition":
         return signal & (df["short_noise"] < df["long_noise"])
 
-    if name in ("NoiseThresholdCondition", "NoiseThresholdFilter"):
+    if name == "NoiseThresholdCondition":
         max_noise = getattr(condition, "max_noise", 0.7)
         return signal & (df["short_noise"] <= max_noise)
 
-    if name in ("VolatilityRangeCondition", "VolatilityFilter"):
+    if name == "VolatilityRangeCondition":
         min_vol = getattr(condition, "min_volatility_pct", 0.005)
         max_vol = getattr(condition, "max_volatility_pct", 0.15)
         range_pct = df["prev_range"] / df["open"]

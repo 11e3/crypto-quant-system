@@ -29,16 +29,12 @@ __all__ = [
     "WalkForwardPeriod",
     "WalkForwardResult",
     "run_walk_forward_analysis",
-    # Portfolio backtester (no pyupbit dependency)
-    "PortfolioBacktester",
-    "PortfolioBacktestConfig",
-    "PortfolioBacktestResult",
 ]
 
 
 def __getattr__(name):
     """Lazy import to avoid loading pyupbit unless needed."""
-    # Models - defined locally, don't need cascade
+    # Models
     if name == "BacktestConfig":
         from src.backtester.models import BacktestConfig
         return BacktestConfig
@@ -60,7 +56,7 @@ def __getattr__(name):
         from src.backtester.analysis.monte_carlo import run_monte_carlo
         return run_monte_carlo
 
-    # Engine (requires pyupbit for data loading)
+    # Engine
     elif name == "BacktestEngine":
         from src.backtester.engine import BacktestEngine
         return BacktestEngine
@@ -77,7 +73,7 @@ def __getattr__(name):
         from src.backtester.engine import run_backtest
         return run_backtest
 
-    # Optimization (requires engine)
+    # Optimization
     elif name == "OptimizationResult":
         from src.backtester.optimization import OptimizationResult
         return OptimizationResult
@@ -88,7 +84,7 @@ def __getattr__(name):
         from src.backtester.optimization import optimize_strategy_parameters
         return optimize_strategy_parameters
 
-    # Parallel (requires engine)
+    # Parallel
     elif name == "ParallelBacktestRunner":
         from src.backtester.parallel import ParallelBacktestRunner
         return ParallelBacktestRunner
@@ -126,16 +122,5 @@ def __getattr__(name):
     elif name == "run_walk_forward_analysis":
         from src.backtester.wfa.walk_forward import run_walk_forward_analysis
         return run_walk_forward_analysis
-
-    # Portfolio Backtester (no pyupbit dependency)
-    elif name == "PortfolioBacktester":
-        from src.backtester.portfolio_backtest import PortfolioBacktester
-        return PortfolioBacktester
-    elif name == "PortfolioBacktestConfig":
-        from src.backtester.portfolio_backtest import PortfolioBacktestConfig
-        return PortfolioBacktestConfig
-    elif name == "PortfolioBacktestResult":
-        from src.backtester.portfolio_backtest import PortfolioBacktestResult
-        return PortfolioBacktestResult
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
