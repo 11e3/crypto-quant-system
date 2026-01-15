@@ -1,6 +1,6 @@
 """Data loading service.
 
-OHLCV 데이터 로딩 및 캐싱 서비스.
+OHLCV data loading and caching service.
 """
 
 from __future__ import annotations
@@ -21,36 +21,36 @@ logger = get_logger(__name__)
 __all__ = ["load_ticker_data", "get_data_files", "load_multiple_tickers_parallel"]
 
 
-@st.cache_data(ttl=3600, show_spinner="데이터 로딩 중...")
+@st.cache_data(ttl=3600, show_spinner="Loading data...")
 def load_ticker_data(
     ticker: str,
     interval: Interval,
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> pd.DataFrame | None:
-    """OHLCV 데이터 로딩 (1시간 캐시).
+    """Load OHLCV data (1 hour cache).
 
     Args:
-        ticker: 티커 (예: KRW-BTC)
-        interval: 캔들 인터벌
-        start_date: 시작일 (선택)
-        end_date: 종료일 (선택)
+        ticker: Ticker symbol (e.g., KRW-BTC)
+        interval: Candle interval
+        start_date: Start date (optional)
+        end_date: End date (optional)
 
     Returns:
-        OHLCV DataFrame 또는 None (실패 시)
+        OHLCV DataFrame or None (on failure)
     """
     try:
-        # 데이터 파일 경로
-        file_path = RAW_DATA_DIR / ticker / f"{ticker}_{interval}.parquet"
+        # Data file path (files are stored directly in RAW_DATA_DIR)
+        file_path = RAW_DATA_DIR / f"{ticker}_{interval}.parquet"
 
         if not file_path.exists():
             logger.warning(f"Data file not found: {file_path}")
             return None
 
-        # 데이터 로드
+        # Load data
         df = pd.read_parquet(file_path)
 
-        # 날짜 필터링
+        # Date filtering
         if start_date:
             df = df[df.index >= pd.Timestamp(start_date)]
         if end_date:
@@ -69,19 +69,20 @@ def get_data_files(
     tickers: list[str],
     interval: Interval,
 ) -> dict[str, Path]:
-    """티커 목록에 대한 데이터 파일 경로 딕셔너리 생성.
+    """Create data file path dictionary for ticker list.
 
     Args:
-        tickers: 티커 리스트
-        interval: 캔들 인터벌
+        tickers: Ticker list
+        interval: Candle interval
 
     Returns:
-        {ticker: file_path} 딕셔너리
+        {ticker: file_path} dictionary
     """
     data_files: dict[str, Path] = {}
 
     for ticker in tickers:
-        file_path = RAW_DATA_DIR / ticker / f"{ticker}_{interval}.parquet"
+        # Files are stored directly in RAW_DATA_DIR
+        file_path = RAW_DATA_DIR / f"{ticker}_{interval}.parquet"
         if file_path.exists():
             data_files[ticker] = file_path
         else:
@@ -94,20 +95,21 @@ def validate_data_availability(
     tickers: list[str],
     interval: Interval,
 ) -> tuple[list[str], list[str]]:
-    """데이터 가용성 검증.
+    """Validate data availability.
 
     Args:
-        tickers: 티커 리스트
-        interval: 캔들 인터벌
+        tickers: Ticker list
+        interval: Candle interval
 
     Returns:
-        (available_tickers, missing_tickers) 튜플
+        (available_tickers, missing_tickers) tuple
     """
     available: list[str] = []
     missing: list[str] = []
 
     for ticker in tickers:
-        file_path = RAW_DATA_DIR / ticker / f"{ticker}_{interval}.parquet"
+        # Files are stored directly in RAW_DATA_DIR
+        file_path = RAW_DATA_DIR / f"{ticker}_{interval}.parquet"
         if file_path.exists():
             available.append(ticker)
         else:
@@ -123,24 +125,24 @@ def load_multiple_tickers_parallel(
     end_date: date | None = None,
     max_workers: int = 4,
 ) -> dict[str, pd.DataFrame]:
-    """병렬로 여러 티커 데이터 로딩.
+    """Load multiple ticker data in parallel.
 
-    ThreadPoolExecutor를 사용하여 I/O 바운드 작업을 병렬 처리.
+    Use ThreadPoolExecutor to parallelize I/O bound operations.
 
     Args:
-        tickers: 티커 리스트
-        interval: 캔들 인터벌
-        start_date: 시작일 (선택)
-        end_date: 종료일 (선택)
-        max_workers: 최대 워커 수 (기본: 4)
+        tickers: Ticker list
+        interval: Candle interval
+        start_date: Start date (optional)
+        end_date: End date (optional)
+        max_workers: Maximum number of workers (default: 4)
 
     Returns:
-        {ticker: DataFrame} 딕셔너리
+        {ticker: DataFrame} dictionary
     """
     ticker_data: dict[str, pd.DataFrame] = {}
 
     def load_single_ticker(ticker: str) -> tuple[str, pd.DataFrame | None]:
-        """단일 티커 로딩."""
+        """Load single ticker."""
         try:
             df = load_ticker_data(ticker, interval, start_date, end_date)
             return ticker, df
@@ -148,7 +150,7 @@ def load_multiple_tickers_parallel(
             logger.warning(f"Failed to load {ticker}: {e}")
             return ticker, None
 
-    # 병렬 로딩
+    # Parallel loading
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(load_single_ticker, ticker): ticker for ticker in tickers}
 

@@ -11,17 +11,17 @@ __all__ = [
 
 @dataclass(frozen=True)
 class ParameterSpec:
-    """전략 파라미터 명세.
+    """Strategy parameter specification.
 
     Attributes:
-        name: 파라미터 이름
-        type: 파라미터 타입 (int, float, bool, choice)
-        default: 기본값
-        min_value: 최소값 (int, float 타입일 때)
-        max_value: 최대값 (int, float 타입일 때)
-        step: 스텝 크기 (슬라이더에 사용)
-        choices: 선택 가능한 값 목록 (choice 타입일 때)
-        description: 파라미터 설명
+        name: Parameter name
+        type: Parameter type (int, float, bool, choice)
+        default: Default value
+        min_value: Minimum value (for int, float types)
+        max_value: Maximum value (for int, float types)
+        step: Step size (used for slider)
+        choices: List of available choices (for choice type)
+        description: Parameter description
     """
 
     name: str
@@ -36,15 +36,15 @@ class ParameterSpec:
 
 @dataclass(frozen=True)
 class StrategyInfo:
-    """전략 메타데이터.
+    """Strategy metadata.
 
     Attributes:
-        name: 전략 이름 (UI에 표시될 이름)
-        class_name: 전략 클래스 이름
-        module_path: 모듈 경로 (예: src.strategies.volatility_breakout)
-        strategy_class: 전략 클래스 타입
-        parameters: 파라미터 명세 딕셔너리 {파라미터명: ParameterSpec}
-        description: 전략 설명
+        name: Strategy name (name to display in UI)
+        class_name: Strategy class name
+        module_path: Module path (e.g., src.strategies.volatility_breakout)
+        strategy_class: Strategy class type
+        parameters: Parameter specification dictionary {param_name: ParameterSpec}
+        description: Strategy description
     """
 
     name: str

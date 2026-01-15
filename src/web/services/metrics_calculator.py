@@ -1,7 +1,7 @@
 """Extended metrics calculator service.
 
-Sortino, Calmar, VaR, CVaR, 상방/하방 변동성, z-score, p-value 등
-고급 백테스팅 메트릭 계산.
+Calculate advanced backtesting metrics including Sortino, Calmar, VaR, CVaR,
+upside/downside volatility, z-score, p-value, and more.
 
 Uses focused metric calculators for each domain (SRP).
 """
@@ -34,19 +34,19 @@ __all__ = [
 
 @dataclass(frozen=True)
 class ExtendedMetrics:
-    """확장 백테스팅 메트릭."""
+    """Extended backtesting metrics."""
 
-    # 기본 수익률 메트릭
+    # Basic return metrics
     total_return_pct: float
     cagr_pct: float
 
-    # 리스크 메트릭
+    # Risk metrics
     max_drawdown_pct: float
     volatility_pct: float
     upside_volatility_pct: float
     downside_volatility_pct: float
 
-    # 리스크 조정 수익률
+    # Risk-adjusted returns
     sharpe_ratio: float
     sortino_ratio: float
     calmar_ratio: float
@@ -57,13 +57,13 @@ class ExtendedMetrics:
     cvar_95_pct: float
     cvar_99_pct: float
 
-    # 통계적 검정
+    # Statistical tests
     z_score: float
     p_value: float
     skewness: float
     kurtosis: float
 
-    # 거래 메트릭
+    # Trade metrics
     num_trades: int
     win_rate_pct: float
     avg_win_pct: float
@@ -71,7 +71,7 @@ class ExtendedMetrics:
     profit_factor: float
     expectancy: float
 
-    # 기간 정보
+    # Period information
     trading_days: int
     years: float
 
@@ -81,34 +81,34 @@ def calculate_extended_metrics(
     trade_returns: list[float] | None = None,
     risk_free_rate: float = 0.02,
 ) -> ExtendedMetrics:
-    """확장 메트릭 계산.
+    """Calculate extended metrics.
 
     Args:
-        equity: 포트폴리오 가치 배열
-        trade_returns: 개별 거래 수익률 리스트 (선택)
-        risk_free_rate: 무위험 수익률 (연간, 기본: 2%)
+        equity: Portfolio value array
+        trade_returns: Individual trade returns list (optional)
+        risk_free_rate: Risk-free rate (annual, default: 2%)
 
     Returns:
-        ExtendedMetrics 데이터클래스
+        ExtendedMetrics dataclass
     """
     if len(equity) < 2:
         return _empty_metrics()
 
-    # 기간 정보
+    # Period information
     trading_days = len(equity)
     years = trading_days / 365
 
-    # 일간 수익률
+    # Daily returns
     returns = ReturnMetrics.calculate_returns(equity)
 
-    # 수익률 메트릭
+    # Return metrics
     initial_value = float(equity[0])
     final_value = float(equity[-1])
     total_return = ReturnMetrics.calculate_total_return(initial_value, final_value)
     cagr = ReturnMetrics.calculate_cagr(initial_value, final_value, years)
     max_dd = ReturnMetrics.calculate_max_drawdown(equity)
 
-    # 리스크 메트릭
+    # Risk metrics
     volatility = RiskMetrics.calculate_volatility(returns)
     upside_vol = RiskMetrics.calculate_upside_volatility(returns)
     downside_vol = RiskMetrics.calculate_downside_volatility(returns)
@@ -117,17 +117,17 @@ def calculate_extended_metrics(
     cvar_95 = RiskMetrics.calculate_cvar(returns, 0.95)
     cvar_99 = RiskMetrics.calculate_cvar(returns, 0.99)
 
-    # 리스크 조정 수익률
+    # Risk-adjusted returns
     sharpe = RatioMetrics.calculate_sharpe_ratio(returns, risk_free_rate)
     sortino = RatioMetrics.calculate_sortino_ratio(returns, risk_free_rate)
     calmar = RatioMetrics.calculate_calmar_ratio(cagr, max_dd)
 
-    # 통계적 메트릭
+    # Statistical metrics
     z_score, p_value = StatisticalMetrics.calculate_z_score_and_pvalue(returns)
     skewness = StatisticalMetrics.calculate_skewness(returns)
     kurtosis = StatisticalMetrics.calculate_kurtosis(returns)
 
-    # 거래 메트릭
+    # Trade metrics
     trade_returns = trade_returns or []
     num_trades = len(trade_returns)
     win_rate, avg_win, avg_loss, profit_factor, expectancy = TradeMetrics.calculate(trade_returns)

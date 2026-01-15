@@ -19,18 +19,18 @@ def downsample_timeseries(
     values: np.ndarray,
     max_points: int = 1000,
 ) -> tuple[pd.DatetimeIndex | np.ndarray, np.ndarray]:
-    """시계열 데이터를 다운샘플링하여 차트 렌더링 성능 향상.
+    """Downsample time series data to improve chart rendering performance.
 
-    LTTB (Largest-Triangle-Three-Buckets) 알고리즘의 단순화 버전 사용.
-    큰 데이터셋을 고정된 포인트 수로 줄이면서 중요한 특징 보존.
+    Use simplified version of LTTB (Largest-Triangle-Three-Buckets) algorithm.
+    Reduce large dataset to fixed number of points while preserving important features.
 
     Args:
-        dates: 날짜/시간 배열
-        values: 값 배열
-        max_points: 최대 포인트 수 (기본: 1000)
+        dates: Date/time array
+        values: Value array
+        max_points: Maximum number of points (default: 1000)
 
     Returns:
-        (downsampled_dates, downsampled_values) 튜플
+        (downsampled_dates, downsampled_values) tuple
 
     Examples:
         >>> dates = pd.date_range("2020-01-01", periods=10000, freq="1h")
@@ -41,15 +41,15 @@ def downsample_timeseries(
     """
     n_points = len(values)
 
-    # 이미 작은 데이터셋은 그대로 반환
+    # Return as-is if dataset is already small
     if n_points <= max_points:
         return dates, values
 
-    # 균등 간격 샘플링
-    # 시작점과 끝점은 항상 포함
+    # Uniform interval sampling
+    # Always include start and end points
     indices = np.linspace(0, n_points - 1, max_points, dtype=int)
 
-    # 중복 제거 (혹시 있을 경우)
+    # Remove duplicates (if any)
     indices = np.unique(indices)
 
     downsampled_dates = dates[indices] if isinstance(dates, np.ndarray) else dates[indices]
@@ -63,49 +63,49 @@ def downsample_timeseries_lttb(
     values: np.ndarray,
     max_points: int = 1000,
 ) -> tuple[pd.DatetimeIndex | np.ndarray, np.ndarray]:
-    """LTTB 알고리즘을 사용한 고급 다운샘플링.
+    """Advanced downsampling using LTTB algorithm.
 
-    더 정교한 알고리즘으로, 시각적으로 중요한 포인트를 선택.
-    급격한 변화나 피크를 보존하는 데 유리.
+    More sophisticated algorithm that selects visually important points.
+    Advantageous for preserving sharp changes or peaks.
 
     Args:
-        dates: 날짜/시간 배열
-        values: 값 배열
-        max_points: 최대 포인트 수
+        dates: Date/time array
+        values: Value array
+        max_points: Maximum number of points
 
     Returns:
-        (downsampled_dates, downsampled_values) 튜플
+        (downsampled_dates, downsampled_values) tuple
     """
     n_points = len(values)
 
     if n_points <= max_points:
         return dates, values
 
-    # 버킷 크기 계산
+    # Calculate bucket size
     bucket_size = (n_points - 2) / (max_points - 2)
 
-    # 결과 인덱스 저장
-    sampled_indices: list[int] = [0]  # 첫 포인트는 항상 포함
+    # Store result indices
+    sampled_indices: list[int] = [0]  # Always include first point
 
-    # 각 버킷에서 최대 삼각형 면적을 가지는 포인트 선택
+    # Select point with maximum triangle area from each bucket
     a_idx = 0
     for i in range(1, max_points - 1):
-        # 현재 버킷 범위
+        # Current bucket range
         bucket_start = int((i - 1) * bucket_size) + 1
         bucket_end = int(i * bucket_size) + 1
 
-        # 다음 버킷의 평균 포인트
+        # Average point of next bucket
         next_bucket_start = int(i * bucket_size) + 1
         next_bucket_end = min(int((i + 1) * bucket_size) + 1, n_points)
         next_avg_x = (next_bucket_start + next_bucket_end) / 2
         next_avg_y = np.mean(values[next_bucket_start:next_bucket_end])
 
-        # 현재 버킷에서 최대 삼각형 면적을 가지는 포인트 찾기
+        # Find point with maximum triangle area in current bucket
         max_area = -1.0
         max_idx = bucket_start
 
         for idx in range(bucket_start, bucket_end):
-            # 삼각형 면적 계산
+            # Calculate triangle area
             area = abs(
                 (a_idx - next_avg_x) * (values[idx] - values[a_idx])
                 - (a_idx - idx) * (next_avg_y - values[a_idx])
@@ -118,10 +118,10 @@ def downsample_timeseries_lttb(
         sampled_indices.append(max_idx)
         a_idx = max_idx
 
-    # 마지막 포인트는 항상 포함
+    # Always include last point
     sampled_indices.append(n_points - 1)
 
-    # 인덱스로 샘플링
+    # Sample by index
     sampled_indices_array = np.array(sampled_indices)
     downsampled_dates = (
         dates[sampled_indices_array]

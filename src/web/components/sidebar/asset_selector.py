@@ -1,6 +1,6 @@
 """Asset selector component.
 
-자산군 멀티 선택 UI 컴포넌트.
+Multi-asset selection UI component.
 """
 
 import streamlit as st
@@ -8,7 +8,7 @@ import streamlit as st
 __all__ = ["render_asset_selector", "get_available_tickers"]
 
 
-# 주요 암호화폐 목록
+# Major cryptocurrency list
 POPULAR_TICKERS = [
     "KRW-BTC",
     "KRW-ETH",
@@ -29,67 +29,67 @@ POPULAR_TICKERS = [
 
 
 def get_available_tickers() -> list[str]:
-    """사용 가능한 티커 목록 반환.
+    """Return list of available tickers.
 
     Returns:
-        티커 문자열 리스트
+        List of ticker strings
     """
-    # TODO: 실제로는 data 디렉토리를 스캔하거나 Upbit API 호출
+    # TODO: In practice, scan data directory or call Upbit API
     return POPULAR_TICKERS
 
 
 def render_asset_selector() -> list[str]:
-    """자산 선택 UI 렌더링.
+    """Render asset selection UI.
 
     Returns:
-        선택된 티커 리스트
+        List of selected tickers
     """
-    st.subheader("🪙 자산 선택")
+    st.subheader("🪙 Asset Selection")
 
     available_tickers = get_available_tickers()
 
-    # 선택 모드
+    # Selection mode
     selection_mode = st.radio(
-        "선택 방식",
-        ["빠른 선택", "개별 선택"],
+        "Selection Mode",
+        ["Quick Select", "Individual Select"],
         horizontal=True,
-        help="빠른 선택: 프리셋 사용 | 개별 선택: 직접 체크",
+        help="Quick Select: Use presets | Individual Select: Check manually",
     )
 
     selected_tickers: list[str] = []
 
-    if selection_mode == "빠른 선택":
-        # 프리셋 선택
+    if selection_mode == "Quick Select":
+        # Preset selection
         presets = {
             "Top 3 (BTC, ETH, XRP)": ["KRW-BTC", "KRW-ETH", "KRW-XRP"],
             "Top 5": ["KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-ADA", "KRW-SOL"],
             "Top 10": available_tickers[:10],
-            "전체": available_tickers,
-            "커스텀": [],
+            "All": available_tickers,
+            "Custom": [],
         }
 
         preset_name = st.selectbox(
-            "프리셋 선택",
+            "Select Preset",
             options=list(presets.keys()),
-            help="미리 정의된 자산 그룹",
+            help="Predefined asset groups",
         )
 
         selected_tickers = presets[preset_name]
 
-        if preset_name == "커스텀":
-            # 커스텀 선택
+        if preset_name == "Custom":
+            # Custom selection
             selected_tickers = st.multiselect(
-                "자산 선택",
+                "Select Assets",
                 options=available_tickers,
                 default=["KRW-BTC", "KRW-ETH"],
-                help="백테스트에 포함할 자산 선택",
+                help="Select assets to include in backtest",
             )
 
     else:
-        # 개별 선택 (체크박스)
-        st.caption("체크박스로 선택:")
+        # Individual selection (checkboxes)
+        st.caption("Select with checkboxes:")
 
-        # 그리드 레이아웃 (3열)
+        # Grid layout (3 columns)
         cols_per_row = 3
         for i in range(0, len(available_tickers), cols_per_row):
             cols = st.columns(cols_per_row)
@@ -101,11 +101,11 @@ def render_asset_selector() -> list[str]:
                         if st.checkbox(ticker, key=f"ticker_{ticker}"):
                             selected_tickers.append(ticker)
 
-    # 선택 결과 표시
+    # Display selection result
     if selected_tickers:
-        st.success(f"✅ 선택된 자산: **{len(selected_tickers)}개**")
+        st.success(f"✅ Selected assets: **{len(selected_tickers)}**")
         st.caption(", ".join(selected_tickers))
     else:
-        st.warning("⚠️ 최소 1개 이상의 자산을 선택하세요.")
+        st.warning("⚠️ Please select at least one asset.")
 
     return selected_tickers

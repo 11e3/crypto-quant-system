@@ -1,6 +1,6 @@
 """Equity curve chart component.
 
-Plotly 기반 인터랙티브 수익률 곡선 차트.
+Interactive equity curve chart based on Plotly.
 """
 
 from __future__ import annotations
@@ -22,23 +22,23 @@ def render_equity_curve(
     benchmark_name: str = "Benchmark",
     max_points: int = 2000,
 ) -> None:
-    """인터랙티브 수익률 곡선 렌더링.
+    """Render interactive equity curve.
 
-    대량 데이터의 경우 자동으로 다운샘플링하여 렌더링 성능 향상.
+    Automatically downsamples large datasets to improve rendering performance.
 
     Args:
-        dates: 날짜 배열
-        equity: 포트폴리오 가치 배열
-        initial_capital: 초기 자본
-        benchmark: 벤치마크 가치 배열 (선택)
-        benchmark_name: 벤치마크 이름
-        max_points: 최대 차트 포인트 수 (기본: 2000, 성능 최적화)
+        dates: Date array
+        equity: Portfolio value array
+        initial_capital: Initial capital
+        benchmark: Benchmark value array (optional)
+        benchmark_name: Benchmark name
+        max_points: Maximum chart points (default: 2000, for performance optimization)
     """
     if len(dates) == 0 or len(equity) == 0:
-        st.warning("📊 표시할 데이터가 없습니다.")
+        st.warning("📊 No data to display.")
         return
 
-    # 데이터 다운샘플링 (대량 데이터 시 성능 향상)
+    # Downsample data (improve performance for large datasets)
     if len(dates) > max_points:
         downsampled_dates, downsampled_equity = downsample_timeseries(
             dates, equity, max_points=max_points
@@ -51,12 +51,12 @@ def render_equity_curve(
             )
             benchmark = downsampled_benchmark
 
-    # 수익률로 변환 (%)
+    # Convert to returns (%)
     returns_pct = (equity / initial_capital - 1) * 100
 
     fig = go.Figure()
 
-    # 포트폴리오 곡선
+    # Portfolio curve
     fig.add_trace(
         go.Scatter(
             x=dates,
@@ -73,7 +73,7 @@ def render_equity_curve(
         )
     )
 
-    # 벤치마크 곡선 (있는 경우)
+    # Benchmark curve (if provided)
     if benchmark is not None and len(benchmark) == len(dates):
         benchmark_returns = (benchmark / benchmark[0] - 1) * 100
         fig.add_trace(
@@ -93,7 +93,7 @@ def render_equity_curve(
             )
         )
 
-    # 초기 자본 기준선
+    # Initial capital baseline
     fig.add_hline(
         y=initial_capital,
         line_dash="dot",
@@ -102,7 +102,7 @@ def render_equity_curve(
         annotation_position="bottom right",
     )
 
-    # 레이아웃 설정
+    # Layout configuration
     fig.update_layout(
         title={
             "text": "📈 Portfolio Equity Curve",

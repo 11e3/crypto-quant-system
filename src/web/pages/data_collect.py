@@ -1,6 +1,6 @@
 """Data collection page.
 
-데이터 수집 실행 및 상태 표시 페이지.
+Page for data collection execution and status display.
 """
 
 import streamlit as st
@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 __all__ = ["render_data_collect_page"]
 
-# 기본 티커 목록
+# Default ticker list
 DEFAULT_TICKERS = [
     "KRW-BTC",
     "KRW-ETH",
@@ -26,44 +26,47 @@ DEFAULT_TICKERS = [
     "KRW-LINK",
 ]
 
-# 지원하는 인터벌
+# Supported intervals
 INTERVALS = [
-    ("minute1", "1분"),
-    ("minute3", "3분"),
-    ("minute5", "5분"),
-    ("minute10", "10분"),
-    ("minute15", "15분"),
-    ("minute30", "30분"),
-    ("minute60", "1시간"),
-    ("minute240", "4시간"),
-    ("day", "일봉"),
-    ("week", "주봉"),
-    ("month", "월봉"),
+    ("minute1", "1 min"),
+    ("minute3", "3 min"),
+    ("minute5", "5 min"),
+    ("minute10", "10 min"),
+    ("minute15", "15 min"),
+    ("minute30", "30 min"),
+    ("minute60", "1 hour"),
+    ("minute240", "4 hours"),
+    ("day", "Daily"),
+    ("week", "Weekly"),
+    ("month", "Monthly"),
 ]
 
 
 def render_data_collect_page() -> None:
-    """데이터 수집 페이지 렌더링."""
-    st.header("📥 데이터 수집")
+    """Render data collection page."""
+    st.header("📥 Data Collection")
 
-    # ===== 사이드바 설정 =====
-    with st.sidebar:
-        st.title("📥 수집 설정")
-        st.markdown("---")
+    # ===== Settings Section =====
+    st.subheader("⚙️ Collection Settings")
 
-        # 1. 티커 선택
-        st.subheader("📈 티커 선택")
+    col1, col2, col3 = st.columns([2, 2, 1])
 
-        # 빠른 선택 버튼
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("전체 선택", use_container_width=True):
+    # Column 1: Ticker Selection
+    with col1:
+        st.markdown("### 📈 Ticker Selection")
+
+        # Quick selection buttons
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            if st.button("Select All", use_container_width=True):
                 st.session_state.selected_collect_tickers = DEFAULT_TICKERS.copy()
-        with col2:
-            if st.button("선택 해제", use_container_width=True):
+                st.rerun()
+        with btn_col2:
+            if st.button("Deselect All", use_container_width=True):
                 st.session_state.selected_collect_tickers = []
+                st.rerun()
 
-        # 티커 체크박스
+        # Ticker checkboxes
         if "selected_collect_tickers" not in st.session_state:
             st.session_state.selected_collect_tickers = DEFAULT_TICKERS[:6]
 
@@ -75,25 +78,24 @@ def render_data_collect_page() -> None:
 
         st.session_state.selected_collect_tickers = selected_tickers
 
-        # 커스텀 티커 입력
+        # Custom ticker input
         custom_ticker = st.text_input(
-            "커스텀 티커 추가",
-            placeholder="예: KRW-MATIC",
-            help="Upbit에서 지원하는 KRW 마켓 티커를 입력하세요",
+            "Add Custom Ticker",
+            placeholder="e.g., KRW-MATIC",
+            help="Enter KRW market ticker supported by Upbit",
         )
         if (
             custom_ticker
             and custom_ticker not in selected_tickers
-            and st.button(f"➕ {custom_ticker} 추가")
+            and st.button(f"➕ Add {custom_ticker}")
         ):
             selected_tickers.append(custom_ticker.upper())
             st.session_state.selected_collect_tickers = selected_tickers
             st.rerun()
 
-        st.markdown("---")
-
-        # 2. 인터벌 선택
-        st.subheader("⏱️ 인터벌 선택")
+    # Column 2: Interval Selection
+    with col2:
+        st.markdown("### ⏱️ Interval Selection")
 
         if "selected_intervals" not in st.session_state:
             st.session_state.selected_intervals = ["minute240", "day", "week"]
@@ -108,63 +110,62 @@ def render_data_collect_page() -> None:
 
         st.session_state.selected_intervals = selected_intervals
 
-        st.markdown("---")
-
-        # 3. 수집 옵션
-        st.subheader("⚙️ 옵션")
+    # Column 3: Options
+    with col3:
+        st.markdown("### ⚙️ Options")
         full_refresh = st.checkbox(
-            "전체 새로고침",
+            "Full Refresh",
             value=False,
-            help="기존 데이터를 무시하고 전체 데이터를 다시 수집합니다",
+            help="Ignore existing data and collect all data from scratch",
         )
 
         st.markdown("---")
 
-        # 실행 버튼
+        # Run button
         run_button = st.button(
-            "🚀 데이터 수집 시작",
+            "🚀 Start Collection",
             type="primary",
             use_container_width=True,
             disabled=not selected_tickers or not selected_intervals,
         )
 
-    # ===== 메인 화면 =====
+    st.markdown("---")
 
-    # 검증
+    # ===== Validation =====
     if not selected_tickers:
-        st.warning("⚠️ 최소 1개 이상의 티커를 선택하세요.")
+        st.warning("⚠️ Please select at least one ticker.")
         return
 
     if not selected_intervals:
-        st.warning("⚠️ 최소 1개 이상의 인터벌을 선택하세요.")
+        st.warning("⚠️ Please select at least one interval.")
         return
 
-    # 현재 설정 요약
-    with st.expander("📋 수집 설정 요약", expanded=True):
+    # Current settings summary
+    with st.expander("📋 Collection Settings Summary", expanded=True):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.markdown("**📈 선택된 티커**")
+            st.markdown("**📈 Selected Tickers**")
             st.write(", ".join(selected_tickers))
-            st.metric("티커 수", len(selected_tickers))
+            st.metric("Ticker Count", len(selected_tickers))
 
         with col2:
-            st.markdown("**⏱️ 선택된 인터벌**")
+            st.markdown("**⏱️ Selected Intervals**")
             interval_names = [name for code, name in INTERVALS if code in selected_intervals]
             st.write(", ".join(interval_names))
-            st.metric("인터벌 수", len(selected_intervals))
+            st.metric("Interval Count", len(selected_intervals))
 
         with col3:
-            st.markdown("**⚙️ 옵션**")
-            st.write(f"전체 새로고침: {'예' if full_refresh else '아니오'}")
+            st.markdown("**⚙️ Options**")
+            st.write(f"Full Refresh: {'Yes' if full_refresh else 'No'}")
             total_tasks = len(selected_tickers) * len(selected_intervals)
-            st.metric("총 수집 작업", total_tasks)
+            st.metric("Total Tasks", total_tasks)
 
-    # 데이터 수집 실행
+    # Execute data collection
     if run_button:
         _run_collection(selected_tickers, selected_intervals, full_refresh)
 
-    # 이전 수집 결과 표시
+    # Display previous collection results
     if "collection_results" in st.session_state:
         _display_collection_results()
 
@@ -174,21 +175,21 @@ def _run_collection(
     intervals: list[str],
     full_refresh: bool,
 ) -> None:
-    """데이터 수집 실행.
+    """Execute data collection.
 
     Args:
-        tickers: 수집할 티커 목록
-        intervals: 수집할 인터벌 목록
-        full_refresh: 전체 새로고침 여부
+        tickers: List of tickers to collect
+        intervals: List of intervals to collect
+        full_refresh: Whether to perform full refresh
     """
-    st.subheader("📊 수집 진행 상황")
+    st.subheader("📊 Collection Progress")
 
-    # 진행 바
+    # Progress bar
     total_tasks = len(tickers) * len(intervals)
     progress_bar = st.progress(0)
     status_text = st.empty()
 
-    # 결과 저장
+    # Store results
     results: dict[str, int] = {}
     completed = 0
 
@@ -197,10 +198,10 @@ def _run_collection(
 
         for ticker in tickers:
             for interval in intervals:
-                status_text.text(f"수집 중: {ticker} ({interval})...")
+                status_text.text(f"Collecting: {ticker} ({interval})...")
 
                 try:
-                    # collect 메서드 사용 (full_refresh 지원)
+                    # Use collect method (supports full_refresh)
                     count = collector.collect(
                         ticker=ticker,
                         interval=interval,  # type: ignore[arg-type]
@@ -217,33 +218,33 @@ def _run_collection(
                 completed += 1
                 progress_bar.progress(completed / total_tasks)
 
-        status_text.text("수집 완료!")
+        status_text.text("Collection completed!")
 
-        # 결과 저장
+        # Store results
         st.session_state.collection_results = results
 
-        # 성공/실패 카운트
+        # Count success/failure
         success_count = sum(1 for v in results.values() if v >= 0)
         fail_count = sum(1 for v in results.values() if v < 0)
         total_candles = sum(v for v in results.values() if v >= 0)
 
         if fail_count == 0:
-            st.success(f"✅ 모든 수집 완료! 총 {total_candles:,}개 캔들 수집됨")
+            st.success(f"✅ All collections completed! Total {total_candles:,} candles collected")
         else:
-            st.warning(f"⚠️ 수집 완료: 성공 {success_count}건, 실패 {fail_count}건")
+            st.warning(f"⚠️ Collection finished: {success_count} succeeded, {fail_count} failed")
 
     except Exception as e:
         logger.error(f"Collection error: {e}", exc_info=True)
-        st.error(f"❌ 수집 중 오류 발생: {e}")
+        st.error(f"❌ Error during collection: {e}")
 
 
 def _display_collection_results() -> None:
-    """수집 결과 표시."""
+    """Display collection results."""
     results = st.session_state.collection_results
 
-    st.subheader("📊 최근 수집 결과")
+    st.subheader("📊 Recent Collection Results")
 
-    # 결과를 테이블로 표시
+    # Display results as table
     import pandas as pd
 
     data = []
@@ -252,30 +253,30 @@ def _display_collection_results() -> None:
         ticker = parts[0]
         interval = parts[1] if len(parts) > 1 else "unknown"
 
-        status = "✅ 성공" if count >= 0 else "❌ 실패"
+        status = "✅ Success" if count >= 0 else "❌ Failed"
         candles = f"{count:,}" if count >= 0 else "-"
 
         data.append(
             {
-                "티커": ticker,
-                "인터벌": interval,
-                "상태": status,
-                "캔들 수": candles,
+                "Ticker": ticker,
+                "Interval": interval,
+                "Status": status,
+                "Candles": candles,
             }
         )
 
     df = pd.DataFrame(data)
     st.dataframe(df, width="stretch", height=400)
 
-    # 요약
+    # Summary
     col1, col2, col3 = st.columns(3)
     success_count = sum(1 for v in results.values() if v >= 0)
     fail_count = sum(1 for v in results.values() if v < 0)
     total_candles = sum(v for v in results.values() if v >= 0)
 
     with col1:
-        st.metric("성공", f"{success_count}건")
+        st.metric("Success", f"{success_count}")
     with col2:
-        st.metric("실패", f"{fail_count}건")
+        st.metric("Failed", f"{fail_count}")
     with col3:
-        st.metric("총 캔들", f"{total_candles:,}개")
+        st.metric("Total Candles", f"{total_candles:,}")

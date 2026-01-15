@@ -1,6 +1,6 @@
 """Underwater (drawdown) chart component.
 
-드로다운을 시각화하는 언더워터 차트.
+Underwater chart visualizing drawdowns.
 """
 
 import numpy as np
@@ -14,28 +14,28 @@ def render_underwater_curve(
     dates: np.ndarray,
     equity: np.ndarray,
 ) -> None:
-    """언더워터(드로다운) 곡선 렌더링.
+    """Render underwater (drawdown) curve.
 
     Args:
-        dates: 날짜 배열
-        equity: 포트폴리오 가치 배열
+        dates: Date array
+        equity: Portfolio value array
     """
     if len(dates) == 0 or len(equity) == 0:
-        st.warning("📊 표시할 데이터가 없습니다.")
+        st.warning("📊 No data to display.")
         return
 
-    # 드로다운 계산
+    # Calculate drawdown
     cummax = np.maximum.accumulate(equity)
-    drawdown = (equity - cummax) / cummax * 100  # 퍼센트
+    drawdown = (equity - cummax) / cummax * 100  # Percent
 
-    # 최대 드로다운 위치
+    # Maximum drawdown location
     mdd_idx = np.argmin(drawdown)
     mdd_value = drawdown[mdd_idx]
     mdd_date = dates[mdd_idx]
 
     fig = go.Figure()
 
-    # 드로다운 영역 차트
+    # Drawdown area chart
     fig.add_trace(
         go.Scatter(
             x=dates,
@@ -51,7 +51,7 @@ def render_underwater_curve(
         )
     )
 
-    # 최대 드로다운 포인트
+    # Maximum drawdown point
     fig.add_trace(
         go.Scatter(
             x=[mdd_date],
@@ -66,7 +66,7 @@ def render_underwater_curve(
         )
     )
 
-    # 레이아웃 설정
+    # Layout configuration
     fig.update_layout(
         title={
             "text": "📉 Underwater Curve (Drawdown)",
@@ -82,7 +82,7 @@ def render_underwater_curve(
             "showgrid": True,
             "gridcolor": "rgba(128, 128, 128, 0.2)",
             "ticksuffix": "%",
-            "range": [min(drawdown) * 1.1, 5],  # 약간의 여백
+            "range": [min(drawdown) * 1.1, 5],  # Slight margin
         },
         hovermode="x unified",
         template="plotly_white",

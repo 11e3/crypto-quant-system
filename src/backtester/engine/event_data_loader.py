@@ -45,16 +45,11 @@ def load_event_data(
             df = pd.read_parquet(filepath)
             df.index = pd.to_datetime(df.index)
 
-            index_dates = pd.Series(df.index.to_pydatetime()).dt.date
-
+            # Filter by date range using DatetimeIndex directly
             if start_date is not None:
-                mask = index_dates >= start_date
-                df = df.loc[mask]
-                index_dates = index_dates.loc[mask]
+                df = df[df.index.date >= start_date]
             if end_date is not None:
-                mask = index_dates <= end_date
-                df = df.loc[mask]
-                index_dates = index_dates.loc[mask]
+                df = df[df.index.date <= end_date]
 
             if df.empty:
                 logger.warning(f"No data for {ticker} after date filtering")
@@ -65,7 +60,7 @@ def load_event_data(
 
             # Store date part for type-safe filtering
             df = df.copy()
-            df["index_date"] = index_dates.to_numpy()
+            df["index_date"] = pd.Series(df.index.date, index=df.index)
 
             required = ["open", "high", "low", "close", "entry_signal", "exit_signal"]
             missing = [col for col in required if col not in df.columns]

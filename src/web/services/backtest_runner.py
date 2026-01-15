@@ -1,6 +1,6 @@
 """Backtest execution service.
 
-백테스트 실행 및 결과 관리 서비스.
+Service for backtest execution and result management.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from src.backtester.engine import BacktestEngine, VectorizedBacktestEngine
+from src.backtester.engine import BacktestEngine, EventDrivenBacktestEngine, VectorizedBacktestEngine
 from src.backtester.models import BacktestConfig, BacktestResult
 from src.strategies.base import Strategy
 from src.utils.logger import get_logger
@@ -21,10 +21,10 @@ __all__ = ["run_backtest_service", "BacktestService"]
 
 
 class BacktestService:
-    """백테스트 실행 서비스.
+    """Backtest execution service.
 
-    BacktestEngine을 래핑하여 Streamlit 환경에서
-    백테스트를 실행하고 결과를 관리합니다.
+    Wraps BacktestEngine to execute backtests
+    and manage results in Streamlit environment.
     """
 
     def __init__(
@@ -33,19 +33,22 @@ class BacktestService:
         engine: BacktestEngine | None = None,
         use_vectorized: bool = True,
     ) -> None:
-        """백테스트 서비스 초기화.
+        """Initialize backtest service.
 
         Args:
-            config: 백테스트 설정
+            config: Backtest configuration
             engine: Optional BacktestEngine (uses VectorizedBacktestEngine if not provided)
-            use_vectorized: VectorizedBacktestEngine 사용 여부 (기본: True, 성능 향상)
+            use_vectorized: Whether to use VectorizedBacktestEngine (default: True, performance improvement)
         """
         self.config = config
         if engine:
             self.engine = engine
         else:
-            # 기본적으로 VectorizedBacktestEngine 사용 (10-100배 빠름)
-            self.engine = VectorizedBacktestEngine(config)
+            # TEMPORARY: Use EventDrivenBacktestEngine for debugging
+            # TODO: Fix VectorizedBacktestEngine unrealized P&L bug
+            self.engine = EventDrivenBacktestEngine(config)
+            # Use VectorizedBacktestEngine by default (10-100x faster)
+            # self.engine = VectorizedBacktestEngine(config)
 
     def run(
         self,
@@ -54,16 +57,16 @@ class BacktestService:
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> BacktestResult | None:
-        """백테스트 실행.
+        """Execute backtest.
 
         Args:
-            strategy: 전략 인스턴스
-            data_files: {ticker: file_path} 딕셔너리
-            start_date: 시작일 (선택)
-            end_date: 종료일 (선택)
+            strategy: Strategy instance
+            data_files: {ticker: file_path} dictionary
+            start_date: Start date (optional)
+            end_date: End date (optional)
 
         Returns:
-            BacktestResult 또는 None (실패 시)
+            BacktestResult or None (on failure)
         """
         try:
             logger.info(f"Starting backtest: {strategy.name} with {len(data_files)} assets")
@@ -88,7 +91,7 @@ class BacktestService:
             return None
 
 
-@st.cache_data(show_spinner="백테스트 실행 중...")
+@st.cache_data(show_spinner="Running backtest...")
 def run_backtest_service(
     strategy_name: str,
     strategy_params: dict,
@@ -97,23 +100,23 @@ def run_backtest_service(
     start_date_str: str | None,
     end_date_str: str | None,
 ) -> BacktestResult | None:
-    """캐시 가능한 백테스트 실행 래퍼.
+    """Cacheable backtest execution wrapper.
 
-    Streamlit 캐싱을 위해 모든 파라미터를 직렬화 가능한 타입으로 변환.
+    Convert all parameters to serializable types for Streamlit caching.
 
     Args:
-        strategy_name: 전략 이름
-        strategy_params: 전략 파라미터
-        data_files_dict: 데이터 파일 경로 딕셔너리
-        config_dict: 백테스트 설정 딕셔너리
-        start_date_str: 시작일 문자열
-        end_date_str: 종료일 문자열
+        strategy_name: Strategy name
+        strategy_params: Strategy parameters
+        data_files_dict: Data file path dictionary
+        config_dict: Backtest configuration dictionary
+        start_date_str: Start date string
+        end_date_str: End date string
 
     Returns:
-        BacktestResult 또는 None
+        BacktestResult or None
     """
     try:
-        # Strategy 인스턴스 생성
+        # Create Strategy instance
         from src.web.components.sidebar.strategy_selector import (
             create_strategy_instance,
         )
@@ -123,17 +126,17 @@ def run_backtest_service(
             logger.error("Failed to create strategy instance")
             return None
 
-        # Path 객체 복원
+        # Restore Path objects
         data_files = {ticker: Path(path) for ticker, path in data_files_dict.items()}
 
-        # 날짜 복원
+        # Restore dates
         start_date = date.fromisoformat(start_date_str) if start_date_str else None
         end_date = date.fromisoformat(end_date_str) if end_date_str else None
 
-        # BacktestConfig 생성
+        # Create BacktestConfig
         config = BacktestConfig(**config_dict)
 
-        # 백테스트 실행
+        # Execute backtest
         service = BacktestService(config)
         result = service.run(strategy, data_files, start_date, end_date)
 

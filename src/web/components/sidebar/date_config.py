@@ -1,6 +1,6 @@
 """Date configuration component.
 
-시작일과 종료일을 선택하는 UI 컴포넌트.
+UI component for selecting start and end dates.
 """
 
 from datetime import date, timedelta
@@ -11,14 +11,14 @@ __all__ = ["render_date_config"]
 
 
 def render_date_config() -> tuple[date, date]:
-    """날짜 범위 선택 UI 렌더링.
+    """Render date range selection UI.
 
     Returns:
-        (start_date, end_date) 튜플
+        (start_date, end_date) tuple
     """
-    st.subheader("📅 기간 설정")
+    st.subheader("📅 Period Configuration")
 
-    # 기본값: 최근 1년
+    # Default: Last 1 year
     default_end = date.today()
     default_start = default_end - timedelta(days=365)
 
@@ -26,29 +26,29 @@ def render_date_config() -> tuple[date, date]:
 
     with col1:
         start_date = st.date_input(
-            "시작일",
+            "Start Date",
             value=default_start,
-            min_value=date(2017, 1, 1),  # Upbit 시작일
+            min_value=date(2017, 1, 1),  # Upbit start date
             max_value=default_end,
-            help="백테스트 시작 날짜 (Upbit: 2017년 이후)",
+            help="Backtest start date (Upbit: 2017 onwards)",
         )
 
     with col2:
         end_date = st.date_input(
-            "종료일",
+            "End Date",
             value=default_end,
             min_value=start_date,
             max_value=date.today(),
-            help="백테스트 종료 날짜",
+            help="Backtest end date",
         )
 
-    # 검증
+    # Validation
     if start_date >= end_date:
-        st.error("⚠️ 시작일은 종료일보다 이전이어야 합니다.")
+        st.error("⚠️ Start date must be before end date.")
         return default_start, default_end
 
-    # 기간 표시
+    # Display period
     days_diff = (end_date - start_date).days
-    st.caption(f"📊 백테스트 기간: **{days_diff:,}일** ({start_date} ~ {end_date})")
+    st.caption(f"📊 Backtest period: **{days_diff:,} days** ({start_date} ~ {end_date})")
 
     return start_date, end_date

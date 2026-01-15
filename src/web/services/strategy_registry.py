@@ -1,6 +1,6 @@
 """Strategy registry service.
 
-자동으로 등록된 전략들을 탐색하고 메타데이터를 제공합니다.
+Discover automatically registered strategies and provide metadata.
 """
 
 import inspect
@@ -17,10 +17,10 @@ __all__ = ["StrategyRegistry"]
 
 
 class StrategyRegistry:
-    """전략 자동 감지 및 레지스트리.
+    """Strategy auto-detection and registry.
 
-    모든 전략 모듈을 스캔하여 Strategy 서브클래스를 탐색하고,
-    __init__ 시그니처에서 파라미터를 추출하여 메타데이터를 생성합니다.
+    Scan all strategy modules to discover Strategy subclasses,
+    and generate metadata by extracting parameters from __init__ signature.
 
     Example:
         >>> registry = StrategyRegistry()
@@ -45,7 +45,7 @@ class StrategyRegistry:
         self._discover_strategies()
 
     def _discover_strategies(self) -> None:
-        """모든 전략 모듈에서 Strategy 서브클래스 탐색."""
+        """Discover Strategy subclasses from all strategy modules."""
         for module_path in self.STRATEGY_MODULES:
             try:
                 module = import_module(module_path)
@@ -56,11 +56,11 @@ class StrategyRegistry:
                 logger.warning(f"Failed to import module {module_path}: {e}")
 
     def _is_valid_strategy(self, cls: type) -> bool:
-        """유효한 전략 클래스인지 확인."""
+        """Check if it's a valid strategy class."""
         return issubclass(cls, Strategy) and cls is not Strategy and not inspect.isabstract(cls)
 
     def _register_strategy(self, name: str, cls: type, module_path: str) -> None:
-        """전략을 레지스트리에 등록."""
+        """Register strategy to the registry."""
         try:
             parameters = self._extract_parameters(cls)
             description = self._extract_description(cls)
@@ -81,7 +81,7 @@ class StrategyRegistry:
             logger.warning(f"Failed to register strategy {name}: {e}")
 
     def _extract_parameters(self, cls: type) -> dict[str, ParameterSpec]:
-        """__init__ 시그니처에서 파라미터 추출."""
+        """Extract parameters from __init__ signature."""
         sig = inspect.signature(cls.__init__)  # type: ignore[misc]
         params: dict[str, ParameterSpec] = {}
 
@@ -96,20 +96,20 @@ class StrategyRegistry:
         return params
 
     def _create_parameter_spec(self, name: str, param: inspect.Parameter) -> ParameterSpec | None:
-        """파라미터 정보에서 ParameterSpec 생성."""
+        """Create ParameterSpec from parameter information."""
         annotation = param.annotation
         default = param.default if param.default != inspect.Parameter.empty else None
 
-        # 기본값이 None이면 스킵
+        # Skip if default is None
         if default is None:
             return None
 
-        # 타입 추론
+        # Infer type
         param_type = self._infer_type(annotation, default)
         if param_type is None:
             return None
 
-        # 타입별 스펙 생성
+        # Create spec by type
         if param_type == "int":
             return ParameterSpec(
                 name=name,
@@ -141,8 +141,8 @@ class StrategyRegistry:
         return None
 
     def _infer_type(self, annotation: Any, default: Any) -> str | None:
-        """타입 힌트와 기본값에서 파라미터 타입 추론."""
-        # 타입 힌트 체크
+        """Infer parameter type from type hint and default value."""
+        # Check type hint
         if annotation != inspect.Parameter.empty:
             if annotation is int or annotation == "int":
                 return "int"
@@ -151,7 +151,7 @@ class StrategyRegistry:
             elif annotation is bool or annotation == "bool":
                 return "bool"
 
-        # 기본값으로 추론
+        # Infer from default value
         if isinstance(default, bool):
             return "bool"
         elif isinstance(default, int):
@@ -162,31 +162,31 @@ class StrategyRegistry:
         return None
 
     def _extract_description(self, cls: type) -> str:
-        """클래스 docstring에서 설명 추출."""
+        """Extract description from class docstring."""
         doc = inspect.getdoc(cls)
         if doc:
-            # 첫 번째 줄만 사용
+            # Use only first line
             return doc.split("\n")[0].strip()
         return f"{cls.__name__} strategy"
 
     def list_strategies(self) -> list[StrategyInfo]:
-        """등록된 모든 전략 목록 반환."""
+        """Return list of all registered strategies."""
         return list(self._strategies.values())
 
     def get_strategy(self, name: str) -> StrategyInfo | None:
-        """전략 이름으로 StrategyInfo 조회."""
+        """Get StrategyInfo by strategy name."""
         return self._strategies.get(name)
 
     def get_strategy_class(self, name: str) -> type | None:
-        """전략 이름으로 클래스 조회."""
+        """Get class by strategy name."""
         info = self._strategies.get(name)
         return info.strategy_class if info else None
 
     def get_parameters(self, name: str) -> dict[str, ParameterSpec]:
-        """전략 이름으로 파라미터 스펙 조회."""
+        """Get parameter spec by strategy name."""
         info = self._strategies.get(name)
         return info.parameters if info else {}
 
     def strategy_exists(self, name: str) -> bool:
-        """전략이 등록되어 있는지 확인."""
+        """Check if strategy is registered."""
         return name in self._strategies

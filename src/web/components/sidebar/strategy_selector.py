@@ -1,6 +1,6 @@
 """Strategy selector component.
 
-전략 선택 및 동적 파라미터 편집 UI 컴포넌트.
+Strategy selection and dynamic parameter editing UI component.
 """
 
 from typing import Any, cast
@@ -18,59 +18,59 @@ __all__ = ["render_strategy_selector", "create_strategy_instance"]
 
 @st.cache_resource
 def get_cached_registry() -> StrategyRegistry:
-    """캐시된 전략 레지스트리 반환."""
+    """Return cached strategy registry."""
     return StrategyRegistry()
 
 
 def render_strategy_selector() -> tuple[str, dict[str, Any]]:
-    """전략 선택 및 파라미터 동적 렌더링.
+    """Render strategy selection and dynamic parameters.
 
     Returns:
-        (strategy_name, parameters) 튜플
+        (strategy_name, parameters) tuple
     """
-    st.subheader("📈 전략 선택")
+    st.subheader("📈 Strategy Selection")
 
     registry = get_cached_registry()
     strategies = registry.list_strategies()
 
     if not strategies:
-        st.error("⚠️ 등록된 전략이 없습니다.")
+        st.error("⚠️ No strategies registered.")
         return "", {}
 
-    # 전략 이름 목록
+    # Strategy name list
     strategy_names = [s.name for s in strategies]
 
-    # 전략 선택
+    # Strategy selection
     selected_name = st.selectbox(
-        "전략",
+        "Strategy",
         options=strategy_names,
-        help="백테스트에 사용할 전략 선택",
+        help="Select strategy to use for backtest",
     )
 
-    # 선택된 전략 정보
+    # Selected strategy info
     selected_strategy = registry.get_strategy(selected_name)
     if not selected_strategy:
-        st.error(f"⚠️ 전략을 찾을 수 없습니다: {selected_name}")
+        st.error(f"⚠️ Strategy not found: {selected_name}")
         return "", {}
 
-    # 전략 설명 표시
+    # Display strategy description
     if selected_strategy.description:
         st.caption(f"ℹ️ {selected_strategy.description}")
 
     st.markdown("---")
 
-    # 파라미터 편집
-    st.subheader("🎛️ 전략 파라미터")
+    # Parameter editing
+    st.subheader("🎛️ Strategy Parameters")
 
     parameters = selected_strategy.parameters
 
     if not parameters:
-        st.info("📌 이 전략은 설정 가능한 파라미터가 없습니다.")
+        st.info("📌 This strategy has no configurable parameters.")
         return selected_name, {}
 
     param_values: dict[str, Any] = {}
 
-    # 파라미터 타입별로 UI 렌더링
+    # Render UI by parameter type
     for name, spec in parameters.items():
         param_values[name] = _render_parameter_input(name, spec)
 
@@ -78,16 +78,16 @@ def render_strategy_selector() -> tuple[str, dict[str, Any]]:
 
 
 def _render_parameter_input(name: str, spec: ParameterSpec) -> Any:
-    """파라미터 타입에 따른 입력 UI 렌더링.
+    """Render input UI based on parameter type.
 
     Args:
-        name: 파라미터 이름
-        spec: 파라미터 스펙
+        name: Parameter name
+        spec: Parameter specification
 
     Returns:
-        사용자 입력값
+        User input value
     """
-    # 이름 포맷팅 (snake_case -> Title Case)
+    # Format name (snake_case -> Title Case)
     label = name.replace("_", " ").title()
 
     match spec.type:
@@ -98,7 +98,7 @@ def _render_parameter_input(name: str, spec: ParameterSpec) -> Any:
                 max_value=int(spec.max_value or 100),
                 value=int(spec.default),
                 step=int(spec.step or 1),
-                help=spec.description or f"정수형 파라미터: {name}",
+                help=spec.description or f"Integer parameter: {name}",
             )
 
         case "float":
@@ -109,14 +109,14 @@ def _render_parameter_input(name: str, spec: ParameterSpec) -> Any:
                 value=float(spec.default),
                 step=float(spec.step or 0.01),
                 format="%.4f",
-                help=spec.description or f"실수형 파라미터: {name}",
+                help=spec.description or f"Float parameter: {name}",
             )
 
         case "bool":
             return st.checkbox(
                 label,
                 value=bool(spec.default),
-                help=spec.description or f"불리언 파라미터: {name}",
+                help=spec.description or f"Boolean parameter: {name}",
             )
 
         case "choice":
@@ -126,7 +126,7 @@ def _render_parameter_input(name: str, spec: ParameterSpec) -> Any:
                 label,
                 options=choices,
                 index=default_index,
-                help=spec.description or f"선택 파라미터: {name}",
+                help=spec.description or f"Choice parameter: {name}",
             )
 
         case _:
@@ -135,14 +135,14 @@ def _render_parameter_input(name: str, spec: ParameterSpec) -> Any:
 
 
 def create_strategy_instance(strategy_name: str, parameters: dict[str, Any]) -> Strategy | None:
-    """전략 인스턴스 생성.
+    """Create strategy instance.
 
     Args:
-        strategy_name: 전략 이름
-        parameters: 파라미터 딕셔너리
+        strategy_name: Strategy name
+        parameters: Parameters dictionary
 
     Returns:
-        Strategy 인스턴스 또는 None (실패 시)
+        Strategy instance or None (on failure)
     """
     try:
         registry = get_cached_registry()
@@ -152,7 +152,7 @@ def create_strategy_instance(strategy_name: str, parameters: dict[str, Any]) -> 
             logger.error(f"Strategy class not found: {strategy_name}")
             return None
 
-        # 전략 인스턴스 생성
+        # Create strategy instance
         strategy = strategy_class(**parameters)
         logger.info(f"Created strategy: {strategy_name} with params: {parameters}")
         return cast(Strategy, strategy)

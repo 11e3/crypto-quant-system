@@ -1,13 +1,14 @@
 """Optimization page.
 
-전략 파라미터 최적화 페이지.
+Strategy parameter optimization page.
 """
 
-from typing import Any
+from typing import Any, cast
 
 import streamlit as st
 
 from src.backtester import BacktestConfig, optimize_strategy_parameters
+from src.data.collector_fetch import Interval
 from src.strategies.volatility_breakout import create_vbo_strategy
 from src.utils.logger import get_logger
 from src.web.services.data_loader import validate_data_availability
@@ -16,7 +17,7 @@ logger = get_logger(__name__)
 
 __all__ = ["render_optimization_page"]
 
-# 최적화 메트릭 옵션
+# Optimization metric options
 METRICS = [
     ("sharpe_ratio", "Sharpe Ratio"),
     ("cagr", "CAGR"),
@@ -26,168 +27,173 @@ METRICS = [
     ("profit_factor", "Profit Factor"),
 ]
 
-# 기본 티커
+# Default tickers
 DEFAULT_TICKERS = ["KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-SOL"]
 
 
 def render_optimization_page() -> None:
-    """최적화 페이지 렌더링."""
-    st.header("🔧 파라미터 최적화")
+    """Render optimization page."""
+    st.header("🔧 Parameter Optimization")
 
-    # ===== 사이드바 설정 =====
-    with st.sidebar:
-        st.title("🔧 최적화 설정")
-        st.markdown("---")
+    # ===== Configuration Section =====
+    with st.expander("⚙️ Optimization Settings", expanded=True):
+        # Row 1: Strategy and Method
+        col1, col2 = st.columns(2)
 
-        # 1. 전략 선택
-        st.subheader("📈 전략")
-        strategy_type = st.selectbox(
-            "전략 유형",
-            options=["vanilla", "legacy"],
-            format_func=lambda x: "Vanilla VBO" if x == "vanilla" else "Legacy VBO",
-        )
+        with col1:
+            st.subheader("📈 Strategy")
+            strategy_type = st.selectbox(
+                "Strategy Type",
+                options=["vanilla", "legacy"],
+                format_func=lambda x: "Vanilla VBO" if x == "vanilla" else "Legacy VBO",
+            )
 
-        st.markdown("---")
+        with col2:
+            st.subheader("⚙️ Optimization Method")
+            method = st.radio(
+                "Search Method",
+                options=["grid", "random"],
+                format_func=lambda x: "Grid Search (Full exploration)"
+                if x == "grid"
+                else "Random Search (Random sampling)",
+                horizontal=True,
+            )
 
-        # 2. 최적화 방법
-        st.subheader("⚙️ 최적화 방법")
-        method = st.radio(
-            "탐색 방법",
-            options=["grid", "random"],
-            format_func=lambda x: "Grid Search (전체 탐색)"
-            if x == "grid"
-            else "Random Search (무작위 탐색)",
-            horizontal=True,
-        )
-
-        if method == "random":
-            n_iter = st.slider("탐색 횟수", min_value=10, max_value=500, value=100, step=10)
-        else:
-            n_iter = 100  # grid에서는 사용 안 함
-
-        st.markdown("---")
-
-        # 3. 최적화 메트릭
-        st.subheader("📊 최적화 메트릭")
-        metric = st.selectbox(
-            "최적화 대상",
-            options=[m[0] for m in METRICS],
-            format_func=lambda x: next(name for code, name in METRICS if code == x),
-            index=0,
-        )
+            if method == "random":
+                n_iter = st.slider(
+                    "Number of Iterations", min_value=10, max_value=500, value=100, step=10
+                )
+            else:
+                n_iter = 100  # Not used in grid search
 
         st.markdown("---")
 
-        # 4. 거래 설정
-        st.subheader("💰 거래 설정")
-        initial_capital = st.number_input(
-            "초기 자본",
-            min_value=0.1,
-            max_value=100.0,
-            value=1.0,
-            step=0.1,
-            format="%.1f",
-        )
-        fee_rate = st.number_input(
-            "수수료율",
-            min_value=0.0,
-            max_value=0.01,
-            value=0.0005,
-            step=0.0001,
-            format="%.4f",
-        )
-        max_slots = st.slider("최대 슬롯", min_value=1, max_value=10, value=4)
+        # Row 2: Metric and Trading Settings
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("📊 Optimization Metric")
+            metric = st.selectbox(
+                "Optimization Target",
+                options=[m[0] for m in METRICS],
+                format_func=lambda x: next(name for code, name in METRICS if code == x),
+                index=0,
+            )
+
+        with col2:
+            st.subheader("💰 Trading Settings")
+            initial_capital = st.number_input(
+                "Initial Capital",
+                min_value=0.1,
+                max_value=100.0,
+                value=1.0,
+                step=0.1,
+                format="%.1f",
+            )
+            fee_rate = st.number_input(
+                "Fee Rate",
+                min_value=0.0,
+                max_value=0.01,
+                value=0.0005,
+                step=0.0001,
+                format="%.4f",
+            )
+            max_slots = st.slider("Maximum Slots", min_value=1, max_value=10, value=4)
 
         st.markdown("---")
 
-        # 5. 파라미터 범위
-        st.subheader("📐 파라미터 범위")
+        # Row 3: Parameter Ranges
+        st.subheader("📐 Parameter Ranges")
 
-        sma_range = st.text_input(
-            "SMA Period",
-            value="3,4,5,6,7",
-            help="쉼표로 구분된 값 입력 (예: 3,4,5,6,7)",
-        )
-        trend_range = st.text_input(
-            "Trend SMA Period",
-            value="8,10,12,14",
-            help="쉼표로 구분된 값 입력",
-        )
-        short_noise = st.text_input(
-            "Short Noise Period (선택)",
-            value="",
-            help="비워두면 SMA Period와 동일",
-        )
-        long_noise = st.text_input(
-            "Long Noise Period (선택)",
-            value="",
-            help="비워두면 Trend SMA Period와 동일",
-        )
+        col1, col2 = st.columns(2)
 
-        st.markdown("---")
+        with col1:
+            sma_range = st.text_input(
+                "SMA Period",
+                value="3,4,5,6,7",
+                help="Enter comma-separated values (e.g., 3,4,5,6,7)",
+            )
+            trend_range = st.text_input(
+                "Trend SMA Period",
+                value="8,10,12,14",
+                help="Enter comma-separated values",
+            )
 
-        # 6. 인터벌
-        interval = st.selectbox(
-            "데이터 인터벌",
-            options=["minute240", "day", "week"],
-            format_func=lambda x: {"minute240": "4시간", "day": "일봉", "week": "주봉"}[x],
-            index=1,
-        )
+        with col2:
+            short_noise = st.text_input(
+                "Short Noise Period (Optional)",
+                value="",
+                help="Leave empty to use SMA Period values",
+            )
+            long_noise = st.text_input(
+                "Long Noise Period (Optional)",
+                value="",
+                help="Leave empty to use Trend SMA Period values",
+            )
 
         st.markdown("---")
 
-        # 7. 티커 선택
-        st.subheader("📈 티커 선택")
-        available, missing = validate_data_availability(DEFAULT_TICKERS, interval)
+        # Row 4: Data Settings
+        col1, col2, col3 = st.columns(3)
 
-        selected_tickers = st.multiselect(
-            "티커",
-            options=available if available else DEFAULT_TICKERS,
-            default=available[:2] if available else [],
-        )
+        with col1:
+            interval = st.selectbox(
+                "Data Interval",
+                options=["minute240", "day", "week"],
+                format_func=lambda x: {"minute240": "4 Hours", "day": "Daily", "week": "Weekly"}[x],
+                index=1,
+            )
+
+        with col2:
+            st.subheader("📈 Ticker Selection")
+            available, missing = validate_data_availability(DEFAULT_TICKERS, cast(Interval, interval))
+
+            selected_tickers = st.multiselect(
+                "Tickers",
+                options=available if available else DEFAULT_TICKERS,
+                default=available[:2] if available else [],
+            )
+
+        with col3:
+            workers = st.slider(
+                "Parallel Workers",
+                min_value=1,
+                max_value=8,
+                value=4,
+                help="Adjust according to your CPU cores",
+            )
 
         st.markdown("---")
 
-        # 8. 병렬 처리
-        workers = st.slider(
-            "병렬 워커 수",
-            min_value=1,
-            max_value=8,
-            value=4,
-            help="CPU 코어 수에 맞게 조정하세요",
-        )
-
-        st.markdown("---")
-
-        # 실행 버튼
+        # Run Button
         run_button = st.button(
-            "🚀 최적화 실행",
+            "🚀 Run Optimization",
             type="primary",
             use_container_width=True,
             disabled=not selected_tickers,
         )
 
-    # ===== 메인 화면 =====
+    # ===== Main Area =====
 
-    # 검증
+    # Validation
     if not selected_tickers:
-        st.warning("⚠️ 최소 1개 이상의 티커를 선택하세요.")
+        st.warning("⚠️ Please select at least one ticker.")
         _show_help()
         return
 
-    # 파라미터 범위 파싱
+    # Parse parameter ranges
     try:
         param_grid = _parse_param_grid(sma_range, trend_range, short_noise, long_noise)
     except ValueError as e:
-        st.error(f"❌ 파라미터 범위 오류: {e}")
+        st.error(f"❌ Parameter range error: {e}")
         return
 
-    # 설정 요약
+    # Configuration summary
     _show_config_summary(
         strategy_type, method, metric, param_grid, selected_tickers, interval, n_iter
     )
 
-    # 최적화 실행
+    # Run optimization
     if run_button:
         _run_optimization(
             strategy_type=strategy_type,
@@ -203,7 +209,7 @@ def render_optimization_page() -> None:
             workers=workers,
         )
 
-    # 이전 결과 표시
+    # Display previous results
     if "optimization_result" in st.session_state:
         _display_optimization_results()
 
@@ -214,19 +220,19 @@ def _parse_param_grid(
     short_noise: str,
     long_noise: str,
 ) -> dict[str, list[int]]:
-    """파라미터 범위 파싱.
+    """Parse parameter ranges.
 
     Args:
-        sma_range: SMA period 범위
-        trend_range: Trend SMA period 범위
-        short_noise: Short noise period 범위
-        long_noise: Long noise period 범위
+        sma_range: SMA period range
+        trend_range: Trend SMA period range
+        short_noise: Short noise period range
+        long_noise: Long noise period range
 
     Returns:
-        파라미터 그리드 딕셔너리
+        Parameter grid dictionary
 
     Raises:
-        ValueError: 파싱 오류 시
+        ValueError: If parsing error occurs
     """
 
     def parse_range(s: str) -> list[int]:
@@ -238,9 +244,9 @@ def _parse_param_grid(
     trend_values = parse_range(trend_range)
 
     if not sma_values:
-        raise ValueError("SMA Period 값을 입력하세요")
+        raise ValueError("Please enter SMA Period values")
     if not trend_values:
-        raise ValueError("Trend SMA Period 값을 입력하세요")
+        raise ValueError("Please enter Trend SMA Period values")
 
     param_grid = {
         "sma_period": sma_values,
@@ -261,58 +267,58 @@ def _show_config_summary(
     interval: str,
     n_iter: int,
 ) -> None:
-    """설정 요약 표시."""
-    with st.expander("📋 최적화 설정 요약", expanded=True):
+    """Display configuration summary."""
+    with st.expander("📋 Optimization Configuration Summary", expanded=True):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.markdown("**📈 전략 & 방법**")
-            st.write(f"- 전략: {strategy_type}")
-            st.write(f"- 방법: {method}")
-            st.write(f"- 메트릭: {metric}")
+            st.markdown("**📈 Strategy & Method**")
+            st.write(f"- Strategy: {strategy_type}")
+            st.write(f"- Method: {method}")
+            st.write(f"- Metric: {metric}")
 
         with col2:
-            st.markdown("**📐 파라미터 범위**")
+            st.markdown("**📐 Parameter Ranges**")
             for key, values in param_grid.items():
                 st.write(f"- {key}: {values}")
 
         with col3:
-            st.markdown("**📊 데이터**")
-            st.write(f"- 티커: {', '.join(tickers)}")
-            st.write(f"- 인터벌: {interval}")
+            st.markdown("**📊 Data**")
+            st.write(f"- Tickers: {', '.join(tickers)}")
+            st.write(f"- Interval: {interval}")
 
-            # 총 조합 수 계산
+            # Calculate total combinations
             if method == "grid":
                 total_combinations = 1
                 for values in param_grid.values():
                     total_combinations *= len(values)
-                st.metric("총 조합", f"{total_combinations:,}개")
+                st.metric("Total Combinations", f"{total_combinations:,}")
             else:
-                st.metric("탐색 횟수", f"{n_iter}회")
+                st.metric("Search Iterations", f"{n_iter}")
 
 
 def _show_help() -> None:
-    """도움말 표시."""
+    """Display help information."""
     st.info(
         """
-        ### 🔧 파라미터 최적화 가이드
+        ### 🔧 Parameter Optimization Guide
 
-        **1. 전략 선택**
-        - Vanilla VBO: 기본 변동성 돌파 전략
-        - Legacy VBO: 노이즈 필터 포함 버전
+        **1. Strategy Selection**
+        - Vanilla VBO: Basic volatility breakout strategy
+        - Legacy VBO: Version with noise filter
 
-        **2. 탐색 방법**
-        - Grid Search: 모든 조합을 테스트 (정확하지만 느림)
-        - Random Search: 무작위 샘플링 (빠르지만 최적해를 놓칠 수 있음)
+        **2. Search Method**
+        - Grid Search: Tests all combinations (accurate but slow)
+        - Random Search: Random sampling (fast but may miss optimal solution)
 
-        **3. 파라미터 범위**
-        - 쉼표로 구분된 정수값 입력
-        - 예: "3,4,5,6,7"
+        **3. Parameter Ranges**
+        - Enter comma-separated integer values
+        - Example: "3,4,5,6,7"
 
-        **4. 최적화 메트릭**
-        - Sharpe Ratio: 리스크 대비 수익 (권장)
-        - CAGR: 연간 복리 수익률
-        - Calmar Ratio: MDD 대비 수익률
+        **4. Optimization Metrics**
+        - Sharpe Ratio: Risk-adjusted return (recommended)
+        - CAGR: Compound Annual Growth Rate
+        - Calmar Ratio: Return relative to maximum drawdown
         """
     )
 
@@ -330,15 +336,15 @@ def _run_optimization(
     max_slots: int,
     workers: int,
 ) -> None:
-    """최적화 실행."""
-    st.subheader("🔄 최적화 진행 중...")
+    """Run optimization."""
+    st.subheader("🔄 Optimization in Progress...")
 
-    # 진행 표시
+    # Progress indicator
     progress_placeholder = st.empty()
-    progress_placeholder.info("최적화를 시작합니다...")
+    progress_placeholder.info("Starting optimization...")
 
     try:
-        # 전략 팩토리 생성
+        # Create strategy factory
         def create_strategy(**kwargs: Any) -> Any:
             if strategy_type == "vanilla":
                 return create_vbo_strategy(
@@ -355,7 +361,7 @@ def _run_optimization(
                     **kwargs,
                 )
 
-        # 설정 생성
+        # Create configuration
         config = BacktestConfig(
             initial_capital=initial_capital,
             fee_rate=fee_rate,
@@ -364,9 +370,9 @@ def _run_optimization(
             use_cache=True,
         )
 
-        progress_placeholder.info("백테스트 실행 중... (시간이 걸릴 수 있습니다)")
+        progress_placeholder.info("Running backtests... (this may take a while)")
 
-        # 최적화 실행
+        # Run optimization
         result = optimize_strategy_parameters(
             strategy_factory=create_strategy,
             param_grid=param_grid,
@@ -380,43 +386,43 @@ def _run_optimization(
             n_workers=workers,
         )
 
-        # 결과 저장
+        # Save results
         st.session_state.optimization_result = result
         st.session_state.optimization_metric = metric
 
-        progress_placeholder.success("✅ 최적화 완료!")
+        progress_placeholder.success("✅ Optimization completed!")
 
     except Exception as e:
         logger.error(f"Optimization error: {e}", exc_info=True)
-        progress_placeholder.error(f"❌ 최적화 실패: {e}")
+        progress_placeholder.error(f"❌ Optimization failed: {e}")
 
 
 def _display_optimization_results() -> None:
-    """최적화 결과 표시."""
+    """Display optimization results."""
     result = st.session_state.optimization_result
     metric = st.session_state.optimization_metric
 
-    st.subheader("📊 최적화 결과")
+    st.subheader("📊 Optimization Results")
 
-    # 최적 파라미터
-    st.markdown("### 🏆 최적 파라미터")
+    # Best parameters
+    st.markdown("### 🏆 Best Parameters")
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("**파라미터**")
+        st.markdown("**Parameters**")
         for key, value in result.best_params.items():
             st.write(f"- {key}: **{value}**")
 
     with col2:
-        st.markdown("**성능**")
+        st.markdown("**Performance**")
         st.metric(f"Best {metric}", f"{result.best_score:.4f}")
 
-    # 전체 결과 테이블
-    st.markdown("### 📋 전체 결과")
+    # Full results table
+    st.markdown("### 📋 All Results")
 
     import pandas as pd
 
-    # 결과를 DataFrame으로 변환
+    # Convert results to DataFrame
     data = []
     for params, score in zip(result.all_params, result.all_scores, strict=False):
         row = params.copy()
@@ -428,7 +434,7 @@ def _display_optimization_results() -> None:
 
     st.dataframe(df, width="stretch", height=400)
 
-    # 상위 10개 결과
-    st.markdown("### 🔝 Top 10 결과")
+    # Top 10 results
+    st.markdown("### 🔝 Top 10 Results")
     top_10 = df.head(10)
     st.dataframe(top_10, width="stretch")
