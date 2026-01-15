@@ -165,8 +165,13 @@ def render_monthly_heatmap(
 
     st.plotly_chart(fig, width="stretch")
 
-    # Display yearly totals
-    yearly_returns = monthly.groupby("year")["return_pct"].sum()
+    # Display yearly totals (compounded returns, not summed)
+    yearly_data = []
+    for year, group in monthly.groupby("year"):
+        compounded_return = (np.prod(1 + group["return_pct"] / 100) - 1) * 100
+        yearly_data.append({"year": year, "return_pct": compounded_return})
+
+    yearly_returns = pd.DataFrame(yearly_data).set_index("year")["return_pct"]
     if not yearly_returns.empty:
         cols = st.columns(len(yearly_returns))
         for i, (year, ret) in enumerate(yearly_returns.items()):
