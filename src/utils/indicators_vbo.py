@@ -4,6 +4,8 @@ VBO (Volatility Breakout) 전략용 지표.
 노이즈 비율, 적응형 K값, 변동성 레짐 등 VBO 전략에 필요한 지표.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 

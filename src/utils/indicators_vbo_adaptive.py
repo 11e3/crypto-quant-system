@@ -4,6 +4,8 @@ Adaptive VBO indicators (Phase 2 improvements).
 Contains volatility regime, adaptive noise, and adaptive K-value calculations.
 """
 
+from __future__ import annotations
+
 import pandas as pd
 
 from src.utils.indicators_vbo import (

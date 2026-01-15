@@ -9,18 +9,35 @@ Provides comprehensive portfolio simulation with:
 - Risk management integration
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Callable, Literal
+from datetime import datetime, date
+from typing import Callable, Literal, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
-from src.backtester.models import BacktestConfig, BacktestResult, Trade
+# Use local Trade class to avoid cascade import of pyupbit via backtester.__init__
 from src.portfolio.models import PortfolioConstraints, TransactionCostModel
 from src.portfolio.rebalancing import RebalancingEngine, RebalancingConfig
 from src.risk.drawdown_control import DrawdownController
 from src.utils.logger import get_logger
+
+
+@dataclass
+class Trade:
+    """A single trade in the backtest."""
+
+    ticker: str
+    entry_date: date
+    entry_price: float
+    amount: float
+    commission_cost: float = 0.0
+    slippage_cost: float = 0.0
+    exit_date: date | None = None
+    exit_price: float | None = None
+    profit: float = 0.0
 
 logger = get_logger(__name__)
 
@@ -359,7 +376,10 @@ class PortfolioBacktester:
         result.snapshots = snapshots
         result.equity_curve = equity_series
         result.returns = returns_series
-        result.weights_history = pd.DataFrame(weights_history, index=dates)
+
+        # Align weights_history with dates (skip warmup period)
+        weights_dates = dates[20:] if len(weights_history) == len(dates) - 20 else dates[-len(weights_history):]
+        result.weights_history = pd.DataFrame(weights_history, index=weights_dates) if weights_history else pd.DataFrame()
         result.config = self.config
 
         # Calculate turnover

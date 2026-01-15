@@ -4,6 +4,8 @@ Event-driven engine execution logic.
 Contains entry and exit execution functions.
 """
 
+from __future__ import annotations
+
 from datetime import date
 
 import pandas as pd
