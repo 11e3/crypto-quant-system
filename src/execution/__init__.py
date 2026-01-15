@@ -11,6 +11,7 @@ __all__ = [
     "create_bot",
     "OrderManager",
     "PositionManager",
+    "PnLCalculator",
     "SignalHandler",
     "SignalDataLoader",
     "SignalMetricsCalculator",
@@ -38,6 +39,10 @@ def __getattr__(name: str) -> Any:
         from src.execution.position_manager import PositionManager
 
         return PositionManager
+    elif name == "PnLCalculator":
+        from src.execution.pnl_calculator import PnLCalculator
+
+        return PnLCalculator
     elif name == "SignalHandler":
         from src.execution.signal_handler import SignalHandler
 

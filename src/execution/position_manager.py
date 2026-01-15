@@ -1,24 +1,29 @@
 """
 Position manager for tracking and managing trading positions.
+
+Focuses on position lifecycle management (SRP).
+PnL calculations are delegated to PnLCalculator.
 """
 
 from src.exchange import PriceService
 from src.execution.event_bus import EventBus, get_event_bus
 from src.execution.events import EventType, PositionEvent
+from src.execution.pnl_calculator import PnLCalculator
 from src.execution.position import Position
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 # Re-export Position for backward compatibility
-__all__ = ["Position", "PositionManager"]
+__all__ = ["Position", "PositionManager", "PnLCalculator"]
 
 
 class PositionManager:
     """
     Manages trading positions across multiple tickers.
 
-    Tracks open positions, calculates PnL, and manages position lifecycle.
+    Focuses on position lifecycle (add, remove, query).
+    Delegates PnL calculations to PnLCalculator.
     """
 
     def __init__(
@@ -26,6 +31,7 @@ class PositionManager:
         exchange: PriceService,
         publish_events: bool = True,
         event_bus: EventBus | None = None,
+        pnl_calculator: PnLCalculator | None = None,
     ) -> None:
         """
         Initialize position manager.
@@ -34,34 +40,20 @@ class PositionManager:
             exchange: Service implementing PriceService protocol
             publish_events: Whether to publish events (default: True)
             event_bus: Optional EventBus instance (uses global if not provided)
+            pnl_calculator: Optional PnLCalculator (creates default if not provided)
         """
         self.exchange = exchange
         self.positions: dict[str, Position] = {}
         self.publish_events = publish_events
         self.event_bus = event_bus if event_bus else (get_event_bus() if publish_events else None)
+        self.pnl_calculator = pnl_calculator or PnLCalculator()
 
     def has_position(self, ticker: str) -> bool:
-        """
-        Check if a position exists for a ticker.
-
-        Args:
-            ticker: Trading pair symbol
-
-        Returns:
-            True if position exists
-        """
+        """Check if a position exists for a ticker."""
         return ticker in self.positions
 
     def get_position(self, ticker: str) -> Position | None:
-        """
-        Get position for a ticker.
-
-        Args:
-            ticker: Trading pair symbol
-
-        Returns:
-            Position object or None
-        """
+        """Get position for a ticker."""
         return self.positions.get(ticker)
 
     def add_position(
@@ -93,7 +85,6 @@ class PositionManager:
         self.positions[ticker] = position
         logger.info(f"Added position: {position}")
 
-        # Publish event
         if self.event_bus:
             current_price = self.get_current_price(ticker)
             pnl = self.calculate_pnl(ticker, current_price)
@@ -128,7 +119,6 @@ class PositionManager:
         if position:
             logger.info(f"Removed position: {position}")
 
-            # Publish event
             if self.event_bus:
                 current_price = self.get_current_price(ticker)
                 pnl = self.calculate_pnl(ticker, current_price)
@@ -150,15 +140,7 @@ class PositionManager:
         return position
 
     def get_current_price(self, ticker: str) -> float:
-        """
-        Get current market price for a ticker.
-
-        Args:
-            ticker: Trading pair symbol
-
-        Returns:
-            Current price, 0.0 on error
-        """
+        """Get current market price for a ticker."""
         try:
             return self.exchange.get_current_price(ticker)
         except Exception as e:
@@ -166,16 +148,7 @@ class PositionManager:
             return 0.0
 
     def calculate_pnl(self, ticker: str, current_price: float | None = None) -> float:
-        """
-        Calculate unrealized PnL for a position.
-
-        Args:
-            ticker: Trading pair symbol
-            current_price: Current market price (fetched if None)
-
-        Returns:
-            Unrealized PnL in quote currency
-        """
+        """Calculate unrealized PnL for a position. Delegates to PnLCalculator."""
         position = self.get_position(ticker)
         if not position:
             return 0.0
@@ -183,23 +156,10 @@ class PositionManager:
         if current_price is None:
             current_price = self.get_current_price(ticker)
 
-        if current_price <= 0:
-            return 0.0
-
-        pnl = (current_price - position.entry_price) * position.amount
-        return pnl
+        return self.pnl_calculator.calculate_pnl(position, current_price)
 
     def calculate_pnl_pct(self, ticker: str, current_price: float | None = None) -> float:
-        """
-        Calculate unrealized PnL percentage.
-
-        Args:
-            ticker: Trading pair symbol
-            current_price: Current market price (fetched if None)
-
-        Returns:
-            Unrealized PnL percentage
-        """
+        """Calculate unrealized PnL percentage. Delegates to PnLCalculator."""
         position = self.get_position(ticker)
         if not position:
             return 0.0
@@ -207,27 +167,14 @@ class PositionManager:
         if current_price is None:
             current_price = self.get_current_price(ticker)
 
-        if current_price <= 0 or position.entry_price <= 0:
-            return 0.0
-
-        return ((current_price / position.entry_price) - 1.0) * 100.0
+        return self.pnl_calculator.calculate_pnl_pct(position, current_price)
 
     def get_all_positions(self) -> dict[str, Position]:
-        """
-        Get all open positions.
-
-        Returns:
-            Dictionary of ticker -> Position
-        """
+        """Get all open positions."""
         return self.positions.copy()
 
     def get_position_count(self) -> int:
-        """
-        Get number of open positions.
-
-        Returns:
-            Number of positions
-        """
+        """Get number of open positions."""
         return len(self.positions)
 
     def clear_all(self) -> None:
