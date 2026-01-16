@@ -1,6 +1,7 @@
 """Strategy registry service.
 
 Discover automatically registered strategies and provide metadata.
+Includes bt library strategies integration.
 """
 
 import inspect
@@ -13,7 +14,12 @@ from src.web.services.parameter_models import ParameterSpec, StrategyInfo
 
 logger = get_logger(__name__)
 
-__all__ = ["StrategyRegistry"]
+__all__ = ["StrategyRegistry", "is_bt_strategy"]
+
+
+def is_bt_strategy(name: str) -> bool:
+    """Check if strategy is from bt library."""
+    return name.startswith("bt_")
 
 
 class StrategyRegistry:
@@ -43,6 +49,7 @@ class StrategyRegistry:
         """Initialize registry and discover strategies."""
         self._strategies: dict[str, StrategyInfo] = {}
         self._discover_strategies()
+        self._register_bt_strategies()
 
     def _discover_strategies(self) -> None:
         """Discover Strategy subclasses from all strategy modules."""
@@ -190,3 +197,49 @@ class StrategyRegistry:
     def strategy_exists(self, name: str) -> bool:
         """Check if strategy is registered."""
         return name in self._strategies
+
+    def _register_bt_strategies(self) -> None:
+        """Register bt library strategies."""
+        try:
+            from src.web.services.bt_backtest_runner import is_bt_available
+
+            if not is_bt_available():
+                logger.info("bt library not available, skipping bt strategies")
+                return
+
+            # bt VBO Strategy
+            bt_vbo_params = {
+                "lookback": ParameterSpec(
+                    name="lookback",
+                    type="int",
+                    default=5,
+                    min_value=2,
+                    max_value=20,
+                    step=1,
+                    description="Short-term MA period (lookback period)",
+                ),
+                "multiplier": ParameterSpec(
+                    name="multiplier",
+                    type="int",
+                    default=2,
+                    min_value=1,
+                    max_value=5,
+                    step=1,
+                    description="Multiplier for long-term MA (Long MA = lookback * multiplier)",
+                ),
+            }
+
+            bt_vbo_info = StrategyInfo(
+                name="bt_VBO",
+                class_name="bt_VBO",
+                module_path="bt.strategies.vbo",
+                strategy_class=None,  # bt strategies don't use crypto-quant-system Strategy class
+                parameters=bt_vbo_params,
+                description="[bt] Volatility Breakout Strategy (external bt library)",
+            )
+
+            self._strategies["bt_VBO"] = bt_vbo_info
+            logger.info("Registered bt library strategies: bt_VBO")
+
+        except Exception as e:
+            logger.warning(f"Failed to register bt strategies: {e}")
