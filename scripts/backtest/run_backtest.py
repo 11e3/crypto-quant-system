@@ -173,10 +173,11 @@ def run_with_full_report(
 
     strategy = VanillaVBO(
         name="VBO_FullReport",
-        sma_period=4,
-        trend_sma_period=8,
-        short_noise_period=4,
-        long_noise_period=8,
+        sma_period=5,
+        trend_sma_period=10,
+        short_noise_period=5,
+        long_noise_period=10,
+        exclude_current=True,  # Prevent look-ahead bias (critical for realistic results)
     )
 
     config = BacktestConfig(
