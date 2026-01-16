@@ -236,8 +236,8 @@ def run_bt_backtest_service(
             config=backtest_config,
         )
 
-        # Extract metrics from results
-        metrics = results.get("metrics")
+        # Extract metrics from results (key is "performance", not "metrics")
+        metrics = results.get("performance")
         if not metrics:
             logger.error("No metrics in backtest results")
             return None
