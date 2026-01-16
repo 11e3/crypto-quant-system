@@ -58,11 +58,11 @@ def render_data_collect_page() -> None:
         # Quick selection buttons
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            if st.button("Select All", use_container_width=True):
+            if st.button("Select All", width="stretch"):
                 st.session_state.selected_collect_tickers = DEFAULT_TICKERS.copy()
                 st.rerun()
         with btn_col2:
-            if st.button("Deselect All", use_container_width=True):
+            if st.button("Deselect All", width="stretch"):
                 st.session_state.selected_collect_tickers = []
                 st.rerun()
 
@@ -125,7 +125,7 @@ def render_data_collect_page() -> None:
         run_button = st.button(
             "🚀 Start Collection",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             disabled=not selected_tickers or not selected_intervals,
         )
 

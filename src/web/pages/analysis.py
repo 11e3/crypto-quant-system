@@ -155,7 +155,7 @@ def _render_monte_carlo() -> None:
     run_button = st.button(
         "🚀 Run Simulation",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         disabled=not selected_tickers,
         key="mc_run",
     )
@@ -470,7 +470,7 @@ def _render_walk_forward() -> None:
     run_button = st.button(
         "🚀 Run Analysis",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         disabled=not selected_tickers,
         key="wf_run",
     )

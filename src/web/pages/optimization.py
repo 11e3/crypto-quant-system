@@ -171,7 +171,7 @@ def render_optimization_page() -> None:
         run_button = st.button(
             "🚀 Run Optimization",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             disabled=not selected_tickers,
         )
 

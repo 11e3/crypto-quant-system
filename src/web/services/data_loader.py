@@ -18,7 +18,12 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-__all__ = ["load_ticker_data", "get_data_files", "load_multiple_tickers_parallel"]
+__all__ = [
+    "load_ticker_data",
+    "get_data_files",
+    "load_multiple_tickers_parallel",
+    "get_data_date_range",
+]
 
 
 @st.cache_data(ttl=3600, show_spinner="Loading data...")
@@ -161,3 +166,53 @@ def load_multiple_tickers_parallel(
 
     logger.info(f"Loaded {len(ticker_data)}/{len(tickers)} tickers in parallel")
     return ticker_data
+
+
+@st.cache_data(ttl=3600)
+def get_data_date_range(interval: Interval = "day") -> tuple[date | None, date | None]:
+    """Get the date range of available data.
+
+    Scans all parquet files for the given interval and returns
+    the earliest start date and latest end date.
+
+    Args:
+        interval: Candle interval
+
+    Returns:
+        (start_date, end_date) tuple, or (None, None) if no data
+    """
+    min_date: date | None = None
+    max_date: date | None = None
+
+    # Find all parquet files for this interval
+    pattern = f"KRW-*_{interval}.parquet"
+    files = list(RAW_DATA_DIR.glob(pattern))
+
+    if not files:
+        logger.warning(f"No data files found for interval: {interval}")
+        return None, None
+
+    for file_path in files:
+        try:
+            df = pd.read_parquet(file_path)
+            if len(df) > 0:
+                # Get date from index
+                if isinstance(df.index, pd.DatetimeIndex):
+                    file_min = df.index.min().date()
+                    file_max = df.index.max().date()
+                elif "datetime" in df.columns:
+                    file_min = pd.to_datetime(df["datetime"]).min().date()
+                    file_max = pd.to_datetime(df["datetime"]).max().date()
+                else:
+                    continue
+
+                if min_date is None or file_min < min_date:
+                    min_date = file_min
+                if max_date is None or file_max > max_date:
+                    max_date = file_max
+        except Exception as e:
+            logger.debug(f"Could not read date range from {file_path}: {e}")
+            continue
+
+    logger.info(f"Data date range for {interval}: {min_date} ~ {max_date}")
+    return min_date, max_date

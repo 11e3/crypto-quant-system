@@ -7,7 +7,7 @@ Integrates bt library's VBO strategy with crypto-quant-system dashboard.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -39,6 +39,7 @@ class BtBacktestResult:
     total_return: float
     cagr: float
     mdd: float
+    sharpe_ratio: float
     sortino_ratio: float
     win_rate: float
     profit_factor: float
@@ -149,6 +150,7 @@ def _convert_bt_metrics_to_result(metrics: PerformanceMetrics) -> BtBacktestResu
         total_return=float(metrics.total_return),
         cagr=float(metrics.cagr),
         mdd=float(metrics.mdd),
+        sharpe_ratio=float(metrics.sharpe_ratio),
         sortino_ratio=float(metrics.sortino_ratio),
         win_rate=float(metrics.win_rate),
         profit_factor=float(metrics.profit_factor),
@@ -171,6 +173,8 @@ def run_bt_backtest_service(
     slippage: float = 0.0005,
     multiplier: int = 2,
     lookback: int = 5,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> BtBacktestResult | None:
     """Run VBO backtest using bt library.
 
@@ -182,6 +186,8 @@ def run_bt_backtest_service(
         slippage: Slippage (0.0005 = 0.05%)
         multiplier: Multiplier for long-term indicators
         lookback: Lookback period for short-term indicators
+        start_date: Backtest start date (inclusive)
+        end_date: Backtest end date (inclusive)
 
     Returns:
         BtBacktestResult or None on failure
@@ -215,17 +221,35 @@ def run_bt_backtest_service(
             logger.error("No data loaded for any symbol")
             return None
 
+        # Filter data by date range
+        if start_date or end_date:
+            for symbol in list(data.keys()):
+                df = data[symbol]
+                if "datetime" in df.columns:
+                    if start_date:
+                        df = df[df["datetime"].dt.date >= start_date]
+                    if end_date:
+                        df = df[df["datetime"].dt.date <= end_date]
+                    data[symbol] = df
+                    logger.info(f"Filtered {symbol}: {len(df)} rows after date filter")
+
         loaded_symbols = list(data.keys())
 
         # Run backtest with VBO strategy
         logger.info(f"Running bt backtest with {len(loaded_symbols)} symbols...")
-        backtest_config = {
+        backtest_config: dict[str, object] = {
             "initial_cash": initial_cash,
             "fee": fee,
             "slippage": slippage,
             "lookback": lookback,
             "multiplier": multiplier,
         }
+
+        # Add date range to config if provided
+        if start_date:
+            backtest_config["start_date"] = start_date.isoformat()
+        if end_date:
+            backtest_config["end_date"] = end_date.isoformat()
         results = facade.run_backtest(
             strategy="vbo",
             symbols=loaded_symbols,

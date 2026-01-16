@@ -104,11 +104,11 @@ def _render_settings_tab() -> None:
         run_button = st.button(
             "🚀 Run Backtest",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             disabled=not strategy_name or not selected_tickers,
         )
     with col_right:
-        if st.button("🗑️ Clear Cache", use_container_width=True):
+        if st.button("🗑️ Clear Cache", width="stretch"):
             st.cache_data.clear()
             if "backtest_result" in st.session_state:
                 del st.session_state.backtest_result
@@ -152,6 +152,8 @@ def _render_settings_tab() -> None:
                 strategy_params=strategy_params,
                 available_tickers=available_tickers,
                 trading_config=trading_config,
+                start_date=start_date,
+                end_date=end_date,
             )
         else:
             _run_event_driven_backtest(
@@ -226,6 +228,8 @@ def _run_bt_backtest(
     strategy_params: dict,
     available_tickers: list[str],
     trading_config: TradingConfig,
+    start_date: date_type | None,
+    end_date: date_type | None,
 ) -> None:
     """Run backtest using bt library."""
     from src.web.services.bt_backtest_runner import run_bt_backtest_service
@@ -242,6 +246,8 @@ def _run_bt_backtest(
             slippage=trading_config.slippage_rate,
             multiplier=strategy_params.get("multiplier", 2),
             lookback=strategy_params.get("lookback", 5),
+            start_date=start_date,
+            end_date=end_date,
         )
 
         if result:
@@ -385,47 +391,47 @@ def _display_bt_results(result: BtBacktestResult) -> None:
 
     st.subheader("📊 bt VBO Backtest Results")
 
-    # Metrics cards
+    # Metrics cards - Row 1
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.metric(
-            "Total Return",
-            f"{result.total_return:,.2f}%",
-            delta=f"{result.cagr:.2f}% CAGR",
-        )
+        st.metric("Total Return", f"{result.total_return:,.2f}%")
 
     with col2:
-        st.metric("Max Drawdown", f"{result.mdd:.2f}%")
+        st.metric("CAGR", f"{result.cagr:.2f}%")
 
     with col3:
-        st.metric(
-            "Sortino Ratio",
-            f"{result.sortino_ratio:.2f}",
-            delta=f"{result.win_rate:.1f}% Win Rate",
-        )
+        st.metric("Max Drawdown", f"{result.mdd:.2f}%")
 
     with col4:
-        st.metric(
-            "Trades",
-            f"{result.num_trades:,}",
-            delta=f"PF: {result.profit_factor:.2f}",
-        )
+        st.metric("Sharpe Ratio", f"{result.sharpe_ratio:.2f}")
 
-    # Second row
+    # Row 2
     col5, col6, col7, col8 = st.columns(4)
 
     with col5:
-        st.metric("Final Equity", f"{result.final_equity:,.0f} KRW")
+        st.metric("Sortino Ratio", f"{result.sortino_ratio:.2f}")
 
     with col6:
-        st.metric("Avg Win", f"{result.avg_win:,.0f} KRW")
+        st.metric("Win Rate", f"{result.win_rate:.2f}%")
 
     with col7:
-        st.metric("Avg Loss", f"{result.avg_loss:,.0f} KRW")
+        st.metric("Profit Factor", f"{result.profit_factor:.2f}")
 
     with col8:
-        st.metric("Profit Factor", f"{result.profit_factor:.2f}")
+        st.metric("Total Trades", f"{result.num_trades:,}")
+
+    # Row 3
+    col9, col10, col11, col12 = st.columns(4)
+
+    with col9:
+        st.metric("Final Equity", f"{result.final_equity:,.0f} KRW")
+
+    with col10:
+        st.metric("Avg Win", f"{result.avg_win:,.0f} KRW")
+
+    with col11:
+        st.metric("Avg Loss", f"{result.avg_loss:,.0f} KRW")
 
     st.markdown("---")
 
@@ -544,7 +550,7 @@ def _render_bt_yearly_chart(result: BtBacktestResult) -> None:
 
     # Table
     yearly_df = pd.DataFrame({"Year": years, "Return (%)": [f"{r:.2f}%" for r in returns]})
-    st.dataframe(yearly_df, use_container_width=True, hide_index=True)
+    st.dataframe(yearly_df, width="stretch", hide_index=True)
 
 
 def _render_bt_trade_history(result: BtBacktestResult) -> None:
@@ -581,7 +587,7 @@ def _render_bt_trade_history(result: BtBacktestResult) -> None:
         "Show trades", options=[10, 25, 50, 100, "All"], index=1, key="bt_trade_count"
     )
     display_df = trades_df if show_count == "All" else trades_df.tail(int(str(show_count)))
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(display_df, width="stretch", hide_index=True)
 
 
 def _render_bt_statistics(result: BtBacktestResult) -> None:
@@ -605,7 +611,7 @@ def _render_bt_statistics(result: BtBacktestResult) -> None:
                 ],
             }
         )
-        st.dataframe(stats_df, use_container_width=True, hide_index=True)
+        st.dataframe(stats_df, width="stretch", hide_index=True)
 
     with col2:
         st.markdown("#### Trade Statistics")
@@ -621,4 +627,4 @@ def _render_bt_statistics(result: BtBacktestResult) -> None:
                 ],
             }
         )
-        st.dataframe(trade_stats_df, use_container_width=True, hide_index=True)
+        st.dataframe(trade_stats_df, width="stretch", hide_index=True)

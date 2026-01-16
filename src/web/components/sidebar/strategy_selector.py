@@ -16,10 +16,13 @@ logger = get_logger(__name__)
 __all__ = ["render_strategy_selector", "create_strategy_instance"]
 
 
-@st.cache_resource
+@st.cache_resource(ttl=60)  # Cache for 60 seconds only
 def get_cached_registry() -> StrategyRegistry:
     """Return cached strategy registry."""
-    return StrategyRegistry()
+    logger.info("Creating new StrategyRegistry instance")
+    registry = StrategyRegistry()
+    logger.info(f"Registered {len(registry.list_strategies())} strategies")
+    return registry
 
 
 def render_strategy_selector() -> tuple[str, dict[str, Any]]:
@@ -30,8 +33,14 @@ def render_strategy_selector() -> tuple[str, dict[str, Any]]:
     """
     st.subheader("📈 Strategy Selection")
 
+    # Force refresh registry (bypass cache for debugging)
+    from src.web.services.bt_backtest_runner import is_bt_available
+
     registry = get_cached_registry()
     strategies = registry.list_strategies()
+
+    # Debug info
+    st.caption(f"bt_available: {is_bt_available()}, strategies: {len(strategies)}")
 
     if not strategies:
         st.error("⚠️ No strategies registered.")

@@ -83,10 +83,10 @@ def _render_settings_tab() -> None:
         # Quick selection buttons
         quick_col1, quick_col2 = st.columns(2)
         with quick_col1:
-            if st.button("Select All", use_container_width=True):
+            if st.button("Select All", width="stretch"):
                 st.session_state.bt_selected_symbols = available_symbols
         with quick_col2:
-            if st.button("Clear All", use_container_width=True):
+            if st.button("Clear All", width="stretch"):
                 st.session_state.bt_selected_symbols = []
 
         # Initialize session state
@@ -194,7 +194,7 @@ def _render_settings_tab() -> None:
         run_button = st.button(
             "Run bt VBO Backtest",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             disabled=len(selected_symbols) == 0,
         )
 
@@ -381,13 +381,27 @@ def _render_yearly_chart(result: BtBacktestResult) -> None:
     years = sorted(result.yearly_returns.keys())
     returns = [result.yearly_returns[y] for y in years]
 
+    # Check if first/last year is partial
+    first_date = result.dates[0] if result.dates else None
+    last_date = result.dates[-1] if result.dates else None
+    first_year_partial = first_date and (first_date.month > 1 or first_date.day > 1)
+    last_year_partial = last_date and (last_date.month < 12 or last_date.day < 28)
+
+    # Create labels with partial year indicator
+    labels = []
+    for i, year in enumerate(years):
+        if i == 0 and first_year_partial or i == len(years) - 1 and last_year_partial:
+            labels.append(f"{year}*")
+        else:
+            labels.append(str(year))
+
     colors = ["#2ECC71" if r >= 0 else "#E74C3C" for r in returns]
 
     fig = go.Figure()
 
     fig.add_trace(
         go.Bar(
-            x=years,
+            x=labels,
             y=returns,
             marker_color=colors,
             text=[f"{r:.1f}%" for r in returns],
@@ -395,8 +409,13 @@ def _render_yearly_chart(result: BtBacktestResult) -> None:
         )
     )
 
-    # Add average line
-    avg_return = np.mean(returns)
+    # Add average line (exclude partial years from average)
+    full_year_returns = [
+        r
+        for i, r in enumerate(returns)
+        if not (i == 0 and first_year_partial) and not (i == len(returns) - 1 and last_year_partial)
+    ]
+    avg_return = np.mean(full_year_returns) if full_year_returns else np.mean(returns)
     fig.add_hline(
         y=avg_return,
         line_dash="dash",
@@ -406,7 +425,7 @@ def _render_yearly_chart(result: BtBacktestResult) -> None:
     )
 
     fig.update_layout(
-        title="Yearly Returns",
+        title="Yearly Returns (* = partial year)",
         xaxis_title="Year",
         yaxis_title="Return (%)",
         height=400,
@@ -419,11 +438,11 @@ def _render_yearly_chart(result: BtBacktestResult) -> None:
     st.markdown("### Yearly Returns Table")
     yearly_df = pd.DataFrame(
         {
-            "Year": years,
+            "Year": labels,
             "Return (%)": [f"{r:.2f}%" for r in returns],
         }
     )
-    st.dataframe(yearly_df, use_container_width=True, hide_index=True)
+    st.dataframe(yearly_df, width="stretch", hide_index=True)
 
 
 def _render_trade_history(result: BtBacktestResult) -> None:
@@ -467,7 +486,7 @@ def _render_trade_history(result: BtBacktestResult) -> None:
 
     display_df = trades_df if show_count == "All" else trades_df.tail(int(str(show_count)))
 
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(display_df, width="stretch", hide_index=True)
 
 
 def _render_statistics(result: BtBacktestResult) -> None:
@@ -494,7 +513,7 @@ def _render_statistics(result: BtBacktestResult) -> None:
                 ],
             }
         )
-        st.dataframe(stats_df, use_container_width=True, hide_index=True)
+        st.dataframe(stats_df, width="stretch", hide_index=True)
 
     with col2:
         st.markdown("#### Trade Statistics")
@@ -516,7 +535,7 @@ def _render_statistics(result: BtBacktestResult) -> None:
                 ],
             }
         )
-        st.dataframe(trade_stats_df, use_container_width=True, hide_index=True)
+        st.dataframe(trade_stats_df, width="stretch", hide_index=True)
 
     # Additional metrics
     st.markdown("#### Final Results")

@@ -163,7 +163,7 @@ def _render_positions_card(positions: dict) -> None:
     # Style the dataframe
     st.dataframe(
         df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -196,7 +196,7 @@ def _render_trade_history(trades_df: pd.DataFrame) -> None:
 
     st.dataframe(
         display_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -283,7 +283,7 @@ def _render_pnl_summary(pnl_df: pd.DataFrame) -> None:
         # Cumulative PnL chart
         st.line_chart(
             pnl_df.set_index("date")["cumulative_pnl"],
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -359,7 +359,7 @@ def render_monitor_page() -> None:
             selected_date = datetime.now().strftime("%Y-%m-%d")
 
         # Refresh button
-        if st.button("Refresh Data", use_container_width=True):
+        if st.button("Refresh Data", width="stretch"):
             st.cache_data.clear()
             st.rerun()
 

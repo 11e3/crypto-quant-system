@@ -215,6 +215,14 @@ crypto-quant-system/
 +-- config/                       # Configuration examples
 ```
 
+## Screenshots
+
+### Backtest Results - Equity Curve
+![Backtest Results - Equity Curve](docs/images/screencapture-localhost-8501-2026-01-17-06_29_52.png)
+
+### Backtest Results - Yearly Returns
+![Backtest Results - Yearly Returns](docs/images/screencapture-localhost-8501-2026-01-17-06_30_03.png)
+
 ## Dashboard Pages
 
 ### Home

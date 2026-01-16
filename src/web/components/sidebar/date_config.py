@@ -3,9 +3,11 @@
 UI component for selecting start and end dates.
 """
 
-from datetime import date, timedelta
+from datetime import date
 
 import streamlit as st
+
+from src.web.services.data_loader import get_data_date_range
 
 __all__ = ["render_date_config"]
 
@@ -18,9 +20,12 @@ def render_date_config() -> tuple[date, date]:
     """
     st.subheader("📅 Period Configuration")
 
-    # Default: Last 1 year
-    default_end = date.today()
-    default_start = default_end - timedelta(days=365)
+    # Get data date range for default values
+    data_start, data_end = get_data_date_range("day")
+
+    # Default: Full data range (or fallback to 2018-01-01 ~ today)
+    default_start = data_start if data_start else date(2018, 1, 1)
+    default_end = data_end if data_end else date.today()
 
     col1, col2 = st.columns(2)
 

@@ -636,7 +636,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.1.0" },
     { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.11.0" },
     { name = "python-dotenv", specifier = ">=1.0.0,<1.2" },
-    { name = "pyupbit", specifier = ">=0.2.34" },
+    { name = "pyupbit", specifier = "==0.2.33" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
@@ -2400,7 +2400,7 @@ wheels = [
 
 [[package]]
 name = "pyupbit"
-version = "0.2.34"
+version = "0.2.33"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pandas" },
@@ -2408,8 +2408,9 @@ dependencies = [
     { name = "requests" },
     { name = "websockets" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/85/45/787f71ed48a8c72c3fc04203755a40d5a2b086c64fd5a175cb6bef034f12/pyupbit-0.2.33.tar.gz", hash = "sha256:0b842876fc13bf5bbdc61e4b1acdc0ae45ed41c4b7987f67df46ef4899f33f60", size = 25957, upload-time = "2022-06-29T00:41:14.955Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a9/00/28a01fc249c15fa9b7479f57af402036d1425cc82f05b3d4c2ec98c1e373/pyupbit-0.2.34-py3-none-any.whl", hash = "sha256:793d14ef3811bd8756aa3fd10a22ce9c92bcadd31d4d32119859fa0a2110c7d9", size = 24858, upload-time = "2024-06-14T16:21:46.575Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/b2/cfb5edce62e66bb69e0b66777fa810e20e863fc2c660c244eece8cba5077/pyupbit-0.2.33-py3-none-any.whl", hash = "sha256:d626a56e2bb62286549636dd06541384290b6805ea08366b57a90a4f984c091e", size = 24204, upload-time = "2022-06-29T00:41:12.657Z" },
 ]
 
 [[package]]
