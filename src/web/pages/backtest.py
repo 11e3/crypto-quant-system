@@ -16,6 +16,7 @@ from src.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from src.web.components.sidebar.trading_config import TradingConfig
+    from src.web.services.bt_backtest_runner import BtBacktestResult
 from src.web.components.charts.equity_curve import render_equity_curve
 from src.web.components.charts.monthly_heatmap import render_monthly_heatmap
 from src.web.components.charts.underwater import render_underwater_curve
@@ -236,7 +237,7 @@ def _run_bt_backtest(
         result = run_bt_backtest_service(
             symbols=tuple(symbols),
             interval="day",
-            initial_cash=trading_config.initial_capital,
+            initial_cash=int(trading_config.initial_capital),
             fee=trading_config.fee_rate,
             slippage=trading_config.slippage_rate,
             multiplier=strategy_params.get("multiplier", 2),
@@ -375,17 +376,12 @@ def _display_results(result: BacktestResult) -> None:
         render_statistical_significance(extended_metrics)
 
 
-def _display_bt_results(result) -> None:  # type: ignore[no-untyped-def]
+def _display_bt_results(result: BtBacktestResult) -> None:
     """Display bt library backtest results.
 
     Args:
         result: BtBacktestResult object
     """
-    from src.web.services.bt_backtest_runner import BtBacktestResult
-
-    if not isinstance(result, BtBacktestResult):
-        st.error("Invalid result type")
-        return
 
     st.subheader("📊 bt VBO Backtest Results")
 
@@ -451,7 +447,7 @@ def _display_bt_results(result) -> None:  # type: ignore[no-untyped-def]
         _render_bt_statistics(result)
 
 
-def _render_bt_equity_chart(result) -> None:  # type: ignore[no-untyped-def]
+def _render_bt_equity_chart(result: BtBacktestResult) -> None:
     """Render bt equity curve chart."""
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -507,7 +503,7 @@ def _render_bt_equity_chart(result) -> None:  # type: ignore[no-untyped-def]
     st.plotly_chart(fig, use_container_width=True)
 
 
-def _render_bt_yearly_chart(result) -> None:  # type: ignore[no-untyped-def]
+def _render_bt_yearly_chart(result: BtBacktestResult) -> None:
     """Render bt yearly returns chart."""
     import pandas as pd
     import plotly.graph_objects as go
@@ -551,7 +547,7 @@ def _render_bt_yearly_chart(result) -> None:  # type: ignore[no-untyped-def]
     st.dataframe(yearly_df, use_container_width=True, hide_index=True)
 
 
-def _render_bt_trade_history(result) -> None:  # type: ignore[no-untyped-def]
+def _render_bt_trade_history(result: BtBacktestResult) -> None:
     """Render bt trade history."""
     import pandas as pd
 
@@ -584,11 +580,14 @@ def _render_bt_trade_history(result) -> None:  # type: ignore[no-untyped-def]
     show_count = st.selectbox(
         "Show trades", options=[10, 25, 50, 100, "All"], index=1, key="bt_trade_count"
     )
-    display_df = trades_df if show_count == "All" else trades_df.tail(show_count)
+    if show_count == "All":
+        display_df = trades_df
+    else:
+        display_df = trades_df.tail(int(str(show_count)))
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 
-def _render_bt_statistics(result) -> None:  # type: ignore[no-untyped-def]
+def _render_bt_statistics(result: BtBacktestResult) -> None:
     """Render bt statistics."""
     import pandas as pd
 

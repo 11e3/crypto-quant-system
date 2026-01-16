@@ -117,9 +117,7 @@ class BuyExecutor:
             target=metrics.get("target", 0),
             noise=f"{metrics.get('k', 0):.2f} < {metrics.get('long_noise', 0):.2f}",
         )
-        logger.info(
-            f"BUY {ticker} @ {current_price:.0f} | Target: {metrics.get('target', 0):.0f}"
-        )
+        logger.info(f"BUY {ticker} @ {current_price:.0f} | Target: {metrics.get('target', 0):.0f}")
 
 
 class SellExecutor:
@@ -176,8 +174,8 @@ class SellExecutor:
                 curr_price,
                 amount=balance.available,
             )
-        except Exception:
-            pass  # Notification is optional
+        except Exception as e:
+            logger.debug(f"Sell notification skipped for {ticker}: {e}")
 
     @staticmethod
     def _is_testing() -> bool:

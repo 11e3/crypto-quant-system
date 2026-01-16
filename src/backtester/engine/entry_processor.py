@@ -120,11 +120,7 @@ def calculate_invest_amount(
 
     if config.position_sizing != "equal" and ticker in ticker_historical_data:
         hist_df = ticker_historical_data[ticker]
-        hist_up_to_date = (
-            hist_df.iloc[: d_idx + 1]
-            if isinstance(hist_df.index, pd.DatetimeIndex)
-            else hist_df.iloc[: d_idx + 1]
-        )
+        hist_up_to_date = hist_df.iloc[: d_idx + 1]
         return calculate_position_size(
             method=config.position_sizing,  # type: ignore[arg-type]
             available_cash=state.cash,

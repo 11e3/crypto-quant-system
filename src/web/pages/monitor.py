@@ -13,11 +13,15 @@ Features:
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import streamlit as st
 
 from src.utils.logger import get_logger
+
+if TYPE_CHECKING:
+    from src.data.storage import GCSStorage
 
 logger = get_logger(__name__)
 
@@ -34,7 +38,7 @@ def _check_gcs_availability() -> bool:
         return False
 
 
-def _get_storage():  # type: ignore[no-untyped-def]
+def _get_storage() -> GCSStorage | None:
     """Get GCS storage instance."""
     from src.data.storage import get_gcs_storage
 
@@ -198,7 +202,7 @@ def _render_trade_history(trades_df: pd.DataFrame) -> None:
 
 
 def _calculate_pnl_summary(
-    storage,  # type: ignore[no-untyped-def]
+    storage: GCSStorage,
     account: str,
     days: int = 30,
 ) -> pd.DataFrame:
@@ -227,9 +231,8 @@ def _calculate_pnl_summary(
                 }
             )
 
-        except Exception:
-            # No data for this date
-            pass
+        except Exception as e:
+            logger.debug(f"No data for {date_str}: {e}")
 
     if not summary_data:
         return pd.DataFrame()
@@ -284,7 +287,7 @@ def _render_pnl_summary(pnl_df: pd.DataFrame) -> None:
         )
 
 
-def _render_alerts(storage, account: str) -> None:  # type: ignore[no-untyped-def]
+def _render_alerts(storage: GCSStorage, account: str) -> None:
     """Render alerts and notifications."""
     st.subheader("Alerts")
 
@@ -292,7 +295,7 @@ def _render_alerts(storage, account: str) -> None:  # type: ignore[no-untyped-de
     # This would typically check a separate alerts/errors log
 
     # Placeholder alert examples
-    alerts = []
+    alerts: list[dict[str, str]] = []
 
     # Check if positions file is stale
     try:
@@ -306,8 +309,8 @@ def _render_alerts(storage, account: str) -> None:  # type: ignore[no-untyped-de
                         "message": f"Position data is stale (last update: {last_update})",
                     }
                 )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Failed to check position staleness: {e}")
 
     if not alerts:
         st.success("No alerts")
