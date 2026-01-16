@@ -30,8 +30,15 @@ def main() -> None:
     st.title("📊 Crypto Quant Backtest System")
 
     # Tab-based navigation
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["🏠 Home", "📥 Data Collection", "📈 Backtest", "🔧 Optimization", "📊 Analysis"]
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        [
+            "🏠 Home",
+            "📥 Data Collection",
+            "📈 Backtest",
+            "🔧 Optimization",
+            "📊 Analysis",
+            "🤖 Bot Monitor",
+        ]
     )
 
     with tab1:
@@ -48,6 +55,9 @@ def main() -> None:
 
     with tab5:
         show_analysis()
+
+    with tab6:
+        show_monitor()
 
 
 def show_home() -> None:
@@ -80,6 +90,12 @@ def show_home() -> None:
     - **Walk-Forward Analysis**: Prevent overfitting
     - **Monte Carlo**: Risk simulation
     - **VaR/CVaR**: Portfolio risk analysis
+
+    ### 🤖 Bot Monitor
+    - **Live positions**: Real-time position tracking
+    - **Trade history**: Historical trades from GCS logs
+    - **PnL summary**: Daily/weekly/monthly returns
+    - **Alerts**: Error notifications and warnings
 
     ---
 
@@ -143,6 +159,13 @@ def show_analysis() -> None:
     from src.web.pages.analysis import render_analysis_page
 
     render_analysis_page()
+
+
+def show_monitor() -> None:
+    """Bot monitor page."""
+    from src.web.pages.monitor import render_monitor_page
+
+    render_monitor_page()
 
 
 if __name__ == "__main__":
