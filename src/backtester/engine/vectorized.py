@@ -169,7 +169,9 @@ class VectorizedBacktestEngine:
 
             calculate_daily_equity(state, d_idx, n_tickers, arrays["closes"], valid_data)
 
-        finalize_open_positions(state, sorted_dates, tickers, n_tickers)
+        finalize_open_positions(
+            state, sorted_dates, tickers, n_tickers, arrays["closes"], self.config
+        )
         return state
 
 

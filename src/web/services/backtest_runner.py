@@ -10,7 +10,11 @@ from pathlib import Path
 
 import streamlit as st
 
-from src.backtester.engine import BacktestEngine, EventDrivenBacktestEngine, VectorizedBacktestEngine
+from src.backtester.engine import (
+    BacktestEngine,
+    EventDrivenBacktestEngine,
+    VectorizedBacktestEngine,
+)
 from src.backtester.models import BacktestConfig, BacktestResult
 from src.strategies.base import Strategy
 from src.utils.logger import get_logger
@@ -43,12 +47,11 @@ class BacktestService:
         self.config = config
         if engine:
             self.engine = engine
-        else:
-            # TEMPORARY: Use EventDrivenBacktestEngine for debugging
-            # TODO: Fix VectorizedBacktestEngine unrealized P&L bug
-            self.engine = EventDrivenBacktestEngine(config)
+        elif use_vectorized:
             # Use VectorizedBacktestEngine by default (10-100x faster)
-            # self.engine = VectorizedBacktestEngine(config)
+            self.engine = VectorizedBacktestEngine(config)
+        else:
+            self.engine = EventDrivenBacktestEngine(config)
 
     def run(
         self,

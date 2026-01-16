@@ -184,25 +184,70 @@ def finalize_open_positions(
     sorted_dates: np.ndarray,
     tickers: list[str],
     n_tickers: int,
+    closes: np.ndarray,
+    config: BacktestConfig,
 ) -> None:
-    """Add open positions to trades list at end of simulation."""
+    """Add open positions to trades list at end of simulation.
+
+    Calculates unrealized P&L using final closing prices.
+
+    Args:
+        state: Current simulation state
+        sorted_dates: Array of dates in simulation
+        tickers: List of ticker symbols
+        n_tickers: Number of tickers
+        closes: Array of closing prices (n_tickers x n_dates)
+        config: Backtest configuration for fee/slippage rates
+    """
+    from src.backtester.engine.trade_costs import TradeCostCalculator
+
+    calculator = TradeCostCalculator(config.fee_rate, config.slippage_rate)
+
     for t_idx in range(n_tickers):
         if state.position_amounts[t_idx] > 0:
+            entry_price = state.position_entry_prices[t_idx]
+            amount = state.position_amounts[t_idx]
+
+            # Get final closing price (last non-NaN value)
+            final_price = _get_final_price(closes, t_idx, entry_price)
+
+            # Calculate unrealized P&L
+            costs = calculator.calculate_exit_costs(entry_price, final_price, amount)
+
             state.trades_list.append(
                 {
                     "ticker": tickers[t_idx],
                     "entry_date": sorted_dates[state.position_entry_dates[t_idx]],
-                    "entry_price": state.position_entry_prices[t_idx],
-                    "exit_date": None,
-                    "exit_price": None,
-                    "amount": state.position_amounts[t_idx],
-                    "pnl": 0.0,
-                    "pnl_pct": 0.0,
+                    "entry_price": entry_price,
+                    "exit_date": sorted_dates[-1],
+                    "exit_price": final_price,
+                    "amount": amount,
+                    "pnl": costs.pnl,
+                    "pnl_pct": costs.pnl_pct,
                     "is_whipsaw": False,
-                    "commission_cost": 0.0,
-                    "slippage_cost": 0.0,
+                    "commission_cost": costs.commission,
+                    "slippage_cost": costs.slippage,
                     "is_stop_loss": False,
                     "is_take_profit": False,
                     "exit_reason": "open",
                 }
             )
+
+
+def _get_final_price(closes: np.ndarray, t_idx: int, fallback_price: float) -> float:
+    """Get final closing price for a ticker.
+
+    Args:
+        closes: Array of closing prices (n_tickers x n_dates)
+        t_idx: Ticker index
+        fallback_price: Price to use if no valid close found
+
+    Returns:
+        Final closing price or fallback
+    """
+    # Search backward for last valid price
+    for d_idx in range(closes.shape[1] - 1, -1, -1):
+        price = closes[t_idx, d_idx]
+        if not np.isnan(price):
+            return float(price)
+    return fallback_price

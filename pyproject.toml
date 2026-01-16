@@ -25,6 +25,7 @@ classifiers = [
 # 프로덕션 의존성 (실행 환경 최소화)
 dependencies = [
     "pyupbit>=0.2.34",
+    "PyJWT>=2.4.0,<2.10",  # Pin to avoid base64url_decode import error in 2.10+
     "requests>=2.31.0",
     "pandas>=2.0.0",  # Required for data handling
     "numpy>=1.24.0",  # Required for numerical operations
