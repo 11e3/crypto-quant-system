@@ -11,7 +11,7 @@ Contains demonstration functions for different VBO configurations:
 from src.backtester import BacktestConfig, run_backtest
 from src.strategies.volatility_breakout import VanillaVBO, create_vbo_strategy
 from src.strategies.volatility_breakout.conditions import (
-    NoiseThresholdFilter,
+    NoiseThresholdCondition,
     VolatilityRangeCondition,
     VolatilityThresholdCondition,
 )
@@ -93,7 +93,7 @@ def run_custom_vbo() -> None:
             VolatilityThresholdCondition(min_range_pct=0.01),
         ],
         extra_filters=[
-            NoiseThresholdFilter(max_noise=0.65),
+            NoiseThresholdCondition(max_noise=0.65),
         ],
     )
 
