@@ -31,10 +31,11 @@ dependencies = [
     "pyarrow>=12.0.0",  # Fast serialization
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",  # .env file support
-    "pydantic>=2.0.0",
+    "pydantic>=2.0.0,<2.10",  # Pin for Python 3.12 compatibility
     "pydantic-settings>=2.0.0",  # Type-safe environment variable management
     "psutil>=5.9.0",  # Process and system utilities
     "typing-extensions<4.15.0",  # Pin to avoid annotationlib dependency (Python 3.14+)
+    "typing-inspection<0.4",  # Pin for Python 3.12 compatibility (TypeIs not available)
 ]
 
 # Web app 진입점 (streamlit run으로 실행)
@@ -85,7 +86,9 @@ notebooks = [
     "ipywidgets>=8.1.0",
 ]
 web = [
-    "streamlit>=1.30.0",
+    "streamlit>=1.30.0,<1.52",  # Pin for Python 3.12 compatibility
+    "tornado<6.5",  # Pin for Python 3.12 compatibility
+    "packaging<25",  # Pin for Python 3.12 compatibility
     "plotly>=5.18.0",
     "watchdog>=3.0.0",  # Streamlit hot reload
     # 백테스터가 필요로 하는 분석 의존성 포함
