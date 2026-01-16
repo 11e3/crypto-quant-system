@@ -81,6 +81,42 @@ uv run python scripts/collect_30min_data.py
 # Or use the web UI data collection page
 ```
 
+## 📸 Visual Overview
+
+### Web Interface Screenshots
+
+#### 🏠 Home Dashboard
+![Home Dashboard](docs/images/home_dashboard.png)
+*System overview with quick access to all features, supported strategies, and system status*
+
+#### 📊 Data Collection Interface
+![Data Collection](docs/images/data_collection.png)
+*Interactive data collection for 100+ cryptocurrency pairs with flexible time intervals (1min to monthly)*
+
+#### ⚙️ Backtest Configuration
+![Backtest Settings](docs/images/backtest_settings.png)
+*Comprehensive backtest configuration with strategy selection, parameter tuning, and trading costs*
+
+#### 📈 Backtest Results - Performance Overview
+![Backtest Results](docs/images/backtest_results.png)
+*Detailed performance metrics including CAGR, Sharpe ratio, drawdown, and 30+ statistical measures*
+
+#### 📊 Interactive Equity Curve
+![Equity Curve](docs/images/equity_curve.png)
+*Interactive portfolio value chart with time range selector and detailed hover information*
+
+#### 📉 Drawdown Analysis
+![Drawdown Chart](docs/images/drawdown_chart.png)
+*Underwater curve visualization showing drawdown periods and maximum drawdown points*
+
+#### 📊 Yearly Performance
+![Yearly Returns](docs/images/yearly_returns.png)
+*Bar chart showing year-over-year returns with average performance line*
+
+#### 📊 Statistical Analysis
+![Statistics](docs/images/statistical_analysis.png)
+*Statistical significance testing with Z-Score, P-Value, Skewness, and Kurtosis analysis*
+
 ## 🎯 Key Features
 
 ### 📊 Trading Strategies
