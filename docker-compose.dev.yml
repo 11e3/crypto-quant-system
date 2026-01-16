@@ -1,0 +1,34 @@
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Web UI - Development Mode
+  # ==========================================================================
+  web-ui:
+    # Mount source code for live reloading
+    volumes:
+      # Override: Mount src/ directory for live code changes
+      - ./src:/app/src:ro
+      # Keep data and logs volumes
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      # Enable Streamlit auto-reload on file changes
+      - STREAMLIT_SERVER_RUN_ON_SAVE=true
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=auto
+    command: ["streamlit", "run", "src/web/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.runOnSave=true"]
+
+  # ==========================================================================
+  # Trading Bot - Development Mode (with code reload)
+  # ==========================================================================
+  trading-bot:
+    volumes:
+      # Override: Mount src/ directory for live code changes
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+      - ./data:/app/data
+    # Note: Bot requires manual restart after code changes
+    # Use: docker-compose restart trading-bot
