@@ -114,3 +114,6 @@ docs/_templates/
 docs/*.rst
 !docs/index.rst
 !docs/api/index.rst
+
+# Model artifacts
+models/
