@@ -12,6 +12,7 @@ from src.backtester.analysis.monte_carlo import run_monte_carlo
 from src.data.collector_fetch import Interval
 from src.strategies.volatility_breakout import create_vbo_strategy
 from src.utils.logger import get_logger
+from src.web.components.sidebar.strategy_selector import get_cached_registry
 from src.web.services.data_loader import validate_data_availability
 
 logger = get_logger(__name__)
@@ -30,6 +31,15 @@ METRICS = [
     ("win_rate", "Win Rate"),
     ("profit_factor", "Profit Factor"),
 ]
+
+# Internal strategy type mapping (for non-bt strategies)
+INTERNAL_STRATEGY_TYPES = {
+    "vanilla": "Vanilla VBO",
+    "minimal": "Minimal VBO",
+    "legacy": "Legacy VBO",
+    "momentum": "Momentum",
+    "mean-reversion": "Mean Reversion",
+}
 
 
 def render_analysis_page() -> None:
@@ -58,6 +68,14 @@ def _render_monte_carlo() -> None:
     """Monte Carlo simulation page."""
     st.subheader("🎲 Monte Carlo Simulation")
 
+    # Get available strategies from registry
+    registry = get_cached_registry()
+    all_strategies = registry.list_strategies()
+
+    # Filter for non-bt strategies (bt strategies not supported for Monte Carlo yet)
+    available_strategies = [s for s in all_strategies if not s.name.startswith("bt_")]
+    strategy_names = [s.name for s in available_strategies]
+
     # ===== Configuration Section =====
     with st.expander("⚙️ Simulation Configuration", expanded=True):
         # First row: Strategy and Simulation Settings
@@ -65,18 +83,24 @@ def _render_monte_carlo() -> None:
 
         with col1:
             st.markdown("##### 📈 Strategy")
-            strategy_type = st.selectbox(
-                "Strategy Type",
-                options=["vanilla", "minimal", "legacy", "momentum", "mean-reversion"],
-                format_func=lambda x: {
-                    "vanilla": "Vanilla VBO",
-                    "minimal": "Minimal VBO",
-                    "legacy": "Legacy VBO",
-                    "momentum": "Momentum",
-                    "mean-reversion": "Mean Reversion",
-                }.get(x, x),
-                key="mc_strategy",
-            )
+
+            # Use strategy from registry if available, otherwise fallback to internal types
+            if strategy_names:
+                selected_strategy = st.selectbox(
+                    "Strategy",
+                    options=strategy_names,
+                    key="mc_strategy_name",
+                    help="Select a registered strategy",
+                )
+                # Map to internal type for backward compatibility
+                strategy_type = _map_strategy_to_type(selected_strategy)
+            else:
+                strategy_type = st.selectbox(
+                    "Strategy Type",
+                    options=list(INTERNAL_STRATEGY_TYPES.keys()),
+                    format_func=lambda x: INTERNAL_STRATEGY_TYPES.get(x, x),
+                    key="mc_strategy",
+                )
 
             st.markdown("##### 💰 Trading Settings")
             initial_capital = st.number_input(
@@ -295,58 +319,60 @@ def _display_monte_carlo_results() -> None:
         )
     with col2:
         st.metric(
-            "Avg Simulated Return",
-            f"{mc_result.mean_return:.2%}",
+            "Avg Simulated CAGR",
+            f"{mc_result.mean_cagr:.2f}%",
         )
     with col3:
+        # Calculate VaR from percentiles
+        var_95 = mc_result.cagr_percentiles.get(5, 0.0)
         st.metric(
             "95% VaR",
-            f"{mc_result.var_95:.2%}",
+            f"{var_95:.2f}%",
             help="Maximum expected loss at 95% confidence level",
         )
     with col4:
         st.metric(
-            "95% CVaR",
-            f"{mc_result.cvar_95:.2%}",
-            help="Average loss when VaR is exceeded",
+            "Avg Simulated MDD",
+            f"{mc_result.mean_mdd:.2f}%",
+            help="Average maximum drawdown across simulations",
         )
 
     # Confidence intervals
-    st.markdown("### 📈 Return Confidence Intervals")
+    st.markdown("### 📈 CAGR Confidence Intervals")
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("5th Percentile", f"{mc_result.percentile_5:.2%}")
+        st.metric("5th Percentile", f"{mc_result.cagr_percentiles.get(5, 0.0):.2f}%")
     with col2:
-        st.metric("50th Percentile (Median)", f"{mc_result.percentile_50:.2%}")
+        st.metric("50th Percentile (Median)", f"{mc_result.cagr_percentiles.get(50, 0.0):.2f}%")
     with col3:
-        st.metric("95th Percentile", f"{mc_result.percentile_95:.2%}")
+        st.metric("95th Percentile", f"{mc_result.cagr_percentiles.get(95, 0.0):.2f}%")
 
     # Distribution chart
-    st.markdown("### 📊 Return Distribution")
+    st.markdown("### 📊 CAGR Distribution")
     import plotly.graph_objects as go
 
     fig = go.Figure()
     fig.add_trace(
         go.Histogram(
-            x=mc_result.simulated_returns,
+            x=mc_result.simulated_cagrs,
             nbinsx=50,
-            name="Simulated Returns",
+            name="Simulated CAGRs",
             marker_color="lightblue",
         )
     )
 
-    # Original return line
+    # Original CAGR line
     fig.add_vline(
-        x=backtest_result.total_return,
+        x=backtest_result.cagr,
         line_dash="dash",
         line_color="red",
-        annotation_text="Original Return",
+        annotation_text="Original CAGR",
     )
 
     fig.update_layout(
-        title="Monte Carlo Return Distribution",
-        xaxis_title="Return",
+        title="Monte Carlo CAGR Distribution",
+        xaxis_title="CAGR (%)",
         yaxis_title="Frequency",
         showlegend=True,
     )
@@ -358,6 +384,14 @@ def _render_walk_forward() -> None:
     """Walk-Forward analysis page."""
     st.subheader("📈 Walk-Forward Analysis")
 
+    # Get available strategies from registry
+    registry = get_cached_registry()
+    all_strategies = registry.list_strategies()
+
+    # Filter for non-bt strategies (Walk-Forward uses internal backtester)
+    available_strategies = [s for s in all_strategies if not s.name.startswith("bt_")]
+    strategy_names = [s.name for s in available_strategies]
+
     # ===== Configuration Section =====
     with st.expander("⚙️ Analysis Configuration", expanded=True):
         # First row: Strategy and Period Settings
@@ -365,12 +399,23 @@ def _render_walk_forward() -> None:
 
         with col1:
             st.markdown("##### 📈 Strategy")
-            strategy_type = st.selectbox(
-                "Strategy Type",
-                options=["vanilla", "legacy"],
-                format_func=lambda x: "Vanilla VBO" if x == "vanilla" else "Legacy VBO",
-                key="wf_strategy",
-            )
+
+            # Use strategy from registry if available
+            if strategy_names:
+                selected_strategy = st.selectbox(
+                    "Strategy",
+                    options=strategy_names,
+                    key="wf_strategy_name",
+                    help="Select a registered strategy",
+                )
+                strategy_type = _map_strategy_to_type(selected_strategy)
+            else:
+                strategy_type = st.selectbox(
+                    "Strategy Type",
+                    options=["vanilla", "legacy"],
+                    format_func=lambda x: "Vanilla VBO" if x == "vanilla" else "Legacy VBO",
+                    key="wf_strategy",
+                )
 
             st.markdown("##### 📅 Period Settings")
             optimization_days = st.slider(
@@ -573,21 +618,21 @@ def _run_walk_forward(
     progress.info("Running Walk-Forward analysis... (this may take a while)")
 
     try:
-        # Strategy factory
-        def create_strategy(**kwargs: Any) -> Any:
+        # Strategy factory - takes params dict as argument
+        def create_strategy(params: dict[str, Any]) -> Any:
             if strategy_type == "vanilla":
                 return create_vbo_strategy(
                     name="VanillaVBO",
                     use_trend_filter=False,
                     use_noise_filter=False,
-                    **kwargs,
+                    **params,
                 )
             else:
                 return create_vbo_strategy(
                     name="LegacyVBO",
                     use_trend_filter=True,
                     use_noise_filter=True,
-                    **kwargs,
+                    **params,
                 )
 
         # Configuration
@@ -634,16 +679,21 @@ def _display_walk_forward_results() -> None:
 
     with col1:
         st.metric(
-            "Avg In-Sample Return",
-            f"{result.avg_in_sample_return:.2%}",
+            "Avg Optimization CAGR",
+            f"{result.avg_optimization_cagr:.2f}%",
         )
     with col2:
         st.metric(
-            "Avg Out-of-Sample Return",
-            f"{result.avg_out_of_sample_return:.2%}",
+            "Avg Test CAGR",
+            f"{result.avg_test_cagr:.2f}%",
         )
     with col3:
-        wfe = result.walk_forward_efficiency
+        # Calculate walk-forward efficiency (test / optimization)
+        wfe = (
+            result.avg_test_cagr / result.avg_optimization_cagr
+            if result.avg_optimization_cagr != 0
+            else 0.0
+        )
         st.metric(
             "Walk-Forward Efficiency",
             f"{wfe:.2f}",
@@ -651,9 +701,21 @@ def _display_walk_forward_results() -> None:
         )
     with col4:
         st.metric(
-            "Number of Periods",
-            f"{len(result.periods)}",
+            "Consistency Rate",
+            f"{result.consistency_rate:.1f}%",
+            help=f"{result.positive_periods}/{result.total_periods} periods profitable",
         )
+
+    # Additional metrics row
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Avg Test Sharpe", f"{result.avg_test_sharpe:.2f}")
+    with col2:
+        st.metric("Avg Test MDD", f"{result.avg_test_mdd:.2f}%")
+    with col3:
+        st.metric("Total Periods", f"{result.total_periods}")
+    with col4:
+        st.metric("Profitable Periods", f"{result.positive_periods}")
 
     # Period-by-period results table
     st.markdown("### 📋 Period-by-Period Results")
@@ -662,55 +724,100 @@ def _display_walk_forward_results() -> None:
 
     data = []
     for i, period in enumerate(result.periods):
+        # Get optimization result info
+        opt_cagr = 0.0
+        best_params = {}
+        if period.optimization_result and period.optimization_result.best_result:
+            opt_cagr = period.optimization_result.best_result.cagr
+            best_params = period.optimization_result.best_params
+
+        # Get test result info
+        test_cagr = period.test_result.cagr if period.test_result else 0.0
+
         data.append(
             {
                 "Period": i + 1,
-                "Start Date": period.start_date.strftime("%Y-%m-%d"),
-                "End Date": period.end_date.strftime("%Y-%m-%d"),
-                "Best Parameters": str(period.best_params),
-                "In-Sample Return": f"{period.in_sample_return:.2%}",
-                "Out-of-Sample Return": f"{period.out_of_sample_return:.2%}",
+                "Opt Start": period.optimization_start.strftime("%Y-%m-%d"),
+                "Opt End": period.optimization_end.strftime("%Y-%m-%d"),
+                "Test Start": period.test_start.strftime("%Y-%m-%d"),
+                "Test End": period.test_end.strftime("%Y-%m-%d"),
+                "Best Params": str(best_params),
+                "Opt CAGR": f"{opt_cagr:.2f}%",
+                "Test CAGR": f"{test_cagr:.2f}%",
             }
         )
 
     df = pd.DataFrame(data)
-    st.dataframe(df, width="stretch")
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
     # Chart
-    st.markdown("### 📈 Period-by-Period Return Comparison")
+    st.markdown("### 📈 Period-by-Period CAGR Comparison")
 
     import plotly.graph_objects as go
 
-    periods = list(range(1, len(result.periods) + 1))
-    in_sample = [p.in_sample_return for p in result.periods]
-    out_sample = [p.out_of_sample_return for p in result.periods]
+    period_nums = list(range(1, len(result.periods) + 1))
+    opt_cagrs = []
+    test_cagrs = []
+
+    for period in result.periods:
+        if period.optimization_result and period.optimization_result.best_result:
+            opt_cagrs.append(period.optimization_result.best_result.cagr)
+        else:
+            opt_cagrs.append(0.0)
+        test_cagrs.append(period.test_result.cagr if period.test_result else 0.0)
 
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
-            name="In-Sample",
-            x=periods,
-            y=in_sample,
+            name="Optimization (In-Sample)",
+            x=period_nums,
+            y=opt_cagrs,
             marker_color="lightblue",
         )
     )
     fig.add_trace(
         go.Bar(
-            name="Out-of-Sample",
-            x=periods,
-            y=out_sample,
+            name="Test (Out-of-Sample)",
+            x=period_nums,
+            y=test_cagrs,
             marker_color="orange",
         )
     )
 
     fig.update_layout(
-        title="Walk-Forward Period Returns",
+        title="Walk-Forward Period CAGR Comparison",
         xaxis_title="Period",
-        yaxis_title="Return",
+        yaxis_title="CAGR (%)",
         barmode="group",
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+
+def _map_strategy_to_type(strategy_name: str) -> str:
+    """Map registered strategy name to internal type.
+
+    Args:
+        strategy_name: Strategy name from registry
+
+    Returns:
+        Internal strategy type string
+    """
+    # Map common strategy names to internal types
+    name_lower = strategy_name.lower()
+
+    if "vanilla" in name_lower or "vbo" in name_lower:
+        if "legacy" in name_lower:
+            return "legacy"
+        elif "minimal" in name_lower:
+            return "minimal"
+        return "vanilla"
+    elif "momentum" in name_lower:
+        return "momentum"
+    elif "mean" in name_lower and "reversion" in name_lower:
+        return "mean-reversion"
+    else:
+        return "vanilla"  # Default
 
 
 def _create_strategy(strategy_type: str) -> Any:
