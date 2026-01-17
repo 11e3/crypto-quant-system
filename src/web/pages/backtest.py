@@ -39,36 +39,23 @@ __all__ = ["render_backtest_page"]
 
 
 def render_backtest_page() -> None:
-    """Render backtest page (tab-based UI)."""
+    """Render backtest page (settings and results on same page)."""
     st.header("📈 Backtest")
 
-    # Create tabs: Settings and Results
-    if "backtest_result" in st.session_state or "bt_backtest_result" in st.session_state:
-        # Show both settings and results tabs if results exist
-        tab1, tab2 = st.tabs(["⚙️ Settings", "📊 Results"])
-    else:
-        # Show only settings tab if no results
-        tab1 = st.tabs(["⚙️ Settings"])[0]
-        tab2 = None
+    # Render settings section
+    _render_settings_section()
 
-    # ===== Settings Tab =====
-    with tab1:
-        _render_settings_tab()
-
-    # ===== Results Tab =====
-    if tab2 is not None:
-        with tab2:
-            # Check which result to display
-            if "bt_backtest_result" in st.session_state:
-                _display_bt_results(st.session_state.bt_backtest_result)
-            elif "backtest_result" in st.session_state:
-                _display_results(st.session_state.backtest_result)
-            else:
-                st.info("Run backtest to see results here.")
+    # Display results below settings if available
+    if "bt_backtest_result" in st.session_state:
+        st.markdown("---")
+        _display_bt_results(st.session_state.bt_backtest_result)
+    elif "backtest_result" in st.session_state:
+        st.markdown("---")
+        _display_results(st.session_state.backtest_result)
 
 
-def _render_settings_tab() -> None:
-    """Render settings tab."""
+def _render_settings_section() -> None:
+    """Render settings section."""
     st.subheader("⚙️ Backtest Settings")
 
     # Split settings into 3 columns
@@ -149,6 +136,7 @@ def _render_settings_tab() -> None:
 
         if is_bt_strategy(strategy_name):
             _run_bt_backtest(
+                strategy_name=strategy_name,
                 strategy_params=strategy_params,
                 available_tickers=available_tickers,
                 trading_config=trading_config,
@@ -218,13 +206,14 @@ def _run_event_driven_backtest(
             if "bt_backtest_result" in st.session_state:
                 del st.session_state.bt_backtest_result
             st.session_state.backtest_result = result
-            st.success("Backtest completed! Check the 'Results' tab.")
+            st.success("Backtest completed!")
             st.rerun()
         else:
             st.error("Backtest execution failed")
 
 
 def _run_bt_backtest(
+    strategy_name: str,
     strategy_params: dict,
     available_tickers: list[str],
     trading_config: TradingConfig,
@@ -232,33 +221,54 @@ def _run_bt_backtest(
     end_date: date_type | None,
 ) -> None:
     """Run backtest using bt library."""
-    from src.web.services.bt_backtest_runner import run_bt_backtest_service
+    from src.web.services.bt_backtest_runner import (
+        run_bt_backtest_regime_service,
+        run_bt_backtest_service,
+    )
 
-    with st.spinner("Running bt library VBO backtest..."):
-        # Convert tickers: KRW-BTC -> BTC
-        symbols = [t.replace("KRW-", "") for t in available_tickers]
+    # Convert tickers: KRW-BTC -> BTC
+    symbols = [t.replace("KRW-", "") for t in available_tickers]
 
-        result = run_bt_backtest_service(
-            symbols=tuple(symbols),
-            interval="day",
-            initial_cash=int(trading_config.initial_capital),
-            fee=trading_config.fee_rate,
-            slippage=trading_config.slippage_rate,
-            multiplier=strategy_params.get("multiplier", 2),
-            lookback=strategy_params.get("lookback", 5),
-            start_date=start_date,
-            end_date=end_date,
-        )
+    # Check if regime strategy
+    if strategy_name == "bt_VBO_Regime":
+        with st.spinner("Running bt VBO Regime backtest (ML model)..."):
+            result = run_bt_backtest_regime_service(
+                symbols=tuple(symbols),
+                interval="day",
+                initial_cash=int(trading_config.initial_capital),
+                fee=trading_config.fee_rate,
+                slippage=trading_config.slippage_rate,
+                ma_short=strategy_params.get("ma_short", 5),
+                noise_ratio=strategy_params.get("noise_ratio", 0.5),
+                start_date=start_date,
+                end_date=end_date,
+            )
+            strategy_display = "bt VBO Regime"
+    else:
+        with st.spinner("Running bt VBO backtest..."):
+            result = run_bt_backtest_service(
+                symbols=tuple(symbols),
+                interval="day",
+                initial_cash=int(trading_config.initial_capital),
+                fee=trading_config.fee_rate,
+                slippage=trading_config.slippage_rate,
+                multiplier=strategy_params.get("multiplier", 2),
+                lookback=strategy_params.get("lookback", 5),
+                start_date=start_date,
+                end_date=end_date,
+            )
+            strategy_display = "bt VBO"
 
-        if result:
-            # Clear event-driven result if exists
-            if "backtest_result" in st.session_state:
-                del st.session_state.backtest_result
-            st.session_state.bt_backtest_result = result
-            st.success("bt VBO Backtest completed! Check the 'Results' tab.")
-            st.rerun()
-        else:
-            st.error("bt Backtest execution failed")
+    if result:
+        # Clear event-driven result if exists
+        if "backtest_result" in st.session_state:
+            del st.session_state.backtest_result
+        st.session_state.bt_backtest_result = result
+        st.session_state.bt_strategy_name = strategy_name
+        st.success(f"{strategy_display} Backtest completed!")
+        st.rerun()
+    else:
+        st.error("bt Backtest execution failed")
 
 
 def _show_config_summary(
@@ -388,8 +398,11 @@ def _display_bt_results(result: BtBacktestResult) -> None:
     Args:
         result: BtBacktestResult object
     """
+    # Get strategy name from session state
+    strategy_name = st.session_state.get("bt_strategy_name", "bt_VBO")
+    strategy_display = "bt VBO Regime" if strategy_name == "bt_VBO_Regime" else "bt VBO"
 
-    st.subheader("📊 bt VBO Backtest Results")
+    st.subheader(f"📊 {strategy_display} Backtest Results")
 
     # Metrics cards - Row 1
     col1, col2, col3, col4 = st.columns(4)
@@ -428,17 +441,15 @@ def _display_bt_results(result: BtBacktestResult) -> None:
         st.metric("Final Equity", f"{result.final_equity:,.0f} KRW")
 
     with col10:
-        st.metric("Avg Win", f"{result.avg_win:,.0f} KRW")
+        st.metric("Avg Win Rate", f"{result.avg_win_pct:.2f}%")
 
     with col11:
-        st.metric("Avg Loss", f"{result.avg_loss:,.0f} KRW")
+        st.metric("Avg Loss Rate", f"{result.avg_loss_pct:.2f}%")
 
     st.markdown("---")
 
-    # Tab configuration
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["📊 Equity Curve", "📆 Yearly Returns", "📋 Trade History", "🔬 Statistics"]
-    )
+    # Tab configuration (Statistics tab removed)
+    tab1, tab2, tab3 = st.tabs(["📊 Equity Curve", "📆 Yearly Returns", "📋 Trade History"])
 
     with tab1:
         _render_bt_equity_chart(result)
@@ -448,9 +459,6 @@ def _display_bt_results(result: BtBacktestResult) -> None:
 
     with tab3:
         _render_bt_trade_history(result)
-
-    with tab4:
-        _render_bt_statistics(result)
 
 
 def _render_bt_equity_chart(result: BtBacktestResult) -> None:
@@ -588,43 +596,3 @@ def _render_bt_trade_history(result: BtBacktestResult) -> None:
     )
     display_df = trades_df if show_count == "All" else trades_df.tail(int(str(show_count)))
     st.dataframe(display_df, width="stretch", hide_index=True)
-
-
-def _render_bt_statistics(result: BtBacktestResult) -> None:
-    """Render bt statistics."""
-    import pandas as pd
-
-    st.markdown("### Performance Statistics")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("#### Return Metrics")
-        stats_df = pd.DataFrame(
-            {
-                "Metric": ["Total Return", "CAGR", "Max Drawdown", "Sortino Ratio"],
-                "Value": [
-                    f"{result.total_return:,.2f}%",
-                    f"{result.cagr:.2f}%",
-                    f"{result.mdd:.2f}%",
-                    f"{result.sortino_ratio:.2f}",
-                ],
-            }
-        )
-        st.dataframe(stats_df, width="stretch", hide_index=True)
-
-    with col2:
-        st.markdown("#### Trade Statistics")
-        trade_stats_df = pd.DataFrame(
-            {
-                "Metric": ["Total Trades", "Win Rate", "Profit Factor", "Avg Win", "Avg Loss"],
-                "Value": [
-                    f"{result.num_trades:,}",
-                    f"{result.win_rate:.2f}%",
-                    f"{result.profit_factor:.2f}",
-                    f"{result.avg_win:,.0f} KRW",
-                    f"{result.avg_loss:,.0f} KRW",
-                ],
-            }
-        )
-        st.dataframe(trade_stats_df, width="stretch", hide_index=True)

@@ -16,7 +16,9 @@ from src.utils.logger import get_logger
 from src.web.services.bt_backtest_runner import (
     BtBacktestResult,
     get_available_bt_symbols,
+    get_default_model_path,
     is_bt_available,
+    run_bt_backtest_regime_service,
     run_bt_backtest_service,
 )
 
@@ -27,7 +29,7 @@ __all__ = ["render_bt_backtest_page"]
 
 def render_bt_backtest_page() -> None:
     """Render bt library backtest page."""
-    st.header("bt Library VBO Backtest")
+    st.header("bt Library Backtest")
 
     # Check bt library availability
     if not is_bt_available():
@@ -59,7 +61,31 @@ def render_bt_backtest_page() -> None:
 
 def _render_settings_tab() -> None:
     """Render settings tab."""
-    st.subheader("VBO Strategy Settings")
+    # Strategy Selection
+    st.subheader("Strategy Selection")
+
+    strategy_options = {
+        "VBO (BTC MA20 Filter)": "vbo",
+        "VBO Regime (ML Model Filter)": "vbo_regime",
+    }
+
+    selected_strategy_name = st.radio(
+        "Select Strategy",
+        options=list(strategy_options.keys()),
+        horizontal=True,
+        help="VBO: Uses BTC MA20 for market filter. VBO Regime: Uses ML regime classifier.",
+    )
+    selected_strategy = strategy_options[selected_strategy_name]
+
+    # Check model availability for regime strategy
+    model_path = get_default_model_path()
+    if selected_strategy == "vbo_regime" and not model_path.exists():
+        st.error(
+            f"Regime model not found at: `{model_path}`\n\nPlease ensure the model file exists."
+        )
+        return
+
+    st.markdown("---")
 
     # Get available symbols
     available_symbols = get_available_bt_symbols("day")
@@ -83,10 +109,10 @@ def _render_settings_tab() -> None:
         # Quick selection buttons
         quick_col1, quick_col2 = st.columns(2)
         with quick_col1:
-            if st.button("Select All", width="stretch"):
+            if st.button("Select All", use_container_width=True):
                 st.session_state.bt_selected_symbols = available_symbols
         with quick_col2:
-            if st.button("Clear All", width="stretch"):
+            if st.button("Clear All", use_container_width=True):
                 st.session_state.bt_selected_symbols = []
 
         # Initialize session state
@@ -134,25 +160,55 @@ def _render_settings_tab() -> None:
 
     # Column 3: Strategy Parameters
     with col3:
-        st.markdown("### VBO Parameters")
+        st.markdown("### Strategy Parameters")
 
-        lookback = st.slider(
-            "Lookback Period (Short MA)",
-            min_value=2,
-            max_value=20,
-            value=5,
-            help="Short-term moving average period",
-        )
+        if selected_strategy == "vbo":
+            # VBO Strategy Parameters
+            lookback = st.slider(
+                "Lookback Period (Short MA)",
+                min_value=2,
+                max_value=20,
+                value=5,
+                help="Short-term moving average period",
+            )
 
-        multiplier = st.slider(
-            "Multiplier (Long MA = Lookback x Multiplier)",
-            min_value=1,
-            max_value=5,
-            value=2,
-            help="Multiplier for long-term moving average",
-        )
+            multiplier = st.slider(
+                "Multiplier (Long MA = Lookback x Multiplier)",
+                min_value=1,
+                max_value=5,
+                value=2,
+                help="Multiplier for long-term moving average",
+            )
 
-        st.info(f"Long MA Period: {lookback * multiplier}")
+            st.info(f"Long MA Period: {lookback * multiplier}")
+
+            # Placeholders for regime params
+            ma_short = lookback
+            noise_ratio = 0.5
+        else:
+            # VBO Regime Strategy Parameters
+            ma_short = st.slider(
+                "MA Short Period",
+                min_value=2,
+                max_value=20,
+                value=5,
+                help="Short-term moving average period for individual coins",
+            )
+
+            noise_ratio = st.slider(
+                "Noise Ratio (k)",
+                min_value=0.1,
+                max_value=1.0,
+                value=0.5,
+                step=0.1,
+                help="Volatility breakout multiplier",
+            )
+
+            st.info("Market Filter: ML Regime Classifier")
+
+            # Placeholders for VBO params
+            lookback = ma_short
+            multiplier = 2
 
     st.markdown("---")
 
@@ -180,21 +236,35 @@ def _render_settings_tab() -> None:
             )
 
         with sum_col3:
-            st.markdown(
-                f"""
-                **VBO Strategy**
-                - Short MA: {lookback}
-                - Long MA: {lookback * multiplier}
-                """
-            )
+            if selected_strategy == "vbo":
+                st.markdown(
+                    f"""
+                    **VBO Strategy**
+                    - Short MA: {lookback}
+                    - Long MA: {lookback * multiplier}
+                    - Filter: BTC MA20
+                    """
+                )
+            else:
+                st.markdown(
+                    f"""
+                    **VBO Regime Strategy**
+                    - MA Short: {ma_short}
+                    - Noise Ratio: {noise_ratio}
+                    - Filter: ML Regime Model
+                    """
+                )
 
     # Run Button
     btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 1])
     with btn_col2:
+        button_label = (
+            "Run VBO Backtest" if selected_strategy == "vbo" else "Run VBO Regime Backtest"
+        )
         run_button = st.button(
-            "Run bt VBO Backtest",
+            button_label,
             type="primary",
-            width="stretch",
+            use_container_width=True,
             disabled=len(selected_symbols) == 0,
         )
 
@@ -204,19 +274,36 @@ def _render_settings_tab() -> None:
 
     # Run backtest
     if run_button:
-        with st.spinner("Running bt library VBO backtest..."):
-            result = run_bt_backtest_service(
-                symbols=tuple(selected_symbols),  # tuple for caching
-                interval="day",
-                initial_cash=initial_cash,
-                fee=fee / 100,  # Convert to decimal
-                slippage=slippage / 100,
-                multiplier=multiplier,
-                lookback=lookback,
-            )
+        spinner_text = (
+            "Running VBO backtest..."
+            if selected_strategy == "vbo"
+            else "Running VBO Regime backtest (ML model)..."
+        )
+        with st.spinner(spinner_text):
+            if selected_strategy == "vbo":
+                result = run_bt_backtest_service(
+                    symbols=tuple(selected_symbols),
+                    interval="day",
+                    initial_cash=initial_cash,
+                    fee=fee / 100,
+                    slippage=slippage / 100,
+                    multiplier=multiplier,
+                    lookback=lookback,
+                )
+            else:
+                result = run_bt_backtest_regime_service(
+                    symbols=tuple(selected_symbols),
+                    interval="day",
+                    initial_cash=initial_cash,
+                    fee=fee / 100,
+                    slippage=slippage / 100,
+                    ma_short=ma_short,
+                    noise_ratio=noise_ratio,
+                )
 
             if result:
                 st.session_state.bt_backtest_result = result
+                st.session_state.bt_strategy_type = selected_strategy
                 st.success("Backtest completed! Check the 'Results' tab.")
                 st.rerun()
             else:

@@ -3,15 +3,24 @@
 Strategy parameter optimization page.
 """
 
+from itertools import product
 from typing import Any, cast
 
 import streamlit as st
 
 from src.backtester import BacktestConfig, optimize_strategy_parameters
 from src.data.collector_fetch import Interval
-from src.strategies.volatility_breakout import create_vbo_strategy
 from src.utils.logger import get_logger
+from src.web.services.bt_backtest_runner import (
+    BtBacktestResult,
+    get_available_bt_symbols,
+    get_default_model_path,
+    is_bt_available,
+    run_bt_backtest_regime_service,
+    run_bt_backtest_service,
+)
 from src.web.services.data_loader import validate_data_availability
+from src.web.services.strategy_registry import StrategyRegistry, is_bt_strategy
 
 logger = get_logger(__name__)
 
@@ -31,9 +40,33 @@ METRICS = [
 DEFAULT_TICKERS = ["KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-SOL"]
 
 
+@st.cache_resource(ttl=60)
+def _get_cached_registry() -> StrategyRegistry:
+    """Return cached strategy registry."""
+    return StrategyRegistry()
+
+
 def render_optimization_page() -> None:
     """Render optimization page."""
     st.header("🔧 Parameter Optimization")
+
+    # Get strategy registry (same as backtest page)
+    registry = _get_cached_registry()
+    all_strategies = registry.list_strategies()
+
+    # Separate bt and non-bt strategies
+    native_strategies = [s for s in all_strategies if not is_bt_strategy(s.name)]
+    bt_strategies = [s for s in all_strategies if is_bt_strategy(s.name)]
+
+    # Combine all strategies (native first, then bt)
+    strategies = native_strategies + bt_strategies
+
+    if not strategies:
+        st.error("⚠️ No strategies available for optimization.")
+        return
+
+    # Check bt availability
+    bt_available = is_bt_available()
 
     # ===== Configuration Section =====
     with st.expander("⚙️ Optimization Settings", expanded=True):
@@ -42,11 +75,33 @@ def render_optimization_page() -> None:
 
         with col1:
             st.subheader("📈 Strategy")
-            strategy_type = st.selectbox(
-                "Strategy Type",
-                options=["vanilla", "legacy"],
-                format_func=lambda x: "Vanilla VBO" if x == "vanilla" else "Legacy VBO",
+            strategy_names = [s.name for s in strategies]
+
+            # Format strategy names to show bt availability
+            def format_strategy_name(name: str) -> str:
+                if is_bt_strategy(name):
+                    if bt_available:
+                        return f"{name} [bt]"
+                    return f"{name} [bt - unavailable]"
+                return name
+
+            selected_strategy_name = st.selectbox(
+                "Strategy",
+                options=strategy_names,
+                format_func=format_strategy_name,
+                help="Select strategy to optimize. [bt] strategies use bt library backtest engine.",
             )
+
+            # Get selected strategy info
+            selected_strategy = registry.get_strategy(selected_strategy_name)
+            is_bt = is_bt_strategy(selected_strategy_name)
+
+            if selected_strategy and selected_strategy.description:
+                st.caption(f"ℹ️ {selected_strategy.description}")
+
+            # Warning for bt strategies if not available
+            if is_bt and not bt_available:
+                st.error("⚠️ bt library is not installed. Cannot optimize this strategy.")
 
         with col2:
             st.subheader("⚙️ Optimization Method")
@@ -102,34 +157,33 @@ def render_optimization_page() -> None:
 
         st.markdown("---")
 
-        # Row 3: Parameter Ranges
+        # Row 3: Parameter Ranges (dynamically generated from strategy)
         st.subheader("📐 Parameter Ranges")
 
-        col1, col2 = st.columns(2)
+        param_ranges: dict[str, str] = {}
+        if selected_strategy and selected_strategy.parameters:
+            # Create dynamic input fields for each parameter
+            params_list = list(selected_strategy.parameters.items())
+            n_params = len(params_list)
 
-        with col1:
-            sma_range = st.text_input(
-                "SMA Period",
-                value="3,4,5,6,7",
-                help="Enter comma-separated values (e.g., 3,4,5,6,7)",
-            )
-            trend_range = st.text_input(
-                "Trend SMA Period",
-                value="8,10,12,14",
-                help="Enter comma-separated values",
-            )
-
-        with col2:
-            short_noise = st.text_input(
-                "Short Noise Period (Optional)",
-                value="",
-                help="Leave empty to use SMA Period values",
-            )
-            long_noise = st.text_input(
-                "Long Noise Period (Optional)",
-                value="",
-                help="Leave empty to use Trend SMA Period values",
-            )
+            if n_params > 0:
+                # Create two columns for parameters
+                col1, col2 = st.columns(2)
+                for i, (param_name, spec) in enumerate(params_list):
+                    target_col = col1 if i % 2 == 0 else col2
+                    with target_col:
+                        label = param_name.replace("_", " ").title()
+                        default_values = _get_default_param_range(spec)
+                        param_ranges[param_name] = st.text_input(
+                            label,
+                            value=default_values,
+                            help=f"{spec.description or param_name} - Enter comma-separated values",
+                            key=f"opt_param_{param_name}",
+                        )
+            else:
+                st.info("📌 This strategy has no configurable parameters.")
+        else:
+            st.warning("⚠️ No strategy selected or no parameters available.")
 
         st.markdown("---")
 
@@ -145,16 +199,35 @@ def render_optimization_page() -> None:
             )
 
         with col2:
-            st.subheader("📈 Ticker Selection")
-            available, missing = validate_data_availability(
-                DEFAULT_TICKERS, cast(Interval, interval)
-            )
+            st.subheader("📈 Ticker/Symbol Selection")
 
-            selected_tickers = st.multiselect(
-                "Tickers",
-                options=available if available else DEFAULT_TICKERS,
-                default=available[:2] if available else [],
-            )
+            if is_bt:
+                # bt strategies use symbol names without KRW- prefix
+                bt_interval = "day" if interval == "day" else "day"  # bt only supports day
+                available_bt_symbols = get_available_bt_symbols(bt_interval)
+
+                if not available_bt_symbols:
+                    st.warning("⚠️ No data available for bt backtest.")
+
+                selected_symbols = st.multiselect(
+                    "Symbols",
+                    options=available_bt_symbols,
+                    default=available_bt_symbols[:4] if available_bt_symbols else [],
+                    help="Select symbols for bt backtest (without KRW- prefix)",
+                )
+                # Convert to tickers format for consistency
+                selected_tickers = [f"KRW-{s}" for s in selected_symbols]
+            else:
+                # Native strategies use full ticker names
+                available, missing = validate_data_availability(
+                    DEFAULT_TICKERS, cast(Interval, interval)
+                )
+
+                selected_tickers = st.multiselect(
+                    "Tickers",
+                    options=available if available else DEFAULT_TICKERS,
+                    default=available[:2] if available else [],
+                )
 
         with col3:
             workers = st.slider(
@@ -183,52 +256,118 @@ def render_optimization_page() -> None:
         _show_help()
         return
 
-    # Parse parameter ranges
+    if not selected_strategy:
+        st.warning("⚠️ Please select a strategy.")
+        return
+
+    # Parse parameter ranges (dynamic based on strategy parameters)
     try:
-        param_grid = _parse_param_grid(sma_range, trend_range, short_noise, long_noise)
+        param_grid = _parse_dynamic_param_grid(param_ranges, selected_strategy.parameters)
     except ValueError as e:
         st.error(f"❌ Parameter range error: {e}")
         return
 
     # Configuration summary
     _show_config_summary(
-        strategy_type, method, metric, param_grid, selected_tickers, interval, n_iter
+        selected_strategy_name, method, metric, param_grid, selected_tickers, interval, n_iter
     )
 
     # Run optimization
     if run_button:
-        _run_optimization(
-            strategy_type=strategy_type,
-            param_grid=param_grid,
-            tickers=selected_tickers,
-            interval=interval,
-            metric=metric,
-            method=method,
-            n_iter=n_iter,
-            initial_capital=initial_capital,
-            fee_rate=fee_rate,
-            max_slots=max_slots,
-            workers=workers,
-        )
+        if is_bt and not bt_available:
+            st.error("⚠️ bt library is not installed. Cannot run optimization.")
+        elif is_bt:
+            # bt strategy optimization
+            _run_bt_optimization(
+                strategy_name=selected_strategy_name,
+                param_grid=param_grid,
+                symbols=[t.replace("KRW-", "") for t in selected_tickers],
+                metric=metric,
+                method=method,
+                n_iter=n_iter,
+                initial_capital=int(initial_capital * 10_000_000),  # Convert to KRW
+                fee_rate=fee_rate,
+            )
+        else:
+            # Native strategy optimization
+            _run_optimization(
+                strategy_name=selected_strategy_name,
+                strategy_class=selected_strategy.strategy_class,
+                param_grid=param_grid,
+                tickers=selected_tickers,
+                interval=interval,
+                metric=metric,
+                method=method,
+                n_iter=n_iter,
+                initial_capital=initial_capital,
+                fee_rate=fee_rate,
+                max_slots=max_slots,
+                workers=workers,
+            )
 
     # Display previous results
     if "optimization_result" in st.session_state:
         _display_optimization_results()
 
 
-def _parse_param_grid(
-    sma_range: str,
-    trend_range: str,
-    short_noise: str,
-    long_noise: str,
-) -> dict[str, list[int]]:
-    """Parse parameter ranges.
+def _get_default_param_range(spec: Any) -> str:
+    """Generate default parameter range based on spec.
 
     Args:
-        sma_range: SMA period range
-        trend_range: Trend SMA period range
-        short_noise: Short noise period range
-        long_noise: Long noise period range
+        spec: ParameterSpec object
+
+    Returns:
+        Comma-separated default values string
+    """
+    default = spec.default
+    param_type = spec.type
+
+    if param_type == "int":
+        # Generate range around default value
+        min_int = int(spec.min_value or 1)
+        max_int = int(spec.max_value or 100)
+        step_int = int(spec.step or 1)
+
+        # Create range centered on default
+        int_values: list[int] = []
+        for v in range(min_int, max_int + 1, step_int):
+            if abs(v - default) <= step_int * 3:  # 7 values around default
+                int_values.append(v)
+
+        if not int_values:
+            int_values = [int(default)]
+
+        return ",".join(str(v) for v in int_values)
+
+    elif param_type == "float":
+        # For float, generate 3-5 values
+        min_float = float(spec.min_value or 0.0)
+        max_float = float(spec.max_value or 1.0)
+        step_float = float(spec.step or 0.1)
+
+        float_values: list[float] = []
+        current_float: float = min_float
+        while current_float <= max_float and len(float_values) < 5:
+            float_values.append(round(current_float, 4))
+            current_float += step_float
+
+        return ",".join(str(fv) for fv in float_values)
+
+    elif param_type == "bool":
+        return "True,False"
+
+    return str(default)
+
+
+def _parse_dynamic_param_grid(
+    param_ranges: dict[str, str],
+    param_specs: dict[str, Any],
+) -> dict[str, list[Any]]:
+    """Parse dynamic parameter ranges.
+
+    Args:
+        param_ranges: Parameter name to range string mapping
+        param_specs: Parameter specifications from strategy
 
     Returns:
         Parameter grid dictionary
@@ -236,26 +375,37 @@ def _parse_param_grid(
     Raises:
         ValueError: If parsing error occurs
     """
+    param_grid: dict[str, list[Any]] = {}
 
-    def parse_range(s: str) -> list[int]:
-        if not s.strip():
-            return []
-        return [int(x.strip()) for x in s.split(",") if x.strip()]
+    for param_name, range_str in param_ranges.items():
+        if not range_str.strip():
+            raise ValueError(f"Please enter values for {param_name}")
 
-    sma_values = parse_range(sma_range)
-    trend_values = parse_range(trend_range)
+        spec = param_specs.get(param_name)
+        param_type = spec.type if spec else "int"
 
-    if not sma_values:
-        raise ValueError("Please enter SMA Period values")
-    if not trend_values:
-        raise ValueError("Please enter Trend SMA Period values")
+        values: list[Any] = []
+        for val_str in range_str.split(","):
+            val_str = val_str.strip()
+            if not val_str:
+                continue
 
-    param_grid = {
-        "sma_period": sma_values,
-        "trend_sma_period": trend_values,
-        "short_noise_period": parse_range(short_noise) or sma_values,
-        "long_noise_period": parse_range(long_noise) or trend_values,
-    }
+            try:
+                if param_type == "int":
+                    values.append(int(val_str))
+                elif param_type == "float":
+                    values.append(float(val_str))
+                elif param_type == "bool":
+                    values.append(val_str.lower() in ("true", "1", "yes"))
+                else:
+                    values.append(val_str)
+            except ValueError as e:
+                raise ValueError(f"Invalid value '{val_str}' for {param_name}") from e
+
+        if not values:
+            raise ValueError(f"No valid values for {param_name}")
+
+        param_grid[param_name] = values
 
     return param_grid
 
@@ -306,16 +456,17 @@ def _show_help() -> None:
         ### 🔧 Parameter Optimization Guide
 
         **1. Strategy Selection**
-        - Vanilla VBO: Basic volatility breakout strategy
-        - Legacy VBO: Version with noise filter
+        - Select any strategy from the dropdown (same as backtest page)
+        - bt library strategies are not supported for optimization
 
         **2. Search Method**
         - Grid Search: Tests all combinations (accurate but slow)
         - Random Search: Random sampling (fast but may miss optimal solution)
 
         **3. Parameter Ranges**
-        - Enter comma-separated integer values
-        - Example: "3,4,5,6,7"
+        - Enter comma-separated values for each parameter
+        - Example: "3,4,5,6,7" for integers
+        - Example: "0.1,0.2,0.3" for floats
 
         **4. Optimization Metrics**
         - Sharpe Ratio: Risk-adjusted return (recommended)
@@ -326,8 +477,9 @@ def _show_help() -> None:
 
 
 def _run_optimization(
-    strategy_type: str,
-    param_grid: dict[str, list[int]],
+    strategy_name: str,
+    strategy_class: type | None,
+    param_grid: dict[str, list[Any]],
     tickers: list[str],
     interval: str,
     metric: str,
@@ -345,23 +497,14 @@ def _run_optimization(
     progress_placeholder = st.empty()
     progress_placeholder.info("Starting optimization...")
 
+    if strategy_class is None:
+        progress_placeholder.error("❌ Strategy class not found")
+        return
+
     try:
-        # Create strategy factory
-        def create_strategy(**kwargs: Any) -> Any:
-            if strategy_type == "vanilla":
-                return create_vbo_strategy(
-                    name="VanillaVBO",
-                    use_trend_filter=False,
-                    use_noise_filter=False,
-                    **kwargs,
-                )
-            else:
-                return create_vbo_strategy(
-                    name="LegacyVBO",
-                    use_trend_filter=True,
-                    use_noise_filter=True,
-                    **kwargs,
-                )
+        # Create strategy factory (receives dict parameter from grid_search)
+        def create_strategy(params: dict[str, Any]) -> Any:
+            return strategy_class(**params)
 
         # Create configuration
         config = BacktestConfig(
@@ -397,6 +540,175 @@ def _run_optimization(
     except Exception as e:
         logger.error(f"Optimization error: {e}", exc_info=True)
         progress_placeholder.error(f"❌ Optimization failed: {e}")
+
+
+def _run_bt_optimization(
+    strategy_name: str,
+    param_grid: dict[str, list[Any]],
+    symbols: list[str],
+    metric: str,
+    method: str,
+    n_iter: int,
+    initial_capital: int,
+    fee_rate: float,
+) -> None:
+    """Run bt strategy optimization.
+
+    Args:
+        strategy_name: bt strategy name (bt_VBO or bt_VBO_Regime)
+        param_grid: Parameter grid for optimization
+        symbols: List of symbols (without KRW- prefix)
+        metric: Optimization metric
+        method: Search method (grid or random)
+        n_iter: Number of iterations for random search
+        initial_capital: Initial capital in KRW
+        fee_rate: Fee rate
+    """
+    import random
+
+    st.subheader("🔄 bt Optimization in Progress...")
+
+    progress_placeholder = st.empty()
+    progress_bar = st.progress(0)
+    progress_placeholder.info("Starting bt optimization...")
+
+    # Generate parameter combinations
+    param_names = list(param_grid.keys())
+    param_values = list(param_grid.values())
+
+    if method == "grid":
+        combinations = list(product(*param_values))
+    else:
+        # Random search
+        all_combinations = list(product(*param_values))
+        n_iter = min(n_iter, len(all_combinations))
+        combinations = random.sample(all_combinations, n_iter)
+
+    total = len(combinations)
+    logger.info(f"bt optimization: {total} parameter combinations")
+    progress_placeholder.info(f"Running {total} backtests...")
+
+    # Determine which bt strategy to use
+    is_regime = "Regime" in strategy_name
+
+    # Get model path for regime strategy
+    model_path = str(get_default_model_path()) if is_regime else None
+
+    # Run backtests for each combination
+    all_results: list[tuple[dict[str, Any], BtBacktestResult | None, float]] = []
+
+    for i, combo in enumerate(combinations):
+        params = dict(zip(param_names, combo, strict=False))
+
+        try:
+            if is_regime:
+                # VBO Regime strategy
+                result = run_bt_backtest_regime_service(
+                    symbols=tuple(symbols),
+                    interval="day",
+                    initial_cash=initial_capital,
+                    fee=fee_rate,
+                    slippage=fee_rate,
+                    ma_short=params.get("ma_short", 5),
+                    noise_ratio=params.get("noise_ratio", 0.5),
+                    model_path=model_path,
+                )
+            else:
+                # VBO strategy
+                result = run_bt_backtest_service(
+                    symbols=tuple(symbols),
+                    interval="day",
+                    initial_cash=initial_capital,
+                    fee=fee_rate,
+                    slippage=fee_rate,
+                    multiplier=params.get("multiplier", 2),
+                    lookback=params.get("lookback", 5),
+                )
+
+            if result:
+                score = _extract_bt_metric(result, metric)
+                all_results.append((params, result, score))
+            else:
+                all_results.append((params, None, float("-inf")))
+
+        except Exception as e:
+            logger.warning(f"bt backtest failed for {params}: {e}")
+            all_results.append((params, None, float("-inf")))
+
+        # Update progress
+        progress = (i + 1) / total
+        progress_bar.progress(progress)
+        progress_placeholder.info(f"Running backtests... ({i + 1}/{total})")
+
+    # Sort by score (descending)
+    all_results.sort(key=lambda x: x[2], reverse=True)
+
+    if not all_results or all_results[0][1] is None:
+        progress_placeholder.error("❌ All backtests failed")
+        return
+
+    # Create result object compatible with display function
+    best_params, best_result, best_score = all_results[0]
+
+    # Create a simple result object
+    class BtOptimizationResult:
+        def __init__(
+            self,
+            best_params: dict[str, Any],
+            best_score: float,
+            all_params: list[dict[str, Any]],
+            all_scores: list[float],
+        ):
+            self.best_params = best_params
+            self.best_score = best_score
+            self.all_params = all_params
+            self.all_scores = all_scores
+
+    result_obj = BtOptimizationResult(
+        best_params=best_params,
+        best_score=best_score,
+        all_params=[r[0] for r in all_results if r[1] is not None],
+        all_scores=[r[2] for r in all_results if r[1] is not None],
+    )
+
+    # Save results
+    st.session_state.optimization_result = result_obj
+    st.session_state.optimization_metric = metric
+
+    progress_bar.progress(1.0)
+    progress_placeholder.success(f"✅ bt Optimization completed! Best {metric}: {best_score:.4f}")
+
+
+def _extract_bt_metric(result: BtBacktestResult, metric: str) -> float:
+    """Extract metric value from bt backtest result.
+
+    Args:
+        result: BtBacktestResult object
+        metric: Metric name
+
+    Returns:
+        Metric value
+    """
+    metric_map = {
+        "sharpe_ratio": "sharpe_ratio",
+        "cagr": "cagr",
+        "total_return": "total_return",
+        "calmar_ratio": None,  # Calculate from cagr/mdd
+        "win_rate": "win_rate",
+        "profit_factor": "profit_factor",
+        "sortino_ratio": "sortino_ratio",
+    }
+
+    if metric == "calmar_ratio":
+        # Calmar = CAGR / |MDD|
+        mdd = abs(result.mdd) if result.mdd != 0 else 1.0
+        return result.cagr / mdd
+
+    attr = metric_map.get(metric, "sharpe_ratio")
+    if attr is None:
+        return result.sharpe_ratio
+
+    return getattr(result, attr, 0.0)
 
 
 def _display_optimization_results() -> None:

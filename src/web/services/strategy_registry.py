@@ -235,11 +235,45 @@ class StrategyRegistry:
                 module_path="bt.strategies.vbo",
                 strategy_class=None,  # bt strategies don't use crypto-quant-system Strategy class
                 parameters=bt_vbo_params,
-                description="[bt] Volatility Breakout Strategy (external bt library)",
+                description="[bt] Volatility Breakout Strategy (BTC MA20 filter)",
             )
 
             self._strategies["bt_VBO"] = bt_vbo_info
-            logger.info("Registered bt library strategies: bt_VBO")
+
+            # bt VBO Regime Strategy (ML model filter)
+            bt_vbo_regime_params = {
+                "ma_short": ParameterSpec(
+                    name="ma_short",
+                    type="int",
+                    default=5,
+                    min_value=2,
+                    max_value=20,
+                    step=1,
+                    description="Short-term MA period for individual coins",
+                ),
+                "noise_ratio": ParameterSpec(
+                    name="noise_ratio",
+                    type="float",
+                    default=0.5,
+                    min_value=0.1,
+                    max_value=1.0,
+                    step=0.1,
+                    description="Volatility breakout multiplier (k factor)",
+                ),
+            }
+
+            bt_vbo_regime_info = StrategyInfo(
+                name="bt_VBO_Regime",
+                class_name="bt_VBO_Regime",
+                module_path="bt.strategies.vbo_regime",
+                strategy_class=None,  # bt strategies don't use crypto-quant-system Strategy class
+                parameters=bt_vbo_regime_params,
+                description="[bt] Volatility Breakout Strategy (ML Regime filter)",
+            )
+
+            self._strategies["bt_VBO_Regime"] = bt_vbo_regime_info
+
+            logger.info("Registered bt library strategies: bt_VBO, bt_VBO_Regime")
 
         except Exception as e:
             logger.warning(f"Failed to register bt strategies: {e}")
