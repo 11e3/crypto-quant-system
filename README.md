@@ -9,6 +9,14 @@ Part of: **[crypto-quant-system](https://github.com/11e3/crypto-quant-system)** 
 [![Coverage](https://img.shields.io/badge/coverage-80%25+-green.svg)](https://github.com/11e3/crypto-quant-system)
 [![MyPy](https://img.shields.io/badge/mypy-97.8%25-brightgreen.svg)](https://mypy.readthedocs.io/)
 
+## Screenshots
+
+### Backtest Results - Equity Curve
+![Backtest Results - Equity Curve](docs/images/screencapture-localhost-8501-2026-01-17-06_29_52.png)
+
+### Backtest Results - Yearly Returns
+![Backtest Results - Yearly Returns](docs/images/screencapture-localhost-8501-2026-01-17-06_30_03.png)
+
 ## Ecosystem Role
 
 ```
@@ -214,14 +222,6 @@ crypto-quant-system/
 +-- docs/                         # Documentation
 +-- config/                       # Configuration examples
 ```
-
-## Screenshots
-
-### Backtest Results - Equity Curve
-![Backtest Results - Equity Curve](docs/images/screencapture-localhost-8501-2026-01-17-06_29_52.png)
-
-### Backtest Results - Yearly Returns
-![Backtest Results - Yearly Returns](docs/images/screencapture-localhost-8501-2026-01-17-06_30_03.png)
 
 ## Dashboard Pages
 
