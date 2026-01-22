@@ -3,6 +3,10 @@
 Main application for cryptocurrency backtesting web interface.
 """
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env file before anything else
+
 import streamlit as st
 
 from src.utils.logger import get_logger, setup_logging

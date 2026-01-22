@@ -116,24 +116,26 @@ class StrategyRegistry:
         if param_type is None:
             return None
 
-        # Create spec by type
+        # Create spec by type with reasonable bounds based on default
         if param_type == "int":
+            int_default = int(default)
             return ParameterSpec(
                 name=name,
                 type="int",
                 default=default,
                 min_value=1,
-                max_value=100,
+                max_value=max(100, int_default * 2),
                 step=1,
                 description=f"Integer parameter: {name}",
             )
         elif param_type == "float":
+            float_default = float(default)
             return ParameterSpec(
                 name=name,
                 type="float",
                 default=default,
                 min_value=0.0,
-                max_value=1.0,
+                max_value=max(1.0, float_default * 2),
                 step=0.01,
                 description=f"Float parameter: {name}",
             )
@@ -199,14 +201,13 @@ class StrategyRegistry:
         return name in self._strategies
 
     def _register_bt_strategies(self) -> None:
-        """Register bt library strategies."""
+        """Register bt library strategies.
+
+        Note: We always register bt strategies without checking availability.
+        The actual availability check happens when running a backtest.
+        This avoids slow bt library import during app startup.
+        """
         try:
-            from src.web.services.bt_backtest_runner import is_bt_available
-
-            if not is_bt_available():
-                logger.info("bt library not available, skipping bt strategies")
-                return
-
             # bt VBO Strategy
             bt_vbo_params = {
                 "lookback": ParameterSpec(

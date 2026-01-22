@@ -117,3 +117,5 @@ docs/*.rst
 
 # Model artifacts
 models/
+
+*.json

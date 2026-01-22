@@ -23,7 +23,6 @@ from src.web.components.charts.underwater import render_underwater_curve
 from src.web.components.charts.yearly_bar import render_yearly_bar_chart
 from src.web.components.metrics.metrics_display import (
     render_metrics_cards,
-    render_statistical_significance,
 )
 from src.web.components.sidebar.asset_selector import render_asset_selector
 from src.web.components.sidebar.date_config import render_date_config
@@ -337,27 +336,29 @@ def _display_results(result: BacktestResult) -> None:
 
     extended_metrics = st.session_state[cache_key]
 
-    # Tab configuration
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-        [
-            "📈 Overview",
-            "📊 Equity Curve",
-            "📉 Drawdown",
-            "📅 Monthly Analysis",
-            "📆 Yearly Analysis",
-            "🔬 Statistics",
-        ]
-    )
+    # Metrics cards (displayed directly, not in tab)
+    render_metrics_cards(extended_metrics)
+
+    st.markdown("---")
+
+    # Tab configuration (3 tabs like bt results)
+    tab1, tab2, tab3 = st.tabs(["📊 Equity Curve", "📆 Yearly Returns", "📋 Trade History"])
 
     with tab1:
-        # Metrics cards
-        render_metrics_cards(extended_metrics)
+        render_equity_curve(dates, equity)
+        st.markdown("### Drawdown")
+        render_underwater_curve(dates, equity)
 
-        # Trade history
+    with tab2:
+        render_yearly_bar_chart(dates, equity)
+        st.markdown("### Monthly Heatmap")
+        render_monthly_heatmap(dates, equity)
+
+    with tab3:
         if result.trades:
-            st.markdown("### 📋 Trade History")
-
             import pandas as pd
+
+            st.markdown(f"### Trade History ({len(result.trades):,} trades)")
 
             trades_df = pd.DataFrame(
                 [
@@ -370,26 +371,17 @@ def _display_results(result: BacktestResult) -> None:
                         "P&L": f"{t.pnl:,.0f}",
                         "P&L %": f"{t.pnl_pct:.2f}%",
                     }
-                    for t in result.trades[-100:]  # Last 100 trades only
+                    for t in result.trades
                 ]
             )
 
-            st.dataframe(trades_df, width="stretch", height=400)
-
-    with tab2:
-        render_equity_curve(dates, equity)
-
-    with tab3:
-        render_underwater_curve(dates, equity)
-
-    with tab4:
-        render_monthly_heatmap(dates, equity)
-
-    with tab5:
-        render_yearly_bar_chart(dates, equity)
-
-    with tab6:
-        render_statistical_significance(extended_metrics)
+            show_count = st.selectbox(
+                "Show trades", options=[10, 25, 50, 100, "All"], index=1, key="trade_count"
+            )
+            display_df = trades_df if show_count == "All" else trades_df.tail(int(str(show_count)))
+            st.dataframe(display_df, width="stretch", hide_index=True)
+        else:
+            st.info("No trades executed.")
 
 
 def _display_bt_results(result: BtBacktestResult) -> None:

@@ -520,4 +520,18 @@ MIT License
 
 ---
 
-**Version**: 2.0.0 | **Python**: 3.10+ | **Framework**: Streamlit
+**Version**: 2.1.0 | **Python**: 3.10+ | **Framework**: Streamlit
+
+## Changelog
+
+### v2.1.0 (2026-01-22)
+- **UI Improvements**
+  - Equity curve now displays normalized values (1 = start) with log scale for better visualization
+  - Simplified backtest results tabs (3 tabs: Equity Curve, Yearly Returns, Trade History)
+  - Fixed checkbox state management in data collection page
+- **Performance**
+  - Improved page load speed by optimizing cache strategy (removed TTL from strategy registry)
+  - Added `lru_cache` for bt availability check
+- **Bug Fixes**
+  - Fixed GCS environment variables not loading in Streamlit (added `load_dotenv()`)
+  - Fixed parameter slider bounds when default values exceed max_value

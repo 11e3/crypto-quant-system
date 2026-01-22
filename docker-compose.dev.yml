@@ -15,10 +15,14 @@ services:
       # Keep data and logs volumes
       - ./data:/app/data
       - ./logs:/app/logs
+      # Mount bt library for development
+      - ../bt:/app/bt:ro
     environment:
       # Enable Streamlit auto-reload on file changes
       - STREAMLIT_SERVER_RUN_ON_SAVE=true
       - STREAMLIT_SERVER_FILE_WATCHER_TYPE=auto
+      # Add bt library to Python path
+      - PYTHONPATH=/app/bt/src:/app
     command: ["streamlit", "run", "src/web/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.runOnSave=true"]
 
   # ==========================================================================

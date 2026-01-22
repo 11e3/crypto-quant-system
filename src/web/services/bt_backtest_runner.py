@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -70,8 +71,12 @@ class BtBacktestResult:
     trades: list[dict]
 
 
+@lru_cache(maxsize=1)
 def is_bt_available() -> bool:
-    """Check if bt library is installed and available."""
+    """Check if bt library is installed and available.
+
+    Result is cached permanently since bt availability doesn't change at runtime.
+    """
     try:
         from bt.engine.backtest import BacktestEngine  # noqa: F401
 

@@ -55,30 +55,36 @@ def render_data_collect_page() -> None:
     with col1:
         st.markdown("### 📈 Ticker Selection")
 
+        # Initialize checkbox states if not exists
+        if "collect_tickers_initialized" not in st.session_state:
+            st.session_state.collect_tickers_initialized = True
+            default_selected = DEFAULT_TICKERS[:6]
+            for ticker in DEFAULT_TICKERS:
+                st.session_state[f"collect_{ticker}"] = ticker in default_selected
+
         # Quick selection buttons
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            if st.button("Select All", width="stretch"):
-                st.session_state.selected_collect_tickers = DEFAULT_TICKERS.copy()
+            if st.button("Select All", key="select_all_tickers"):
+                for ticker in DEFAULT_TICKERS:
+                    st.session_state[f"collect_{ticker}"] = True
                 st.rerun()
         with btn_col2:
-            if st.button("Deselect All", width="stretch"):
-                st.session_state.selected_collect_tickers = []
+            if st.button("Deselect All", key="deselect_all_tickers"):
+                for ticker in DEFAULT_TICKERS:
+                    st.session_state[f"collect_{ticker}"] = False
                 st.rerun()
 
-        # Ticker checkboxes
-        if "selected_collect_tickers" not in st.session_state:
-            st.session_state.selected_collect_tickers = DEFAULT_TICKERS[:6]
-
+        # Ticker checkboxes (state managed entirely via session_state keys)
         selected_tickers = []
         for ticker in DEFAULT_TICKERS:
-            checked = ticker in st.session_state.selected_collect_tickers
-            if st.checkbox(ticker, value=checked, key=f"collect_{ticker}"):
+            if st.checkbox(ticker, key=f"collect_{ticker}"):
                 selected_tickers.append(ticker)
 
-        st.session_state.selected_collect_tickers = selected_tickers
-
         # Custom ticker input
+        if "custom_collect_tickers" not in st.session_state:
+            st.session_state.custom_collect_tickers = []
+
         custom_ticker = st.text_input(
             "Add Custom Ticker",
             placeholder="e.g., KRW-MATIC",
@@ -86,29 +92,32 @@ def render_data_collect_page() -> None:
         )
         if (
             custom_ticker
-            and custom_ticker not in selected_tickers
+            and custom_ticker.upper() not in selected_tickers
+            and custom_ticker.upper() not in st.session_state.custom_collect_tickers
             and st.button(f"➕ Add {custom_ticker}")
         ):
-            selected_tickers.append(custom_ticker.upper())
-            st.session_state.selected_collect_tickers = selected_tickers
+            st.session_state.custom_collect_tickers.append(custom_ticker.upper())
             st.rerun()
+
+        # Add custom tickers to selected list
+        for ticker in st.session_state.custom_collect_tickers:
+            selected_tickers.append(ticker)
 
     # Column 2: Interval Selection
     with col2:
         st.markdown("### ⏱️ Interval Selection")
 
-        if "selected_intervals" not in st.session_state:
-            st.session_state.selected_intervals = ["minute240", "day", "week"]
+        # Initialize interval checkbox states if not exists
+        if "intervals_initialized" not in st.session_state:
+            st.session_state.intervals_initialized = True
+            default_intervals = ["minute240", "day", "week"]
+            for interval_code, _ in INTERVALS:
+                st.session_state[f"interval_{interval_code}"] = interval_code in default_intervals
 
         selected_intervals = []
         for interval_code, interval_name in INTERVALS:
-            checked = interval_code in st.session_state.selected_intervals
-            if st.checkbox(
-                f"{interval_name} ({interval_code})", value=checked, key=f"interval_{interval_code}"
-            ):
+            if st.checkbox(f"{interval_name} ({interval_code})", key=f"interval_{interval_code}"):
                 selected_intervals.append(interval_code)
-
-        st.session_state.selected_intervals = selected_intervals
 
     # Column 3: Options
     with col3:

@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 __all__ = ["render_strategy_selector", "create_strategy_instance"]
 
 
-@st.cache_resource(ttl=60)  # Cache for 60 seconds only
+@st.cache_resource  # Cache permanently - strategies don't change at runtime
 def get_cached_registry() -> StrategyRegistry:
     """Return cached strategy registry."""
     logger.info("Creating new StrategyRegistry instance")
@@ -33,14 +33,8 @@ def render_strategy_selector() -> tuple[str, dict[str, Any]]:
     """
     st.subheader("📈 Strategy Selection")
 
-    # Force refresh registry (bypass cache for debugging)
-    from src.web.services.bt_backtest_runner import is_bt_available
-
     registry = get_cached_registry()
     strategies = registry.list_strategies()
-
-    # Debug info
-    st.caption(f"bt_available: {is_bt_available()}, strategies: {len(strategies)}")
 
     if not strategies:
         st.error("⚠️ No strategies registered.")
@@ -101,21 +95,33 @@ def _render_parameter_input(name: str, spec: ParameterSpec) -> Any:
 
     match spec.type:
         case "int":
+            int_default = int(spec.default)
+            int_min = int(spec.min_value or 1)
+            # Ensure max_value is at least as large as default
+            int_max = (
+                int(spec.max_value) if spec.max_value is not None else max(100, int_default * 2)
+            )
             return st.slider(
                 label,
-                min_value=int(spec.min_value or 1),
-                max_value=int(spec.max_value or 100),
-                value=int(spec.default),
+                min_value=int_min,
+                max_value=int_max,
+                value=int_default,
                 step=int(spec.step or 1),
                 help=spec.description or f"Integer parameter: {name}",
             )
 
         case "float":
+            float_default = float(spec.default)
+            float_min = float(spec.min_value or 0.0)
+            # Ensure max_value is at least as large as default
+            float_max = (
+                float(spec.max_value) if spec.max_value is not None else max(1.0, float_default * 2)
+            )
             return st.number_input(
                 label,
-                min_value=float(spec.min_value or 0.0),
-                max_value=float(spec.max_value or 1.0),
-                value=float(spec.default),
+                min_value=float_min,
+                max_value=float_max,
+                value=float_default,
                 step=float(spec.step or 0.01),
                 format="%.4f",
                 help=spec.description or f"Float parameter: {name}",

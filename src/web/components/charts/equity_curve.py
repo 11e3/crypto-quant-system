@@ -51,22 +51,26 @@ def render_equity_curve(
             )
             benchmark = downsampled_benchmark
 
+    # Normalize equity to start at 1
+    initial_value = equity[0] if equity[0] != 0 else 1.0
+    normalized_equity = equity / initial_value
+
     # Convert to returns (%)
-    returns_pct = (equity / initial_capital - 1) * 100
+    returns_pct = (normalized_equity - 1) * 100
 
     fig = go.Figure()
 
-    # Portfolio curve
+    # Portfolio curve (normalized)
     fig.add_trace(
         go.Scatter(
             x=dates,
-            y=equity,
+            y=normalized_equity,
             mode="lines",
             name="Portfolio",
             line={"color": "#1f77b4", "width": 2},
             hovertemplate=(
                 "<b>Date</b>: %{x|%Y-%m-%d}<br>"
-                "<b>Value</b>: %{y:,.0f} KRW<br>"
+                "<b>Value</b>: %{y:.2f}x<br>"
                 "<b>Return</b>: %{customdata:.2f}%<extra></extra>"
             ),
             customdata=returns_pct,
@@ -75,30 +79,31 @@ def render_equity_curve(
 
     # Benchmark curve (if provided)
     if benchmark is not None and len(benchmark) == len(dates):
-        benchmark_returns = (benchmark / benchmark[0] - 1) * 100
+        normalized_benchmark = benchmark / benchmark[0]
+        benchmark_returns = (normalized_benchmark - 1) * 100
         fig.add_trace(
             go.Scatter(
                 x=dates,
-                y=benchmark,
+                y=normalized_benchmark,
                 mode="lines",
                 name=benchmark_name,
                 line={"color": "#ff7f0e", "width": 1.5, "dash": "dash"},
                 hovertemplate=(
                     f"<b>{benchmark_name}</b><br>"
                     "<b>Date</b>: %{x|%Y-%m-%d}<br>"
-                    "<b>Value</b>: %{y:,.0f}<br>"
+                    "<b>Value</b>: %{y:.2f}x<br>"
                     "<b>Return</b>: %{customdata:.2f}%<extra></extra>"
                 ),
                 customdata=benchmark_returns,
             )
         )
 
-    # Initial capital baseline
+    # Baseline at 1 (starting point)
     fig.add_hline(
-        y=initial_capital,
+        y=1.0,
         line_dash="dot",
         line_color="gray",
-        annotation_text="Initial Capital",
+        annotation_text="Start (1.0)",
         annotation_position="bottom right",
     )
 
@@ -125,10 +130,11 @@ def render_equity_curve(
             },
         },
         yaxis={
-            "title": "Portfolio Value (KRW)",
+            "title": "Normalized Value (1 = Start)",
+            "type": "log",
             "showgrid": True,
             "gridcolor": "rgba(128, 128, 128, 0.2)",
-            "tickformat": ",",
+            "tickformat": ".2f",
         },
         hovermode="x unified",
         template="plotly_white",
