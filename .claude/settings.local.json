@@ -7,7 +7,11 @@
       "Bash(tree:*)",
       "Bash(powershell -Command:*)",
       "Bash(where:*)",
-      "Bash(uv pip install:*)"
+      "Bash(uv pip install:*)",
+      "Bash(tasklist:*)",
+      "Read(//c/Users/moons/dev/crypto-quant-system/**)",
+      "Bash(xargs:*)",
+      "Bash(uv run streamlit:*)"
     ]
   }
 }

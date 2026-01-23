@@ -25,6 +25,7 @@ __all__ = [
     "BtBacktestResult",
     "run_bt_backtest_service",
     "run_bt_backtest_regime_service",
+    "run_bt_backtest_generic_service",
     "is_bt_available",
     "get_available_bt_symbols",
     "get_default_model_path",
@@ -430,4 +431,116 @@ def run_bt_backtest_regime_service(
 
     except Exception as e:
         logger.exception(f"bt regime backtest failed: {e}")
+        return None
+
+
+def run_bt_backtest_generic_service(
+    strategy_type: str,
+    symbols: tuple[str, ...],
+    interval: str = "day",
+    initial_cash: int = 10_000_000,
+    fee: float = 0.0005,
+    slippage: float = 0.0005,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    **strategy_params: int | float | str,
+) -> BtBacktestResult | None:
+    """Run backtest using bt library with any strategy.
+
+    Args:
+        strategy_type: Strategy type (momentum, buy_and_hold, vbo_single_coin, vbo_portfolio)
+        symbols: Tuple of symbols to trade
+        interval: Time interval
+        initial_cash: Initial capital in KRW
+        fee: Trading fee
+        slippage: Slippage
+        start_date: Backtest start date
+        end_date: Backtest end date
+        **strategy_params: Strategy-specific parameters
+
+    Returns:
+        BtBacktestResult or None on failure
+    """
+    if not is_bt_available():
+        logger.error("bt library is not installed")
+        return None
+
+    try:
+        from bt.framework.facade import BacktestFacade
+
+        symbols_list = list(symbols)
+        facade = BacktestFacade()
+
+        # Load data for all symbols
+        data: dict[str, pd.DataFrame] = {}
+        for symbol in symbols_list:
+            try:
+                df = _load_data_for_bt(symbol, interval)
+                data[symbol] = df
+                logger.info(f"Loaded {symbol}: {len(df)} rows")
+            except FileNotFoundError:
+                logger.warning(f"Data not found for {symbol}")
+            except Exception as e:
+                logger.error(f"Error loading {symbol}: {e}")
+
+        if not data:
+            logger.error("No data loaded for any symbol")
+            return None
+
+        # Filter data by date range
+        if start_date or end_date:
+            for symbol in list(data.keys()):
+                df = data[symbol]
+                if "datetime" in df.columns:
+                    if start_date:
+                        df = df[df["datetime"].dt.date >= start_date]
+                    if end_date:
+                        df = df[df["datetime"].dt.date <= end_date]
+                    data[symbol] = df
+                    logger.info(f"Filtered {symbol}: {len(df)} rows after date filter")
+
+        loaded_symbols = list(data.keys())
+
+        # Build backtest config
+        backtest_config: dict[str, object] = {
+            "initial_cash": initial_cash,
+            "fee": fee,
+            "slippage": slippage,
+            **strategy_params,
+        }
+
+        # Add date range to config if provided
+        if start_date:
+            backtest_config["start_date"] = start_date.isoformat()
+        if end_date:
+            backtest_config["end_date"] = end_date.isoformat()
+
+        # Add btc_symbol for strategies that need it
+        if strategy_type in ("vbo_single_coin", "vbo_portfolio"):
+            backtest_config.setdefault("btc_symbol", "BTC")
+
+        logger.info(f"Running bt {strategy_type} backtest with {len(loaded_symbols)} symbols...")
+
+        results = facade.run_backtest(
+            strategy=strategy_type,
+            symbols=loaded_symbols,
+            data=data,
+            config=backtest_config,
+        )
+
+        # Extract metrics from results
+        metrics = results.get("performance")
+        if not metrics:
+            logger.error("No metrics in backtest results")
+            return None
+
+        logger.info(
+            f"bt {strategy_type} backtest completed: CAGR={float(metrics.cagr):.2f}%, "
+            f"MDD={float(metrics.mdd):.2f}%, Trades={metrics.num_trades}"
+        )
+
+        return _convert_bt_metrics_to_result(metrics)
+
+    except Exception as e:
+        logger.exception(f"bt {strategy_type} backtest failed: {e}")
         return None

@@ -221,6 +221,7 @@ def _run_bt_backtest(
 ) -> None:
     """Run backtest using bt library."""
     from src.web.services.bt_backtest_runner import (
+        run_bt_backtest_generic_service,
         run_bt_backtest_regime_service,
         run_bt_backtest_service,
     )
@@ -228,9 +229,23 @@ def _run_bt_backtest(
     # Convert tickers: KRW-BTC -> BTC
     symbols = [t.replace("KRW-", "") for t in available_tickers]
 
-    # Check if regime strategy
+    # Strategy name to bt strategy type mapping
+    strategy_mapping = {
+        "bt_VBO": ("vbo", "bt VBO"),
+        "bt_VBO_Regime": ("vbo_regime", "bt VBO Regime"),
+        "bt_Momentum": ("momentum", "bt Momentum"),
+        "bt_BuyAndHold": ("buy_and_hold", "bt Buy & Hold"),
+        "bt_VBO_SingleCoin": ("vbo_single_coin", "bt VBO Single Coin"),
+        "bt_VBO_Portfolio": ("vbo_portfolio", "bt VBO Portfolio"),
+    }
+
+    bt_strategy_type, strategy_display = strategy_mapping.get(
+        strategy_name, ("vbo", "bt VBO")
+    )
+
+    # Run backtest based on strategy type
     if strategy_name == "bt_VBO_Regime":
-        with st.spinner("Running bt VBO Regime backtest (ML model)..."):
+        with st.spinner(f"Running {strategy_display} backtest (ML model)..."):
             result = run_bt_backtest_regime_service(
                 symbols=tuple(symbols),
                 interval="day",
@@ -242,9 +257,8 @@ def _run_bt_backtest(
                 start_date=start_date,
                 end_date=end_date,
             )
-            strategy_display = "bt VBO Regime"
-    else:
-        with st.spinner("Running bt VBO backtest..."):
+    elif strategy_name == "bt_VBO":
+        with st.spinner(f"Running {strategy_display} backtest..."):
             result = run_bt_backtest_service(
                 symbols=tuple(symbols),
                 interval="day",
@@ -256,7 +270,20 @@ def _run_bt_backtest(
                 start_date=start_date,
                 end_date=end_date,
             )
-            strategy_display = "bt VBO"
+    else:
+        # Use generic service for other strategies
+        with st.spinner(f"Running {strategy_display} backtest..."):
+            result = run_bt_backtest_generic_service(
+                strategy_type=bt_strategy_type,
+                symbols=tuple(symbols),
+                interval="day",
+                initial_cash=int(trading_config.initial_capital),
+                fee=trading_config.fee_rate,
+                slippage=trading_config.slippage_rate,
+                start_date=start_date,
+                end_date=end_date,
+                **strategy_params,
+            )
 
     if result:
         # Clear event-driven result if exists
@@ -322,7 +349,7 @@ def _display_results(result: BacktestResult) -> None:
 
     # Calculate extended metrics (cached in session state)
     equity = np.array(result.equity_curve)
-    dates = np.array(result.dates) if hasattr(result, "dates") else np.arange(len(equity))
+    dates = np.array(result.dates) if hasattr(result, "dates") and result.dates else np.arange(len(equity))
 
     # Generate cache key (cache metrics by equity hash)
     cache_key = f"metrics_{hash(equity.tobytes())}"
@@ -332,6 +359,7 @@ def _display_results(result: BacktestResult) -> None:
         st.session_state[cache_key] = calculate_extended_metrics(
             equity=equity,
             trade_returns=trade_returns,
+            dates=dates,
         )
 
     extended_metrics = st.session_state[cache_key]
@@ -396,47 +424,27 @@ def _display_bt_results(result: BtBacktestResult) -> None:
 
     st.subheader(f"📊 {strategy_display} Backtest Results")
 
-    # Metrics cards - Row 1
-    col1, col2, col3, col4 = st.columns(4)
+    # Extract trade returns for extended metrics calculation
+    trade_returns = [t["return_pct"] / 100 for t in result.trades if t.get("return_pct")]
 
-    with col1:
-        st.metric("Total Return", f"{result.total_return:,.2f}%")
+    # Calculate extended metrics (same as default strategy)
+    equity = np.array(result.equity_curve)
+    dates = np.array(result.dates) if result.dates else None
 
-    with col2:
-        st.metric("CAGR", f"{result.cagr:.2f}%")
+    # Generate cache key
+    cache_key = f"bt_metrics_{hash(equity.tobytes())}"
 
-    with col3:
-        st.metric("Max Drawdown", f"{result.mdd:.2f}%")
+    if cache_key not in st.session_state:
+        st.session_state[cache_key] = calculate_extended_metrics(
+            equity=equity,
+            trade_returns=trade_returns,
+            dates=dates,
+        )
 
-    with col4:
-        st.metric("Sharpe Ratio", f"{result.sharpe_ratio:.2f}")
+    extended_metrics = st.session_state[cache_key]
 
-    # Row 2
-    col5, col6, col7, col8 = st.columns(4)
-
-    with col5:
-        st.metric("Sortino Ratio", f"{result.sortino_ratio:.2f}")
-
-    with col6:
-        st.metric("Win Rate", f"{result.win_rate:.2f}%")
-
-    with col7:
-        st.metric("Profit Factor", f"{result.profit_factor:.2f}")
-
-    with col8:
-        st.metric("Total Trades", f"{result.num_trades:,}")
-
-    # Row 3
-    col9, col10, col11, col12 = st.columns(4)
-
-    with col9:
-        st.metric("Final Equity", f"{result.final_equity:,.0f} KRW")
-
-    with col10:
-        st.metric("Avg Win Rate", f"{result.avg_win_pct:.2f}%")
-
-    with col11:
-        st.metric("Avg Loss Rate", f"{result.avg_loss_pct:.2f}%")
+    # Use the same metrics display as default strategy
+    render_metrics_cards(extended_metrics)
 
     st.markdown("---")
 
@@ -444,69 +452,19 @@ def _display_bt_results(result: BtBacktestResult) -> None:
     tab1, tab2, tab3 = st.tabs(["📊 Equity Curve", "📆 Yearly Returns", "📋 Trade History"])
 
     with tab1:
-        _render_bt_equity_chart(result)
+        # Use the same normalized equity curve as default strategy
+        dates_array = np.array(result.dates)
+        render_equity_curve(dates_array, equity)
+        st.markdown("### Drawdown")
+        render_underwater_curve(dates_array, equity)
 
     with tab2:
         _render_bt_yearly_chart(result)
+        st.markdown("### Monthly Heatmap")
+        render_monthly_heatmap(np.array(result.dates), equity)
 
     with tab3:
         _render_bt_trade_history(result)
-
-
-def _render_bt_equity_chart(result: BtBacktestResult) -> None:
-    """Render bt equity curve chart."""
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
-    equity = np.array(result.equity_curve)
-    dates = result.dates
-
-    # Calculate drawdown
-    cummax = np.maximum.accumulate(equity)
-    drawdown = (equity - cummax) / cummax * 100
-
-    fig = make_subplots(
-        rows=2,
-        cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.05,
-        row_heights=[0.7, 0.3],
-        subplot_titles=("Equity Curve (Log Scale)", "Drawdown (%)"),
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=equity,
-            mode="lines",
-            name="Equity",
-            line={"color": "#2E86AB", "width": 1.5},
-            fill="tozeroy",
-            fillcolor="rgba(46, 134, 171, 0.2)",
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=drawdown,
-            mode="lines",
-            name="Drawdown",
-            line={"color": "#E94F37", "width": 1},
-            fill="tozeroy",
-            fillcolor="rgba(233, 79, 55, 0.3)",
-        ),
-        row=2,
-        col=1,
-    )
-
-    fig.update_layout(height=600, showlegend=False, hovermode="x unified")
-    fig.update_yaxes(type="log", row=1, col=1)
-    fig.update_yaxes(title_text="Drawdown (%)", row=2, col=1)
-
-    st.plotly_chart(fig, use_container_width=True)
 
 
 def _render_bt_yearly_chart(result: BtBacktestResult) -> None:

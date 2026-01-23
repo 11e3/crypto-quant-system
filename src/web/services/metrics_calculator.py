@@ -80,6 +80,7 @@ def calculate_extended_metrics(
     equity: np.ndarray,
     trade_returns: list[float] | None = None,
     risk_free_rate: float = 0.02,
+    dates: np.ndarray | None = None,
 ) -> ExtendedMetrics:
     """Calculate extended metrics.
 
@@ -87,6 +88,7 @@ def calculate_extended_metrics(
         equity: Portfolio value array
         trade_returns: Individual trade returns list (optional)
         risk_free_rate: Risk-free rate (annual, default: 2%)
+        dates: Date array for accurate period calculation (optional)
 
     Returns:
         ExtendedMetrics dataclass
@@ -96,7 +98,16 @@ def calculate_extended_metrics(
 
     # Period information
     trading_days = len(equity)
-    years = trading_days / 365
+    if dates is not None and len(dates) >= 2:
+        # Calculate years from actual date range
+        import pandas as pd
+
+        first_date = pd.to_datetime(dates[0])
+        last_date = pd.to_datetime(dates[-1])
+        years = (last_date - first_date).days / 365.0
+    else:
+        # Fallback to equity length / 365
+        years = trading_days / 365.0
 
     # Daily returns
     returns = ReturnMetrics.calculate_returns(equity)
